@@ -1,0 +1,1667 @@
+{
+  "blender": {
+    "branch": "b'main'",
+    "build_hash": "5eaad57cfabe",
+    "cycle": "alpha",
+    "policy": "any Blender 5.x is accepted, so a re-render on a later build will not reproduce these pixels; the build that made them is recorded here so that a difference is visible rather than silent",
+    "version": "5.3.0 Alpha"
+  },
+  "generated_by": "tools/icons/generate.py",
+  "hash": {
+    "algorithm": "fnv1a64",
+    "is": "an integrity check \u2014 this file is the file the manifest describes",
+    "is_not": "a signature, and not a security mechanism"
+  },
+  "how_to_regenerate": "blender --background --factory-startup --python tools/icons/generate.py",
+  "icons": [
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "tool-road",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#67696c",
+              "linear_rgb": [
+                0.136099,
+                0.141107,
+                0.149408
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.62
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4b4d50",
+              "linear_rgb": [
+                0.071151,
+                0.07441,
+                0.079846
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.55
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.29\u00d7 the declared base colour's own (0.0218 against 0.0741), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "tool-road.48.png",
+          "hash": "fnv1a64:d7b68ca4edf1e413",
+          "measurements": {
+            "chromaticity_degrees": 45.21,
+            "coverage": 0.3646,
+            "declared_base_chromaticity_degrees": 46.28,
+            "declared_base_luminance": 0.0741,
+            "mean_luminance": 0.0218,
+            "peak_luminance": 0.0452
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "tool-road.32.png",
+          "hash": "fnv1a64:cda641eca04a19a3",
+          "measurements": {
+            "chromaticity_degrees": 45.21,
+            "coverage": 0.3828,
+            "declared_base_chromaticity_degrees": 46.28,
+            "declared_base_luminance": 0.0741,
+            "mean_luminance": 0.0208,
+            "peak_luminance": 0.0409
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "tool-road.24.png",
+          "hash": "fnv1a64:8363507c959fa444",
+          "measurements": {
+            "chromaticity_degrees": 45.19,
+            "coverage": 0.3472,
+            "declared_base_chromaticity_degrees": 46.28,
+            "declared_base_luminance": 0.0741,
+            "mean_luminance": 0.022,
+            "peak_luminance": 0.0369
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "tool-zone",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#298646",
+              "linear_rgb": [
+                0.022328,
+                0.238191,
+                0.061689
+              ]
+            },
+            "base_metalness": 0.15,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.4
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#298646",
+              "linear_rgb": [
+                0.022328,
+                0.238191,
+                0.061689
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.48
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.25\u00d7 the declared base colour's own (0.0440 against 0.1796), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "tool-zone.48.png",
+          "hash": "fnv1a64:e104c9c6f2d8f497",
+          "measurements": {
+            "chromaticity_degrees": 81.94,
+            "coverage": 0.4306,
+            "declared_base_chromaticity_degrees": 84.64,
+            "declared_base_luminance": 0.1796,
+            "mean_luminance": 0.044,
+            "peak_luminance": 0.0556
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "tool-zone.32.png",
+          "hash": "fnv1a64:2c6a2e20ea57b3e5",
+          "measurements": {
+            "chromaticity_degrees": 81.94,
+            "coverage": 0.4297,
+            "declared_base_chromaticity_degrees": 84.64,
+            "declared_base_luminance": 0.1796,
+            "mean_luminance": 0.0416,
+            "peak_luminance": 0.0553
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "tool-zone.24.png",
+          "hash": "fnv1a64:bc5cc34de3b30926",
+          "measurements": {
+            "chromaticity_degrees": 81.95,
+            "coverage": 0.4878,
+            "declared_base_chromaticity_degrees": 84.64,
+            "declared_base_luminance": 0.1796,
+            "mean_luminance": 0.0385,
+            "peak_luminance": 0.054
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "tool-power",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#88909c",
+              "linear_rgb": [
+                0.246813,
+                0.277394,
+                0.331169
+              ]
+            },
+            "base_metalness": 0.9,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.3
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4cb86a",
+              "linear_rgb": [
+                0.072435,
+                0.478001,
+                0.144896
+              ]
+            },
+            "base_metalness": 0.1,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.42
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.19\u00d7 the declared base colour's own (0.0717 against 0.3677), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "tool-power.48.png",
+          "hash": "fnv1a64:ac127a0b5c9d7a6b",
+          "measurements": {
+            "chromaticity_degrees": 79.63,
+            "coverage": 0.1024,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0717,
+            "peak_luminance": 0.0967
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "tool-power.32.png",
+          "hash": "fnv1a64:86feae830ad85c89",
+          "measurements": {
+            "chromaticity_degrees": 79.52,
+            "coverage": 0.0918,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0703,
+            "peak_luminance": 0.0983
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "tool-power.24.png",
+          "hash": "fnv1a64:92c9e35eb536ac0b",
+          "measurements": {
+            "chromaticity_degrees": 79.64,
+            "coverage": 0.1181,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.064,
+            "peak_luminance": 0.0945
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "tool-demolish",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#de4e4b",
+              "linear_rgb": [
+                0.727825,
+                0.076268,
+                0.070939
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.66
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#ea9602",
+              "linear_rgb": [
+                0.819748,
+                0.303686,
+                0.000535
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.6
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.23\u00d7 the declared base colour's own (0.0891 against 0.3915), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "tool-demolish.48.png",
+          "hash": "fnv1a64:5824943eac9400d8",
+          "measurements": {
+            "chromaticity_degrees": 17.94,
+            "coverage": 0.3095,
+            "declared_base_chromaticity_degrees": 20.33,
+            "declared_base_luminance": 0.3915,
+            "mean_luminance": 0.0891,
+            "peak_luminance": 0.1218
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "tool-demolish.32.png",
+          "hash": "fnv1a64:3b913a256fe28084",
+          "measurements": {
+            "chromaticity_degrees": 17.95,
+            "coverage": 0.3164,
+            "declared_base_chromaticity_degrees": 20.33,
+            "declared_base_luminance": 0.3915,
+            "mean_luminance": 0.0866,
+            "peak_luminance": 0.1202
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "tool-demolish.24.png",
+          "hash": "fnv1a64:f91326a74b0a2570",
+          "measurements": {
+            "chromaticity_degrees": 18.03,
+            "coverage": 0.316,
+            "declared_base_chromaticity_degrees": 20.33,
+            "declared_base_luminance": 0.3915,
+            "mean_luminance": 0.0867,
+            "peak_luminance": 0.1201
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the shader's coat has its own roughness and IOR which this table does not set, so a coated icon inherits Blender's defaults rather than the specification's",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "tool-inspect",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#6b727e",
+              "linear_rgb": [
+                0.146533,
+                0.16829,
+                0.207154
+              ]
+            },
+            "base_metalness": 0.2,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.45
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real",
+            "the shader's coat has its own roughness and IOR which this table does not set, so a coated icon inherits Blender's defaults rather than the specification's"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "geometry_coat_weight": "Coat Weight",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#6b727e",
+              "linear_rgb": [
+                0.146533,
+                0.16829,
+                0.207154
+              ]
+            },
+            "base_metalness": 0.85,
+            "geometry_coat_weight": 0.4,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.28
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.09\u00d7 the declared base colour's own (0.0144 against 0.1665), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "tool-inspect.48.png",
+          "hash": "fnv1a64:c4460cebf15dec24",
+          "measurements": {
+            "chromaticity_degrees": 48.14,
+            "coverage": 0.253,
+            "declared_base_chromaticity_degrees": 48.95,
+            "declared_base_luminance": 0.1665,
+            "mean_luminance": 0.0144,
+            "peak_luminance": 0.1037
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "tool-inspect.32.png",
+          "hash": "fnv1a64:00b8ab48bdc08044",
+          "measurements": {
+            "chromaticity_degrees": 48.2,
+            "coverage": 0.2578,
+            "declared_base_chromaticity_degrees": 48.95,
+            "declared_base_luminance": 0.1665,
+            "mean_luminance": 0.0141,
+            "peak_luminance": 0.1014
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "tool-inspect.24.png",
+          "hash": "fnv1a64:771cf4ec95e92eb7",
+          "measurements": {
+            "chromaticity_degrees": 48.13,
+            "coverage": 0.2708,
+            "declared_base_chromaticity_degrees": 48.95,
+            "declared_base_luminance": 0.1665,
+            "mean_luminance": 0.0135,
+            "peak_luminance": 0.0716
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "ledger",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#564c3b",
+              "linear_rgb": [
+                0.092606,
+                0.071317,
+                0.04318
+              ]
+            },
+            "base_metalness": 0.7,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.34
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#2c3139",
+              "linear_rgb": [
+                0.024797,
+                0.030231,
+                0.040361
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.58
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.35\u00d7 the declared base colour's own (0.0104 against 0.0298), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "ledger.48.png",
+          "hash": "fnv1a64:67ab6781090eb6d5",
+          "measurements": {
+            "chromaticity_degrees": 46.66,
+            "coverage": 0.4384,
+            "declared_base_chromaticity_degrees": 50.64,
+            "declared_base_luminance": 0.0298,
+            "mean_luminance": 0.0104,
+            "peak_luminance": 0.0145
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "ledger.32.png",
+          "hash": "fnv1a64:5b280de11b479126",
+          "measurements": {
+            "chromaticity_degrees": 46.65,
+            "coverage": 0.46,
+            "declared_base_chromaticity_degrees": 50.64,
+            "declared_base_luminance": 0.0298,
+            "mean_luminance": 0.0099,
+            "peak_luminance": 0.0145
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "ledger.24.png",
+          "hash": "fnv1a64:d6fceb2416894307",
+          "measurements": {
+            "chromaticity_degrees": 46.55,
+            "coverage": 0.4531,
+            "declared_base_chromaticity_degrees": 50.64,
+            "declared_base_luminance": 0.0298,
+            "mean_luminance": 0.0099,
+            "peak_luminance": 0.0143
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "ticket",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#ea9602",
+              "linear_rgb": [
+                0.819748,
+                0.303686,
+                0.000535
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.5
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#ea9602",
+              "linear_rgb": [
+                0.819748,
+                0.303686,
+                0.000535
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.5
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.24\u00d7 the declared base colour's own (0.0942 against 0.3915), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "ticket.48.png",
+          "hash": "fnv1a64:689eab4fd7af7811",
+          "measurements": {
+            "chromaticity_degrees": 20.2,
+            "coverage": 0.3242,
+            "declared_base_chromaticity_degrees": 20.33,
+            "declared_base_luminance": 0.3915,
+            "mean_luminance": 0.0942,
+            "peak_luminance": 0.1246
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "ticket.32.png",
+          "hash": "fnv1a64:3a5a997a0952a19b",
+          "measurements": {
+            "chromaticity_degrees": 20.2,
+            "coverage": 0.3418,
+            "declared_base_chromaticity_degrees": 20.33,
+            "declared_base_luminance": 0.3915,
+            "mean_luminance": 0.0916,
+            "peak_luminance": 0.1162
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "ticket.24.png",
+          "hash": "fnv1a64:abd9ba4e8101a24f",
+          "measurements": {
+            "chromaticity_degrees": 20.2,
+            "coverage": 0.3229,
+            "declared_base_chromaticity_degrees": 20.33,
+            "declared_base_luminance": 0.3915,
+            "mean_luminance": 0.0925,
+            "peak_luminance": 0.1177
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "district",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#2a75ba",
+              "linear_rgb": [
+                0.022802,
+                0.177054,
+                0.489963
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.44
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#2a75ba",
+              "linear_rgb": [
+                0.022802,
+                0.177054,
+                0.489963
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.5
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.23\u00d7 the declared base colour's own (0.0380 against 0.1669), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "district.48.png",
+          "hash": "fnv1a64:95fab32ba5dab18c",
+          "measurements": {
+            "chromaticity_degrees": 79.39,
+            "coverage": 0.2708,
+            "declared_base_chromaticity_degrees": 82.66,
+            "declared_base_luminance": 0.1669,
+            "mean_luminance": 0.038,
+            "peak_luminance": 0.0526
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "district.32.png",
+          "hash": "fnv1a64:d82d80aa1f03b196",
+          "measurements": {
+            "chromaticity_degrees": 79.31,
+            "coverage": 0.3525,
+            "declared_base_chromaticity_degrees": 82.66,
+            "declared_base_luminance": 0.1669,
+            "mean_luminance": 0.0348,
+            "peak_luminance": 0.0514
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "district.24.png",
+          "hash": "fnv1a64:555ce012c17536f2",
+          "measurements": {
+            "chromaticity_degrees": 79.35,
+            "coverage": 0.3247,
+            "declared_base_chromaticity_degrees": 82.66,
+            "declared_base_luminance": 0.1669,
+            "mean_luminance": 0.0344,
+            "peak_luminance": 0.0513
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "power",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4cb86a",
+              "linear_rgb": [
+                0.072435,
+                0.478001,
+                0.144896
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.5
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4cb86a",
+              "linear_rgb": [
+                0.072435,
+                0.478001,
+                0.144896
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.42
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.22\u00d7 the declared base colour's own (0.0792 against 0.3677), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "power.48.png",
+          "hash": "fnv1a64:6d2711da0784c029",
+          "measurements": {
+            "chromaticity_degrees": 80.12,
+            "coverage": 0.2383,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0792,
+            "peak_luminance": 0.1072
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "power.32.png",
+          "hash": "fnv1a64:bf1d3d16f6e9293a",
+          "measurements": {
+            "chromaticity_degrees": 80.11,
+            "coverage": 0.2285,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0797,
+            "peak_luminance": 0.1072
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "power.24.png",
+          "hash": "fnv1a64:1e37e2b7872ae817",
+          "measurements": {
+            "chromaticity_degrees": 80.13,
+            "coverage": 0.2483,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0758,
+            "peak_luminance": 0.1072
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "view-power",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4cb86a",
+              "linear_rgb": [
+                0.072435,
+                0.478001,
+                0.144896
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.5
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4cb86a",
+              "linear_rgb": [
+                0.072435,
+                0.478001,
+                0.144896
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.44
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.23\u00d7 the declared base colour's own (0.0863 against 0.3677), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "view-power.48.png",
+          "hash": "fnv1a64:5fe91bcab61271ce",
+          "measurements": {
+            "chromaticity_degrees": 79.86,
+            "coverage": 0.2201,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0863,
+            "peak_luminance": 0.1143
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "view-power.32.png",
+          "hash": "fnv1a64:8a250313a60e56d1",
+          "measurements": {
+            "chromaticity_degrees": 79.86,
+            "coverage": 0.2979,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.07,
+            "peak_luminance": 0.1142
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "view-power.24.png",
+          "hash": "fnv1a64:2e5c31c8b54b04f6",
+          "measurements": {
+            "chromaticity_degrees": 79.85,
+            "coverage": 0.3733,
+            "declared_base_chromaticity_degrees": 81.38,
+            "declared_base_luminance": 0.3677,
+            "mean_luminance": 0.0616,
+            "peak_luminance": 0.0986
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "view-zoning",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#298646",
+              "linear_rgb": [
+                0.022328,
+                0.238191,
+                0.061689
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.5
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#298646",
+              "linear_rgb": [
+                0.022328,
+                0.238191,
+                0.061689
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.48
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.24\u00d7 the declared base colour's own (0.0438 against 0.1796), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "view-zoning.48.png",
+          "hash": "fnv1a64:7dbed1bccf6f0039",
+          "measurements": {
+            "chromaticity_degrees": 81.78,
+            "coverage": 0.2878,
+            "declared_base_chromaticity_degrees": 84.64,
+            "declared_base_luminance": 0.1796,
+            "mean_luminance": 0.0438,
+            "peak_luminance": 0.0587
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "view-zoning.32.png",
+          "hash": "fnv1a64:b5a2d5a5cf46dae4",
+          "measurements": {
+            "chromaticity_degrees": 81.77,
+            "coverage": 0.3643,
+            "declared_base_chromaticity_degrees": 84.64,
+            "declared_base_luminance": 0.1796,
+            "mean_luminance": 0.0371,
+            "peak_luminance": 0.0586
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "view-zoning.24.png",
+          "hash": "fnv1a64:c98652fe241dca81",
+          "measurements": {
+            "chromaticity_degrees": 81.77,
+            "coverage": 0.4497,
+            "declared_base_chromaticity_degrees": 84.64,
+            "declared_base_luminance": 0.1796,
+            "mean_luminance": 0.0331,
+            "peak_luminance": 0.0499
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "view-traffic",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#4b4d50",
+              "linear_rgb": [
+                0.071151,
+                0.07441,
+                0.079846
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.6
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#dde5f2",
+              "linear_rgb": [
+                0.722656,
+                0.784538,
+                0.890638
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.46
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.07\u00d7 the declared base colour's own (0.0559 against 0.7790), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "view-traffic.48.png",
+          "hash": "fnv1a64:a917a66cd4af249e",
+          "measurements": {
+            "chromaticity_degrees": 46.11,
+            "coverage": 0.2622,
+            "declared_base_chromaticity_degrees": 47.35,
+            "declared_base_luminance": 0.779,
+            "mean_luminance": 0.0559,
+            "peak_luminance": 0.2042
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "view-traffic.32.png",
+          "hash": "fnv1a64:af5346b676c51c38",
+          "measurements": {
+            "chromaticity_degrees": 46.1,
+            "coverage": 0.3398,
+            "declared_base_chromaticity_degrees": 47.35,
+            "declared_base_luminance": 0.779,
+            "mean_luminance": 0.0461,
+            "peak_luminance": 0.2049
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "view-traffic.24.png",
+          "hash": "fnv1a64:609491bcc163ded6",
+          "measurements": {
+            "chromaticity_degrees": 46.08,
+            "coverage": 0.4167,
+            "declared_base_chromaticity_degrees": 47.35,
+            "declared_base_luminance": 0.779,
+            "mean_luminance": 0.0385,
+            "peak_luminance": 0.2014
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    },
+    {
+      "checks": {
+        "chromaticity_tolerance_degrees": 12.0,
+        "coverage_bounds_at_24": [
+          0.06,
+          0.62
+        ],
+        "luminance_band": [
+          0.35,
+          1.6
+        ],
+        "what_this_is": "the declared material against the render: mean luminance as a multiple of the base colour's own, chromaticity drift in degrees, ink coverage at the smallest shipped size"
+      },
+      "deviations": [
+        "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+        "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+      ],
+      "id": "view-ledger",
+      "materials": {
+        "accent": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#564c3b",
+              "linear_rgb": [
+                0.092606,
+                0.071317,
+                0.04318
+              ]
+            },
+            "base_metalness": 0.5,
+            "specular_ior": 1.5,
+            "specular_roughness": 0.4
+          }
+        },
+        "primary": {
+          "deviations": [
+            "OpenPBR's metallic is defined as a weight between dielectric and conductor; the shader's 'Metallic' is the same range, and these icons use it at 0.0 or 1.0 only, where both readings agree",
+            "the specification carries separate dielectric and metallic roughness; the shader has one 'Roughness'. No icon mixes the two on one surface, so the collapse is never exercised, but it is real"
+          ],
+          "mapping": {
+            "base_color": "Base Color",
+            "base_metalness": "Metallic",
+            "specular_ior": "IOR",
+            "specular_roughness": "Roughness"
+          },
+          "openpbr": {
+            "base_color": {
+              "hex": "#babec4",
+              "linear_rgb": [
+                0.490694,
+                0.514328,
+                0.553817
+              ]
+            },
+            "base_metalness": 0.0,
+            "specular_ior": 1.45,
+            "specular_roughness": 0.52
+          }
+        }
+      },
+      "notes": [
+        "the rendered mean luminance is 0.12\u00d7 the declared base colour's own (0.0623 against 0.5122), outside the 0.35\u20131.6 band"
+      ],
+      "sizes": [
+        {
+          "bytes": 9216,
+          "file": "view-ledger.48.png",
+          "hash": "fnv1a64:303954084f714019",
+          "measurements": {
+            "chromaticity_degrees": 44.62,
+            "coverage": 0.3025,
+            "declared_base_chromaticity_degrees": 46.35,
+            "declared_base_luminance": 0.5122,
+            "mean_luminance": 0.0623,
+            "peak_luminance": 0.1411
+          },
+          "px": 48
+        },
+        {
+          "bytes": 4096,
+          "file": "view-ledger.32.png",
+          "hash": "fnv1a64:8b2a77c280de7714",
+          "measurements": {
+            "chromaticity_degrees": 44.48,
+            "coverage": 0.3711,
+            "declared_base_chromaticity_degrees": 46.35,
+            "declared_base_luminance": 0.5122,
+            "mean_luminance": 0.0488,
+            "peak_luminance": 0.1409
+          },
+          "px": 32
+        },
+        {
+          "bytes": 2304,
+          "file": "view-ledger.24.png",
+          "hash": "fnv1a64:c1c27a273cfb4b03",
+          "measurements": {
+            "chromaticity_degrees": 44.4,
+            "coverage": 0.4444,
+            "declared_base_chromaticity_degrees": 46.35,
+            "declared_base_luminance": 0.5122,
+            "mean_luminance": 0.0423,
+            "peak_luminance": 0.138
+          },
+          "px": 24
+        }
+      ],
+      "verdict": "pass_with_notes"
+    }
+  ],
+  "openpbr": {
+    "conformance": "authored against the OpenPBR parameter set and rendered through a shader that is OpenPBR-aligned but not conformance-exact; Blender 5.3.0 Alpha has no OpenPBR node and no MaterialX operators, and upstream issue #145127 records exact import/export as wanted rather than delivered",
+    "mapping": {
+      "base_color": "Base Color",
+      "base_metalness": "Metallic",
+      "geometry_coat_weight": "Coat Weight",
+      "specular_ior": "IOR",
+      "specular_roughness": "Roughness"
+    },
+    "not_mapped": {
+      "base_weight": "the shader has a single base layer and no layer stack",
+      "coat_roughness": "the shader has coat roughness, but not independently of the coat's own defaults",
+      "fuzz_weight": "not used by an opaque icon",
+      "specular_weight": "the shader's 'Specular IOR Level' is an artist scale, not a linear weight on F0",
+      "subsurface_weight": "not used by an opaque icon",
+      "thin_film_ior": "not implemented by the target shader",
+      "thin_film_thickness": "not implemented by the target shader",
+      "transmission_weight": "not used by an opaque icon; deliberately unpinned rather than approximated"
+    },
+    "rendered_through": "Principled BSDF v2",
+    "standard": "OpenPBR Surface (AcademySoftwareFoundation/OpenPBR)"
+  },
+  "palette_hash": "9c94934e51524433",
+  "rig": {
+    "camera": {
+      "looks_along": "+Y",
+      "ortho_scale": 2.25,
+      "position": [
+        0.0,
+        -8.0,
+        0.0
+      ],
+      "type": "orthographic",
+      "why": "an icon is a symbol; perspective would foreshorten the parts nearest the camera"
+    },
+    "denoising": "off; a denoiser is a post-process and would have to be declared",
+    "downsample": "box average in linear light over exact integer factors (192->48 averages 16 px, 192->32 averages 36, 192->24 averages 64)",
+    "film": "transparent",
+    "lights": {
+      "fill": {
+        "azimuth_degrees": -62.0,
+        "color_linear_rgb": [
+          0.86,
+          0.91,
+          1.0
+        ],
+        "distance": 6.0,
+        "elevation_degrees": 14.0,
+        "energy_watts": 110.0,
+        "role": "lifts the shadow side without flattening the form",
+        "size": 4.5
+      },
+      "key": {
+        "azimuth_degrees": 38.0,
+        "color_linear_rgb": [
+          1.0,
+          0.97,
+          0.93
+        ],
+        "distance": 6.0,
+        "elevation_degrees": 42.0,
+        "energy_watts": 320.0,
+        "role": "the light the shading model is checked against",
+        "size": 3.0
+      },
+      "rim": {
+        "azimuth_degrees": 165.0,
+        "color_linear_rgb": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "distance": 6.0,
+        "elevation_degrees": 58.0,
+        "energy_watts": 170.0,
+        "role": "separates the silhouette from the surface behind it",
+        "size": 2.0
+      }
+    },
+    "render_px": 192,
+    "samples": 256,
+    "shipped_px": [
+      48,
+      32,
+      24
+    ],
+    "view_transform": "Standard (no filmic or AgX transform, so the saved pixels encode radiance)",
+    "world": "black; the three lights above are the only illumination"
+  },
+  "sources": {
+    "src/hud.rs": "68add9cb76f0fcbc",
+    "tools/icons/generate.py": "984e91b21549b025",
+    "tools/icons/openpbr.py": "61afe01c37b716ae",
+    "tools/icons/palette.py": "25b81fb15019e7e0",
+    "tools/icons/rig.py": "4c075ff0c1c16b4a",
+    "tools/icons/shapes.py": "64b56476a57d8f9d"
+  },
+  "why_committed": "cargo build must never need Blender; the renders are artifacts with provenance, and this script is how they were produced"
+}

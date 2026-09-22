@@ -466,8 +466,12 @@ them well at a tilted angle.
 than from a desired look. Sizes to confirm: **24 / 32 / 48 px**, matching title
 (20) and display (26) on the type scale.
 
-**✔ — one per surface, 24 / 32 / 48 px.** Authoring at 4× means rendering at
-**96 px** and downsampling, so the shipped 48 is a shrinking rather than a guess.
+**✔ — one per surface**, and (round 11) the sizes are **24 / 32 / 48 / 64 / 96 px**.
+Authoring at 4× means rendering at **192 px** and downsampling, so the shipped 48 is
+a shrinking rather than a guess — and every shelves size divides 192 by a whole
+number (192÷96=2, ÷64=3, ÷48=4, ÷32=6, ÷24=8), which is what makes "downsampled"
+mean *box-filtered* rather than *resampled by luck*. **Correction:** this line said
+96 px until round 11; the pipeline renders at 192.
 
 ## ❓ Q50 — What the presentation pass has to prove before simulation work resumes
 
@@ -523,7 +527,7 @@ Put back for sign-off, because it is what implementation follows:
    scale 100/125/150/200 % with real re-layout.
 4. **Icons.** Authored from an **OpenPBR parameter table** mapped onto Principled
    BSDF v2, rendered headless in **Blender 5.3 Alpha** (`5eaad57cfabe`,
-   orthographic, fixed three-light rig, 96 px downsampled to 24/32/48), committed
+   orthographic, fixed three-light rig, 192 px downsampled to 24/32/48/64/96), committed
    with a provenance manifest that records the build hash and the deviation from
    the spec, embedded with `include_bytes!`. `cargo build` never needs Blender.
 5. **Info views.** The full CS2 list in the registry, one mode per view, each
@@ -623,5 +627,605 @@ are not.
 
 ## Answers
 
-*Rounds 7 and 8 are settled above. Round 9 is pending, and nothing in it is
-settled until its answers are filled in here.*
+*Rounds 7–11 are settled above and in round 11 below. Where a paraphrase and a
+verbatim answer disagree, the verbatim answer wins.*
+
+---
+
+# Round 11 — the icons as a library, and the materials they claim
+
+Asked after checking the pipeline, the manifest, the spec and the HUD rather than
+the plan. Three facts framed the round:
+
+1. **The icons are not in the game.** `grep -rn "icons\|assets/icons\|manifest"
+   src/*.rs` finds nothing but an unrelated `CARGO_MANIFEST_DIR`. There is **no view
+   registry in Rust** either, so round 9's *stub the full CS2 view list* is recorded
+   and unimplemented.
+2. **Five icons borrow a state token as their identity colour** — `tool-demolish`
+   (`Warning`+`Refused`), `ticket` (`CaseOpen`), `tool-inspect` (`NotObtained`),
+   `power`/`view-power` (`Nature`, which `Token::Powered` derives from),
+   `view-traffic` (`Agent`). §0.1's list opens with *"a plaque, a lamp, **a green
+   state**"*.
+3. **`Cargo.toml` declares `license = "Apache-2.0"` and there is no `LICENSE`
+   file**, and §8.2's gate names CC0/PD/CC BY(-SA) only — Apache-2.0 is absent from
+   that list. The manifest has no `artist` or `licence` field at all.
+
+## ❓ Q45 — Are icons "primary surfaces"?
+
+**✔ (verbatim)** — *"Icons are for the hud, but we can also use the blender material
+renders for more things. Maybe making a library of icons based on the unified design
+doc and other grilling sessions that we can go back to for other things. Grill me
+more if you need"*
+
+**Read as:** icons are HUD locator chrome (so §3.1's *named solid fallback* is the
+right description of them), **and** the material renders are a reusable **library**
+with more consumers than the HUD. Consequence recorded: the icons **depict**
+materials — the ledger is metal, the ticket is paper — while the interface **applies**
+none. Those are different claims and the manifest must not blur them. The lineage
+table bans the alternative anyway: *"anti-slop bans; real textures over pure
+generative fill"* and *"Generative texture alone is not sufficient without a
+human-selected physical reference"*, so noise textures written to satisfy the word
+"texture" would be the exact anti-pattern.
+
+## ❓ Q46 — May an icon's colour mean *state*?
+
+**✔ (verbatim)** — *"I don't mind animating the icons if we have to - if it makes
+the ui more responsive to the user. Ask in feedback sections for playtests about
+this"*
+
+**Read as:** the question was about colour and the answer is about motion, so both
+are recorded and the colour half stays open in round 12. Recorded as settled: icon
+motion is **permitted when it makes the UI more responsive**, and the playtest
+feedback form must **ask about it** — that question is now a required field, not an
+optional one.
+
+## ❓ Q47 — Size, and where an icon may sit
+
+**✔ (verbatim)** — *"Probably your best guess, biggest icon that reasonably fits
+scaled down into wherever it goes. Grill me for more if you have to"*
+
+**Read as:** the glyph fills the tile as far as it reasonably can, and the source is
+scaled **down**, never up. The delegation is taken, and round 12 makes it mechanical
+rather than a judgement: a glyph size derived from the spacing scale, snapped to the
+shipped ladder, with a measured floor and a declared host surface per icon.
+
+## ❓ Q48 — The size ladder
+
+**✔ (verbatim)** — *"Ship/24/32/48/64/96"*
+
+Settled. The reason the ladder matters: `design::UiScale` reaches **200 %**, where
+`design::target()` is **96 px** — so the old 24/32/48 set would upscale a 48 px icon
+2×, reintroducing in icons exactly the softness that was just removed from text.
+
+## ❓ Q49 — More icons, under what constraint
+
+**✔ (verbatim)** — *"We can make more icons it's okay just as long as they follow
+unified design and the three fixed sources of light & openpbr schemas we discussed.
+Grill me more if you want"*
+
+**Read as:** the set may grow, and the constraint is not taste but **three fixed
+sources of light + the OpenPBR schema + the design doc**. That makes the rig a
+*contract*, not a setting: an icon whose legibility needs a different rig is
+**refused** rather than special-cased, and the refusal is recorded.
+
+## ❓ Q50 — The licence on the renders
+
+**✔ (verbatim)** — *"These are rendered through my machine - they belong to me. The
+unified design spec is ambiguous"*
+
+**Read as:** authorship is the user's, and the spec's gate is silent on first-party
+assets. Recorded as a **stated ambiguity**, resolved in round 12 by choosing an
+option the gate actually recognises rather than by leaning on its silence.
+
+## ❓ Q51 — Assets or no assets
+
+**✔ (verbatim)** — *"Hopefully the game can be played without assets.. but the
+pipeline I have in mind later will require assets anyways, since we'll want
+buildings- that will require whole 3D models"*
+
+**Read as:** two requirements, in this order. The game must stay **playable with
+zero assets** (the current procedural extrusions are not a placeholder to be
+replaced — they are the named fallback), and a **model pipeline is coming** for
+buildings. That is the first real second consumer of the asset machinery, so round
+12 asks whether the provenance schema is shared now or duplicated later.
+
+## ❓ Q52 — Does a count live on an icon?
+
+**✔ (verbatim)** — *"Not baked into the icon, it would have to be it's own text slot
+that lives as a popit/ios6 notification. grill me more about unified design"*
+
+Settled: **never baked**. And the doc has an exact row for the rest of it — §12.9's
+SpringBoard mapping:
+
+| iOS 6 element | Product meaning | Forbidden reading |
+|---|---|---|
+| Badge | **Count or state copied from store** | Trust grade or promotion |
+
+So a badge is *copied*, never computed, and its forbidden reading is a grade. Round
+12 asks which surface each count belongs to, because §12.7's Notification Center and
+a Popit page are different objects with different authority: one aggregates events,
+the other describes a record.
+
+## Round 11 at a glance
+
+| # | Question | ➡️ | ✔ |
+|---|---|---|---|
+| Q45 | Are icons primary surfaces? | locator chrome, named solids | **icons are HUD chrome, and the renders become a reusable library** |
+| Q46 | May icon colour mean state? | constant per surface; states additive | **motion permitted for responsiveness; playtest must ask; colour half held over** |
+| Q47 | Size and placement | declared host, measured contrast | **biggest glyph that reasonably fits, scaled down — made mechanical in round 12** |
+| Q48 | Size ladder | 24/32/48/64/96 | ✔ |
+| Q49 | More icons? | one per declared surface | **yes, bound to the design doc + the three lights + the OpenPBR schema** |
+| Q50 | Licence on the renders | CC0 or CC BY with named author | **user owns them; spec ambiguous; resolved in round 12** |
+| Q51 | Assets or no assets | assets never required | **playable without assets; a 3D model pipeline is coming for buildings** |
+| Q52 | Counts on icons | live text slot, never baked | ✔ **as a §12.9 badge: count copied from store** |
+
+## Corrections fixed with this round
+
+| Was | Now | Why |
+|---|---|---|
+| "rendered at 96 px, downsampled to 24/32/48" | **rendered at 192 px, shipped at 24/32/48/64/96** | `rig.py` says `RENDER_PX = 192`; the doc said 96 |
+| Q43b marked *pending* at line 379 | **answered** (line 429) | a doc that says pending next to an answered question teaches a reader to distrust the rest |
+
+---
+
+# Round 12 — open
+
+*Nothing here is settled until its answer is written above the heading.*
+
+## ❓ Q53 — What the library is *for*
+
+**(a)** An internal asset source, structured so publishing is a copy rather than a
+rewrite: one directory, one manifest, one provenance schema, machine-readable.
+**(b)** A shippable design-system artifact now, with a public catalogue and its own
+version. **(c)** Icons only; no other asset family ever joins it.
+
+## ❓ Q54 — The contract for adding an icon
+
+What must a new icon declare, and where is it written? Proposal: `id`, the
+**surface it locates** (which must already exist in the registry), its **role token**
+(identity, never state), the **hosts** it may sit on, its builder, its OpenPBR
+parameters, its framed-or-not, and its sizes. Refusals: an icon needing a second rig,
+an icon for a surface the game does not declare, an icon whose identity colour is a
+state token.
+
+## ❓ Q55 — How an icon moves
+
+Quad-level transform in the renderer (no new assets) versus pre-rendered frame
+sequences (a new asset family, N× the files). Plus the §4/§8.4 collision: *"Reduced
+motion is the default"* would turn off the responsiveness that motivated motion.
+
+## ❓ Q56 — "Biggest that reasonably fits", made mechanical
+
+Glyph = tile − 2×`Space::Sm`, snapped to the shipped ladder, never upscaled; the
+drawn glyph never below 24 px; contrast measured against **each declared host** and
+failing closed at 3:1 (§6.2, §1.4.11).
+
+## ❓ Q57 — The licence string, and the hollow declaration
+
+Which licence goes in the provenance record, under which author name, and does the
+repo get a `LICENSE` file — or does `Cargo.toml` stop declaring Apache-2.0?
+
+## ❓ Q58 — Where a count lives, and what it may look like
+
+§12.9's badge row says *copied from store*; §7.3 says refused must never look like
+success. Does a zero state show anything at all?
+
+## ❓ Q59 — The coming model pipeline, and the schema it needs
+
+One provenance schema for every asset family, or one per family? Does the named
+fallback stay permanent? Are building models generated parametrically like the
+icons, or authored?
+
+---
+
+# Round 12 — recorded
+
+## Answers, verbatim
+
+| # | Answer |
+|---|---|
+| a53 | *"a + c"* |
+| a54 | *"I do not honestly care. I just want to see a lot of neat icons rendered throught the mathemetical constraints"* |
+| a55 | *"a+b, the rendering system itself should support advanced raster image features where necessary (like in the ios 6 or popit unified design spec) as well as animated icons themselves (like gears turning, reminiscent of ps2 save icons) The ui should be as lively as the world if not more."* |
+| a56 | *"When I playtest it I will let you know if an icon is too big. Better yet, while a playtest is open, run a live debugger at the same time that analyzes the data output from the program, and let me log ui elements with comments"* |
+| a57 | *"I don't care, this should be publicly accessible and playable through github so cc-by works for me"* |
+| a58 | *"your best guess from the documentations"* |
+| a59 | *"The models will also be mostly procedural made the same way the icons should be, so aside from the mechanical, mathematial, and unified design & grilling design docs we've discussed, we'll have to work through the models just like for the icons. Grill me for more"* |
+
+## What each answer settles
+
+**a53 — (a) + (c).** The library is **internal**, structured so publishing is a copy
+rather than a rewrite, and it stays **icons only**. Models are therefore a *separate
+family with its own library* rather than an extension of this one — which a59
+confirms by giving them their own grilling round.
+
+**a54 — delegated, and the requirement is volume.** *"A lot of neat icons rendered
+throught the mathemetical constraints."* So the contract written in `CONTRACT.md`
+changes purpose: it is what makes volume **safe**, not what makes it slow. The
+constraints are named in the answer itself — the fixed three-light rig, the OpenPBR
+parameter table, the design tokens, and (from Q48/Q56) integer-divisible sizes,
+coverage bounds and per-host contrast.
+
+**a55 — (a) + (b), and a live UI.** Quad transforms *and* pre-rendered animation
+frames; the renderer must gain real raster features "where necessary"; animated
+icons in the **PS2 memory-card tradition** (the answer's own example is gears
+turning); and *"the ui should be as lively as the world if not more"*. This
+**collides with §4 and §8.4**, which both say *"reduced motion is the default"*. The
+collision is recorded as **open** rather than resolved quietly, because the
+motion-forward reading and the doc's default cannot both be first: round 13 asks it
+once, sharply.
+
+**a56 — the playtest harness grows a debugger.** A live process that consumes the
+program's own data output during a playtest, plus **UI element logging with
+comments** from the user. Two consequences recorded now: an annotation must bind to
+a stable **element identity** (a registry), not to a pixel; and an annotation is a
+**lesson with tentative confidence**, never a claim — the shape C1's Q27 already
+set for feedback, with build identity and session evidence attached.
+
+**a57 — public and playable through GitHub, CC BY accepted.** The licence decision
+falls to me: a `LICENSE` file for the code (the declaration in `Cargo.toml` is
+currently unbacked), and **CC BY 4.0 with a named author** for the renders. §8.2's
+*"UI copy that refers to assets states what is true"* becomes a user-visible
+obligation, because strangers will read it.
+
+**a58 — delegated.** Taken as recommended: a §12.9 badge (count copied from store),
+non-zero only, opening the Popit page; the Notification Center carries **events**,
+never rollups; a zero shows nothing; and a badge never recolours the glyph.
+
+**a59 — models are procedural, and they get their own round.** Settled now: the
+named fallback stays **permanent** (playable with zero assets is a property, not a
+coincidence), the **provenance shape is shared** even though the libraries are not,
+the **icon rig does not apply** to world-lit models, and the model campaign opens
+with its own grilling the way the icons did.
+
+## A reconciliation recorded while writing this round
+
+§12.1 requires grid contents to be **"loaded, not compiled into the binary"**;
+round 9 settled that the icons are **embedded with `include_bytes!`** so `cargo
+build` never needs Blender. Both hold at once: the **manifest is the loaded data**
+(§5.1's version + digest, with the UI able to refuse a mismatch), the **bytes are
+embedded** as the shipping copy, and a dev/playtest mode may point at
+`assets/icons/` on disk instead — which is also what lets a re-render appear in a
+running playtest without a rebuild.
+
+---
+
+# Round 13 — open
+
+*Nothing here is settled until its answer is written above the heading.*
+
+## ❓ Q60 — The reduced-motion default, which a55 contradicts
+
+§4: *"Reduced motion is the default"*. §8.4: *"Default is reduced."* a55: *"the ui
+should be as lively as the world if not more"*. Either the doc's default governs
+chrome (and the first launch is still, with liveliness opt-in) or it is corrected
+for this product (motion is the default, reduced is reachable from chrome).
+
+## ❓ Q61 — Which "advanced raster image features" the renderer gains
+
+Named features to accept or refuse: atlas sub-rects with a transparent gutter
+(neareast-filtered sampling without bleeding); **nine-slice** stretchable plates so
+"a plaque is metal" (§3.1, TouchWiz lineage) survives any size; a multiply/tint path;
+a **soft-glow or neon rim layer** (§3.2 names the Popit rim as "flavour only; never
+authority"); and multi-frame sprite animation with a declared cadence.
+
+## ❓ Q62 — What animates, and what drives it
+
+Which icons animate, at which sizes, how many frames, loop-seamless or transition;
+and the rule that animation play state is **read from the store** (a gear turning
+must mean work is actually happening, per §12.9's "state copied from store") rather
+than being ambient decoration.
+
+## ❓ Q63 — The inventory: how many icons, from which list
+
+"A lot" needs a source of truth. Does the **registry come first** in Rust (from the
+full CS2 view list plus tools, records and chrome objects) with the generator reading
+it, and how do variants multiply (per zone type, per service, per state mark, per
+density)?
+
+## ❓ Q64 — The playtest debugger and the element logger
+
+In-game overlay versus a separate process; how an element gets a stable identity; how
+an annotation is written, keyed and later read; and the bound that it **never writes
+to the sim** and never becomes an authority surface.
+
+## ❓ Q65 — What "playable through GitHub" means mechanically
+
+(a) Releases with prebuilt binaries per stage tag; (b) a wasm/WebGPU build on Pages,
+playable in a browser; (c) clone and `cargo run`. Plus where the licence and
+attribution surfaces live, given §8.2's no-stale-counts rule.
+
+## ❓ Q66 — The model campaign
+
+When it starts relative to the icon library, what the shared provenance shape is, and
+what the first deliverable of its grilling round must be.
+
+---
+
+# Round 13 — recorded
+
+## Answers, verbatim
+
+| # | Answer |
+|---|---|
+| a60 | *"We're aiming for something that looks good according to the pillars of design in unified design. Impeccable, md1, early touchwiz, ios 6, and the popit. My word over the document where it matters"* |
+| a61 | *"All five"* |
+| a62 | *(the recommendation quoted back verbatim)* **+** *"Just make sure that blocked threads don't block animations where it wouldn't indicate anything of use to the user"* |
+| a63 | *"Your best bet, with a list of icons from the relevant design specs to recreate within the new system"* |
+| a64 | *"Some of the playtests you would open would record as no user interacted with. As long as the debugger tools aren't just front and center to the user it's good, but with some kind of contextual action to report something is wrong. A side by side debugger for the agent would be nice"* |
+| a65 | *"Push the project to github with release packages and a readme that extensively documents and covers the project"* |
+| a66 | *(the recommendation quoted back verbatim)* |
+
+## What each answer settles
+
+**a60 — the quality bar is the pillars, and the user's word outranks the doc.** The
+five pillars named are the four lineages of §1 (TouchWiz, MD1, Apple HIG of the iOS 6
+era, Impeccable) plus Popit as a pattern library. The override is recorded as a
+**governance fact**: where the document and the user disagree about what makes the
+game good, the user's word wins. Round 14 defines the override's scope once, so it is
+not relitigated per question, and asks whether reduced motion survives — because
+accessibility and taste are different kinds of requirement.
+
+**a61 — all five raster features.** Atlas sub-rects with a gutter, nine-slice plates,
+tint/multiply, a glow/rim layer, and multi-frame animation. Recorded with the note
+that only the last two change the renderer's data model.
+
+**a62 — animation stays store-driven, and gains a thread-independence rule.**
+The addition is the one that matters: *blocked threads must not block animations that
+would have indicated something useful.* A second rule follows from the user's own
+words — where an animation indicates *nothing* of use, it does not run — which is also
+the honest reading of §4's *"motion provides meaning, not noise"*. And a measured
+hazard lands squarely here: the world snapshot is **4.49 MB written in 30.7 ms**, so
+at 240 Hz the autosave drops roughly seven frames — visible in any animation running
+when it fires.
+
+**a63 — the inventory gains a recreation list, and collides with §1.** The user asked
+for *"a list of icons from the relevant design specs to recreate"*. §1's TouchWiz row
+lists **"icon cloning"** among what is **not adopted**, and §0.5's iOS 6 row lists
+**"brand replication"** the same way. The collision is real and is put to the user in
+round 14 rather than solved quietly in the generator.
+
+**a64 — the debugger is deliberately off-centre, and gets a side-by-side pane.**
+Three requirements: not front and centre; a **contextual** action to report something
+wrong rather than a permanent form; and a **side-by-side agent pane**. Plus the
+honesty rule about unattended sessions, which this project has already got wrong once
+— C1's first draft claimed *nobody clicked anything* and the capture disproved it.
+
+**a65 — publish to GitHub with release packages and a real README.** Facts checked
+rather than assumed: `gh` 2.100.0 is installed and authenticated as **`alacripose`**
+with `repo` and `workflow` scopes; there is **no remote**; `main` carries one tag
+(`c1-sim-core`); `target/release/ala-cities.exe` is 8.7 MB and `verify.exe` 708 KB;
+the README is **130 lines**, so *"extensively documents"* means a rewrite. The push
+itself is explicitly authorised.
+
+**a66 — models after the icons, as recommended**, with the named fallback permanent,
+the provenance shape shared, the libraries separate, and the icon rig not applying to
+world-lit buildings.
+
+## Two collisions recorded, both answered in round 14
+
+| Collision | Where it lands |
+|---|---|
+| *"recreate icons from the design specs"* vs §1's **"icon cloning"** and §0.5's **"brand replication"** | Q70 |
+| *"as lively as the world if not more"* vs iOS 6's **"motion for decoration"** and §4/§8.4's **reduced-motion default** | Q67, Q68 |
+
+---
+
+# Round 14 — open
+
+## ❓ Q67 — The five pillars, ranked, and how "looks good" becomes judgeable
+
+What wins when the pillars disagree, and what makes the quality bar traceable rather
+than a matter of taste at review time?
+
+## ❓ Q68 — The override's scope, and whether reduced motion survives
+
+*"My word over the document where it matters"* — matters per decision, or generally?
+And does reduced motion still exist as a chrome-reachable preference even though
+liveliness is now the default?
+
+## ❓ Q69 — Animation honesty, and the measured save hitch
+
+Meaningful animation must survive blocked threads; animation must not keep implying
+progress when work is blocked; and the autosave writes 4.49 MB / 30.7 ms on the frame
+path.
+
+## ❓ Q70 — The recreation line
+
+Semantics and grammar recreated with original geometry, or the specifications' artwork
+reproduced? And what is the refusal list?
+
+## ❓ Q71 — The debugger's shape
+
+Split pane in the same window versus a second window; what the agent pane shows; what
+"contextual" means for reporting something wrong; and how an unattended session is
+recorded.
+
+## ❓ Q72 — GitHub mechanics
+
+Repository name and visibility; what a release package contains; tag and release
+naming; and what the rewritten README has to cover.
+
+---
+
+# Round 14 — recorded
+
+## Answers, verbatim
+
+| # | Answer |
+|---|---|
+| a67 | *"exactly what you said- and this applies to the icons, materials in buildings etc."* |
+| a68 | *(the per-decision paragraph quoted back verbatim)* |
+| a69 | *"all three of these options sound right together. Simple code sounds like a death knell for this advanced project"* |
+| a70 | *(the semantics-and-grammar answer quoted back verbatim)* |
+| a71 | *"Your best guess. There should be a secondary window that informs me of the agent's presence and if they've begun work on my ticketed items, my ticketed items from every playtest, and wether those items are closed or in another state. The debugger itself should be an extension of the design framework and allow the user to report if itself is not working. There should be detailed information about the logging happening when the debugger view is open, playtest time left, build release information, and git tracking built in to the debugger"* |
+| a72 | *"your best guess"* |
+
+## What each answer settles
+
+**a67 — the pillar ranking and its rubric apply to icons, building materials, and
+everything after them.** The rubric is not an icon document; it is the quality bar.
+
+**a68 — the override is per decision.** Your word wins where given; where it is not,
+the document stands until it is corrected on the record. Recorded so this is never
+relitigated. One part of my answer was *not* quoted back and is therefore recorded as
+my call rather than yours, reversible on request: **reduced motion survives** as a
+chrome-reachable preference, because it is accessibility rather than taste (§6.1's
+floor sits above the pillars). Motion is still the default.
+
+**a69 — all three animation rules stand together, and a standing value is set:**
+*"Simple code sounds like a death knell for this advanced project."* This corrects my
+own bias on the record. Where a capability is real, complexity is paid for; the
+doctrine's anti-over-engineering instinct is subordinate to the user's word per a68.
+The three rules: chrome animates on its own clock; store-driven animation stops when
+its store field stops advancing; the autosave leaves the frame path (4.49 MB / 30.7 ms
+on the frame path is ~7 dropped frames at 240 Hz).
+
+**a70 — semantics and grammar only.** Original geometry on our rig with our tokens; a
+named **refusal list** in the manifest for brand marks and trade dress.
+
+**a71 — the debugger becomes a session console, and grows a second window.** Six
+requirements, one of which is a doctrine hazard:
+
+1. a **secondary window** informing the user of the **agent's presence**;
+2. whether the agent has **begun work** on the user's ticketed items;
+3. those items **from every playtest**, and their state;
+4. the debugger as an **extension of the design framework**, able to **report its own
+   malfunction**;
+5. detailed information while open: **what is being logged**, **playtest time left**,
+   **build release information**;
+6. **git tracking built in**.
+
+The hazard: *"the agent's presence"* and *"has begun work"* are claims about reality,
+and §0.1 forbids a surface that looks more authorised than it is. A green lamp that
+says an agent is working when nothing is happening is exactly the defect class this
+project keeps catching. It is put to the user in round 15 with the mechanism that
+makes it honest: **the window reports what a record says, with the age of that
+record, and degrades to Unknown when the record goes quiet.**
+
+**a72 — delegated.** Taken as recommended: `ala-cities`, public, one release per
+stage tag marked pre-release, README rewritten. The push is authorised.
+
+## Standing item recorded, not asked
+
+**Controls for desktop, mobile and controller** — *"Grill me later about controls for
+desktop, mobile and controller."* Recorded as a **named future round**, with the one
+structural thing taken now under a72's delegation: input is written as an
+**action layer** (actions bound to inputs) rather than three input paths bolted on
+later, because mobile implies touch and controller implies focus navigation with no
+cursor (§5.4, §2.1), and both would otherwise arrive as rewrites.
+
+---
+
+# Round 15 — open
+
+## ❓ Q73 — What an "agent presence" indicator may claim, and what it reads
+
+A file the agent writes (a work ledger with ticket id + heartbeat) plus git state as
+corroboration, versus inferring presence from commits, versus a live connection. And
+the rule that presence is timestamped and **self-expiring** (Working → Idle → Unknown)
+rather than a lamp that stays green.
+
+## ❓ Q74 — Ticket lifecycle across playtests
+
+Where playtest-filed tickets are stored, how they are grouped by playtest, the state
+vocabulary shown, and who may set `in_progress` — the agent's ledger, or anything else.
+
+## ❓ Q75 — Playtest time left
+
+Who declares a session's duration, whether the clock pauses with the game, and what
+happens at zero.
+
+## ❓ Q76 — Build identity and git tracking
+
+What is displayed, whether a **dirty** tree disqualifies a build from release
+labelling, and the rule that the game only ever runs read-only git commands.
+
+## ❓ Q77 — The debugger as a design-framework extension
+
+Whether the console uses the player's UI scale or its own density, how its elements
+register, and what its self-report path writes.
+
+## ❓ Q78 — Where the secondary window lives
+
+A genuine second OS window (a second surface and swapchain in the renderer), an
+always-on-top overlay, or a pane — and what happens on a single display.
+
+---
+
+# Round 15 — recorded
+
+## Answers, verbatim
+
+| # | Answer |
+|---|---|
+| a73 | *"you are currently devloping this - you are the agent, so you must do that work when the user uses the debugging panel"* |
+| a74 | *(the recommendation quoted back verbatim)* |
+| a75 | *"the agent determines playstests during development, which don't happen when the user is actually playing the game."* |
+| a76 | *"your best guess"* |
+| a77 | *"exactly what you said"* |
+| a78 | *"a pane that lives horizontally next to the main window in windowed mode that can be accessed from the pause menu or a dedicated function key for debugging"* |
+
+## What each answer settles
+
+**a73 — the agent in the console is me, and the work is real.** *"you are currently
+ devloping this - you are the agent, so you must do that work when the user uses the
+debugging panel"*. So the console's presence display is not a metaphor and not a
+mock: the ledger it reads is the record of **this** agent's actual work, and it is my
+job to keep it truthful. A figure that says the agent is working while nothing is
+happening is the defect class this project keeps catching, so the honest mechanism is
+settled: **the console reports what a record says, with the age of that record, and
+degrades to Unknown when the record goes quiet.**
+
+**a74 — one store, `origin: sim | playtest`.** Sharing an id space is fine; sharing a
+meaning is not. States: `filed → acknowledged → in_progress → blocked / closed /
+retired / superseded`, and **only the agent's ledger may set `in_progress`**.
+
+**a75 — playtests are the agent's, and they do not overlap the user playing.**
+*"the agent determines playstests during development, which don't happen when the
+user is actually playing the game."* This splits two things that had been blurring
+into one: a **playtest** is a development activity with a declared script and
+duration, run by the agent; **the user playing** is not a playtest, is untimed, and
+is still the primary feedback path. Consequence for the console: *playtest time left*
+shows a countdown only while a playtest is running, and otherwise shows a **named
+absence**, never a zero.
+
+**a76, a77 — taken as recommended.** Build identity displays commit, branch, tag, a
+dirty flag and the files changed since the session started; a **dirty tree
+disqualifies a build from release labelling**; git is read-only from inside the game.
+The console is a design-framework extension: same tokens, same scales, the player's
+UI scale, elements registered in the same registry, and a **fault annotation** path
+for reporting the debugger itself being wrong.
+
+**a78 — not a second OS window: a horizontal pane beside the main view.** Available in
+windowed mode, reachable from the pause menu or a dedicated function key. Kept from
+the recommendation as the fallback shape: when the pane opens, the world viewport
+narrows, so the picking sweeps have to cover the narrowed aspect as well as the full
+one.
+
+---
+
+# Round 16 — open
+
+## ❓ Q79 — What an agent-run playtest *is*, mechanically
+
+A declared launch (stage + duration) driven by **scripted, deterministic input**, so
+the run is reproducible from a seed — versus the agent launching the build and only
+observing instrumented output. And what the console shows when no playtest is running.
+
+## ❓ Q80 — Replay from capture
+
+User sessions already capture every interaction. Does that capture become a
+**replayable** re-run now — so an annotation or a bug report becomes a reproducible
+repro the agent can step through — or does it wait for the deferred observer-mode
+round?
+
+## ❓ Q81 — The ledger as the interface between us
+
+What fields it carries, what it may claim, who may write it, and what the console
+shows when no agent is attached at all.
+
+## ❓ Q82 — Whether the console shows the agent's *plan*, and whether the user replies there
+
+A work-queue view (claimed, working, blocked, closed with evidence) versus a presence
+light only — and whether design conversation leaves the game entirely for the docs.
