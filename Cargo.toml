@@ -15,8 +15,10 @@ path = "src/main.rs"
 name = "verify"
 path = "src/bin/verify.rs"
 
-# The icon review picker: a tool, not the game. It shows six authored candidates
-# of an icon in a 2x3 grid and appends the choice that promotes one into shipping.
+# The icon review picker: a tool, not the game. Shows six authored candidates
+# of an icon in a 3x2 grid and appends the choice that promotes one into
+# shipping. Built on the shared widget layer and the game's own Gpu (C7
+# a115/a128/a135): one renderer, one text path, one decision record.
 [[bin]]
 name = "pick"
 path = "src/bin/pick.rs"

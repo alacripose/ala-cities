@@ -1061,6 +1061,14 @@ pub struct Gpu {
     /// World pipelines: world-space quads, depth-tested.
     pub world_opaque: wgpu::RenderPipeline,
     pub world_overlay: wgpu::RenderPipeline,
+    /// Image pipeline: textured RGBA quads, screen space, depth always passes.
+    pub image_pipeline: wgpu::RenderPipeline,
+    pub image_bind_group: wgpu::BindGroup,
+    image_texture: wgpu::Texture,
+    image_sampler: wgpu::Sampler,
+    image_size_buffer: wgpu::Buffer,
+    images: wgpu::Buffer,
+    image_capacity: usize,
     pub bind_group: wgpu::BindGroup,
     pub world_bind_group: wgpu::BindGroup,
     pub camera_buffer: wgpu::Buffer,
@@ -1170,6 +1178,106 @@ fn fs_world(in: VertexOut) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color.rgb, in.color.a * coverage);
 }
 "#;
+
+/// The image shader. An instance is a screen rect and a source rect in *image
+/// pixels*, with the source image's size in a uniform; the fragment samples
+/// `src / image_size`. The atlas stays GPU-side: no CPU-side packing, no CPU
+/// coordinates to disagree with the shader's.
+const IMAGE_SHADER: &str = r#"
+struct ImageSize {
+    size: vec2<f32>,
+};
+
+@group(0) @binding(0) var image_texture: texture_2d<f32>;
+@group(0) @binding(1) var image_sampler: sampler;
+@group(0) @binding(2) var<uniform> image_size: ImageSize;
+
+struct ImageInstance {
+    @location(0) pos: vec2<f32>,
+    @location(1) size: vec2<f32>,
+    @location(2) src: vec4<f32>,
+    @location(3) tint: vec4<f32>,
+};
+
+struct ImageOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) tint: vec4<f32>,
+};
+
+@vertex
+fn vs_image(@builtin(vertex_index) index: u32, instance: ImageInstance) -> ImageOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
+        vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0)
+    );
+    let corner = corners[index];
+    var out: ImageOut;
+    out.clip = vec4<f32>(instance.pos + corner * instance.size, 0.0, 1.0);
+    out.uv = mix(instance.src.xy, instance.src.zw, corner);
+    out.tint = instance.tint;
+    return out;
+}
+
+@fragment
+fn fs_image(in: ImageOut) -> @location(0) vec4<f32> {
+    let uv = in.uv / image_size.size;
+    let texel = textureSample(image_texture, image_sampler, uv);
+    return vec4<f32>(texel.rgb * in.tint.rgb, texel.a * in.tint.a);
+}
+"#;
+
+/// One textured image quad: a screen-space destination rect and a source rect
+/// in the source image's own pixels. The shader divides by the image size.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct ImageInstanceData {
+    pos: [f32; 2],
+    size: [f32; 2],
+    src: [f32; 4],
+    tint: [f32; 4],
+}
+
+/// The CPU side of the image pipeline: a growable instance list the GPU draws
+/// with the image bind group.
+#[derive(Default)]
+pub struct ImageBatcher {
+    pub instances: Vec<ImageInstanceData>,
+}
+
+impl ImageBatcher {
+    pub fn clear(&mut self) {
+        self.instances.clear();
+    }
+
+    pub fn count(&self) -> usize {
+        self.instances.len()
+    }
+
+    /// Draw part (or all) of a source image at a screen rect. Coordinates are
+    /// top-left-origin device pixels; the source rect is in the image's own
+    /// pixels, exactly as `review.json` declares it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn image(
+        &mut self,
+        screen: &Screen,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        src: [f32; 4],
+        tint: [f32; 4],
+    ) {
+        let (cx, cy) = screen.to_clip(x.round(), y.round());
+        let (cw, ch) = screen.size_to_clip(w.round().max(1.0), h.round().max(1.0));
+        self.instances.push(ImageInstanceData {
+            pos: [cx, cy],
+            size: [cw, ch],
+            src,
+            tint,
+        });
+    }
+}
 
 fn world_attributes() -> [wgpu::VertexAttribute; 5] {
     [
@@ -1547,6 +1655,180 @@ impl Gpu {
             wgpu::CompareFunction::LessEqual,
         );
 
+        // The image pipeline. One 4×4 opaque-white RGBA texture stands in until
+        // a real image is bound with `bind_image`; the shader divides source
+        // pixels by the uniform image size, so the atlas never touches the CPU.
+        let image_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("image atlas"),
+            size: wgpu::Extent3d {
+                width: 4,
+                height: 4,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let image_view = image_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let image_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("image sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+        let image_size_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("image size"),
+            size: 8,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let image_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("image layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            });
+        let image_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("image bind group"),
+            layout: &image_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&image_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&image_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: image_size_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        let image_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("image pipeline layout"),
+                bind_group_layouts: &[Some(&image_bind_group_layout)],
+                immediate_size: 0,
+            });
+        let image_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("image shader"),
+            source: wgpu::ShaderSource::Wgsl(IMAGE_SHADER.into()),
+        });
+        let image_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("image pipeline"),
+            layout: Some(&image_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &image_shader,
+                entry_point: Some("vs_image"),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<ImageInstanceData>() as u64,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 8,
+                            shader_location: 1,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 16,
+                            shader_location: 2,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 32,
+                            shader_location: 3,
+                        },
+                    ],
+                }],
+                compilation_options: Default::default(),
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(wgpu::CompareFunction::Always),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &image_shader,
+                entry_point: Some("fs_image"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            multiview_mask: None,
+            cache: None,
+        });
+
+        let image_capacity = 1024usize;
+        let images = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("image instances"),
+            contents: bytemuck::cast_slice(&vec![
+                ImageInstanceData {
+                    pos: [0.0; 2],
+                    size: [0.0; 2],
+                    src: [0.0; 4],
+                    tint: [0.0; 4],
+                };
+                image_capacity
+            ]),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+
         let (depth, depth_view) = create_depth(&device, &config);
 
         // Start with room for a full-screen-worth of quads; it grows on demand.
@@ -1587,6 +1869,13 @@ impl Gpu {
             pipeline,
             world_opaque,
             world_overlay,
+            image_pipeline,
+            image_bind_group,
+            image_texture,
+            image_sampler,
+            image_size_buffer,
+            images,
+            image_capacity,
             bind_group,
             world_bind_group,
             camera_buffer,
@@ -1605,6 +1894,123 @@ impl Gpu {
             atlas_revision: u64::MAX,
             last_camera: None,
         }
+    }
+
+    /// Bind an RGBA8 image as the image pipeline's source atlas and record its
+    /// size for the shader's division. The texture is (re)created at the bound
+    /// size — wgpu textures do not resize — and the bind group is rebuilt
+    /// around the new view. The image stays GPU-side: the CPU only ever speaks
+    /// source pixels, which is what keeps `review.json`'s coordinates
+    /// authoritative end to end.
+    pub fn bind_image(&mut self, rgba: &[u8], width: u32, height: u32) {
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("image atlas"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        self.queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(width * 4),
+                rows_per_image: Some(height),
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.image_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("image bind group"),
+            layout: &self.image_bind_group_layout(),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&self.image_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.image_size_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        self.queue.write_buffer(
+            &self.image_size_buffer,
+            0,
+            bytemuck::bytes_of(&[width as f32, height as f32]),
+        );
+        self.image_texture = texture;
+    }
+
+    /// The image bind group layout, rebuilt on demand by `bind_image`. It is
+    /// deterministic, so a field would only be a second place to keep it.
+    fn image_bind_group_layout(&self) -> wgpu::BindGroupLayout {
+        self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("image layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        })
+    }
+
+    fn ensure_image_capacity(&mut self, needed: usize) {
+        if needed <= self.image_capacity {
+            return;
+        }
+        let capacity = needed.next_power_of_two();
+        self.images = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("image instances"),
+            size: (capacity * std::mem::size_of::<ImageInstanceData>()) as u64,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        self.image_capacity = capacity;
     }
 
     pub fn resize(&mut self, width: u32, height: u32) {
@@ -1702,6 +2108,7 @@ impl Gpu {
         &mut self,
         world: &WorldBatch,
         hud: &Batcher,
+        images: &ImageBatcher,
         camera: &Camera,
         clear: [f32; 4],
         frame_seconds: f32,
@@ -1726,7 +2133,12 @@ impl Gpu {
         );
 
         self.ensure_instance_capacity(hud.instances.len());
+        self.ensure_image_capacity(images.instances.len());
         self.ensure_world_capacity(world.opaque.len(), world.overlay.len());
+        if !images.instances.is_empty() {
+            self.queue
+                .write_buffer(&self.images, 0, bytemuck::cast_slice(&images.instances));
+        }
         if !hud.instances.is_empty() {
             self.queue
                 .write_buffer(&self.instances, 0, bytemuck::cast_slice(&hud.instances));
@@ -1808,6 +2220,15 @@ impl Gpu {
                 pass.set_bind_group(0, &self.bind_group, &[]);
                 pass.set_vertex_buffer(0, self.instances.slice(..));
                 pass.draw(0..6, 0..hud.instances.len() as u32);
+            }
+
+            // Images — candidate plates, and later every icon the game draws.
+            // After the interface so a plate's tint can sit on a panel.
+            if !images.instances.is_empty() {
+                pass.set_pipeline(&self.image_pipeline);
+                pass.set_bind_group(0, &self.image_bind_group, &[]);
+                pass.set_vertex_buffer(0, self.images.slice(..));
+                pass.draw(0..6, 0..images.instances.len() as u32);
             }
         }
 

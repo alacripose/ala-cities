@@ -1,112 +1,77 @@
-//! The review picker: six explicit pilot concepts of one icon, and what to change next.
+//! The rebuilt icon review picker, on the shared widget layer.
 //!
-//! Run it after the icon pipeline has rendered a review set:
+//! C5 measured the old tool's defect and C7 ordered the rebuild: the six
+//! candidate images **are** the surface (a113/a123), the detail region carries
+//! brief, directives and the selected candidate's measured numbers (a120), and
+//! the comment box is a **fixed footer** that is never overlapped and never
+//! below the fold (§5.7). The layout computes its height before anything
+//! draws, at the scale it was given, and content beyond the viewport scrolls
+//! at every scale (a119).
 //!
-//!     cargo run --release --bin pick
+//! It reads the same `review.json`, validates with the same rules, and records
+//! the same decision lines as the old picker — both sides of the hand-off live
+//! in `ala_cities::iconreview`, so the two tools cannot disagree about what a
+//! decision is. The old binary stays runnable until this one passes a
+//! playtest (a135(c)), then retires.
 //!
-//! What it shows is the **same icon drawn six authored ways in a 2x3 grid** — the
-//! declared candidates from `tools/icons/shapes.py`: one canonical and five
-//! explicit alternate recipes. Each candidate is drawn at the largest shipped
-//! size, whole-number scaled so no filter invents pixels, with 32px recognition
-//! and the *smallest* shipped size beside it,
-//! because a choice that dies at 24 px should be seen to die while it is being made.
-//! Every candidate sits on a surface the icon **declares** — painted in that
-//! surface's own token colour, read out of `review.json` rather than retyped here.
-//!
-//! Two controls, and both are the point of the tool:
-//!
-//! * a **checkbox per candidate** — check one, press Enter, and that candidate
-//!   becomes the icon's target: the one the pipeline promotes into the shipping
-//!   set. Nothing ships that a person has not checked. A checkbox, not a radio
-//!   button, because *none of these* has to be reachable;
-//! * a **comment box for the next generation** — what is wrong, what to change,
-//!   what to try next. A comment is recorded whether or not anything is checked,
-//!   so "none of these, make the teeth longer" is a usable answer, and the next
-//!   rendering pass is authored against it.
-//!
-//! This is deliberately *not* the game: no simulation, no record, no governance.
-//! It writes one thing — an append-only line in `assets/icons/review-decisions.jsonl`
-//! — and deciding again supersedes the earlier choice without erasing it, which is
-//! the same rule the game's own record uses.
-//!
-//! The interface is an **extension of the design framework**, not a separate
-//! dialect: the same tokens, the same type steps, the same spacing scale, the same
-//! 48 px target floor, and the same fail-closed check at startup. Its own controls
-//! are registered as targets and go through `design::verify` like everything else.
+//! Candidate images are packed from the pipeline's `.rgba` raws into one atlas
+//! and drawn through the shared renderer's image pipeline — the same path the
+//! game's icon loader will use (C6 Q131).
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use std::time::Instant;
+use std::path::Path;
 
+use ala_cities::design::{self, Space, Step, Target, UiScale};
+use ala_cities::hud::{self, Token};
+use ala_cities::iconreview::{
+    load_review, read_directives, record, review_defects, Icon, Review, CANDIDATE_COUNT,
+    DECISIONS,
+};
+use ala_cities::render::{
+    Gpu, ImageBatcher, Screen, Text, ATLAS_SIZE, Batcher, Face,
+};
+use ala_cities::ui::{self, Block, Scroll};
 use serde_json::Value;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
-use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::keyboard::KeyCode;
 use winit::window::{Window, WindowId};
-use wgpu::util::DeviceExt;
-
-// The framework now lives in the library (`ala_cities`), where the game and
-// every tool share one definition of the tokens, the scales and the text.
-
-use ala_cities::iconreview::{
-    load_review, read_directives, record, review_defects, Icon, Review, AUTHORING_PHASE,
-    CANDIDATE_COUNT, DECISIONS, REVIEW_JSON,
-};
-use ala_cities::design::{self, Space, Step, UiScale};
-use ala_cities::hud::{self, Token};
-use ala_cities::render::{self, Batcher, Face, Screen, Text};
-
-/// Whole pixels of window per pixel of icon, so the window shows the rendered
-/// pixels and not a resampling of them.
-const DECISION_ZOOM: f32 = 3.0;
-const CONTEXT_ZOOM: f32 = 3.0;
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "warn".into()),
+        )
+        .init();
+
     let review = match load_review() {
         Ok(review) => review,
         Err(err) => {
             eprintln!("{err}");
-            eprintln!(
-                "render the review set first:\n  blender --background --factory-startup \
-                 --python tools/icons/generate.py -- --review stage-1"
-            );
             std::process::exit(1);
         }
     };
-
-    if args.iter().any(|arg| arg == "--selftest") {
-        selftest(&review);
-        return;
-    }
-
     if review.icons.is_empty() {
         println!("nothing to review: every icon in the inventory has a decided target.");
         return;
     }
-
-    let review_defects = review_defects(&review);
-    if !review_defects.is_empty() {
+    let defects = review_defects(&review);
+    if !defects.is_empty() {
         eprintln!("the icon-authoring review set is invalid:");
-        for defect in &review_defects {
+        for defect in &defects {
             eprintln!("  - {defect}");
         }
         std::process::exit(1);
     }
 
-    // The gate first, on this tool's own controls: a review surface that ignores
-    // the floor it asks the game to keep is not an extension of the framework.
-    let targets = controls();
-    for line in design::audit(&targets, UiScale::default()) {
+    // The gate first, on this tool's own controls — same rule as the old picker.
+    for line in design::audit(&controls(), UiScale::default()) {
         println!("picker design: {line}");
     }
-    let mut defects = design::verify(&targets, UiScale::default());
-    // And the check the design gate cannot make, because it holds no font: that the
-    // type scale renders at the sizes it declares. The last build passed every
-    // design check while drawing every step 25 % small.
-    let probe = render::Text::new();
+    let mut defects = design::verify(&controls(), UiScale::default());
+    let probe = Text::new();
     defects.extend(probe.scale_defects());
     if !defects.is_empty() {
         eprintln!("the picker's own design check failed closed:");
@@ -116,195 +81,148 @@ fn main() {
         std::process::exit(1);
     }
 
+    println!("{}", review.header());
     let mut app = Picker::new(review);
     let event_loop = EventLoop::new().expect("an event loop");
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop.run_app(&mut app).expect("the event loop ran");
-    app.report();
 }
 
-/// The picker's own interactive targets, in the design framework's terms. These go
-/// through the same `design::verify` the game does, at startup, and the tool
-/// refuses to open if its own controls are below the floor.
-fn controls() -> Vec<design::Target> {
+/// The rebuilt picker's own interactive targets. The tiles are the six
+/// candidates' decision images at 288 px (96 × 3 zoom); everything else is
+/// text about candidates you are not choosing, and yields to them.
+fn controls() -> Vec<Target> {
     vec![
-        design::Target {
-            name: "candidate tile",
-            w: 288.0,
-            h: 288.0,
-        },
-        design::Target {
-            name: "generation checkbox",
-            w: 288.0,
-            h: 48.0,
-        },
-        design::Target {
-            name: "comment box",
-            w: 900.0,
-            h: 48.0,
-        },
+        Target { name: "candidate tile", w: 288.0, h: 288.0 },
+        Target { name: "candidate checkbox", w: 288.0, h: 48.0 },
+        Target { name: "comment box", w: 900.0, h: 48.0 },
     ]
 }
 
-// ---------------------------------------------------------------------------
-// Layout: computed once per frame, from the scales
-// ---------------------------------------------------------------------------
-
-/// Everything the frame needs to place, in device pixels. Built from the design
-/// scales so the picker cannot drift into its own metrics.
-struct Layout {
-    margin: f32,
-    header: f32,
-    title_h: f32,
-    /// The height of a `Step::Small` line, used to place the caption under each
-    /// context plate.
-    small_h: f32,
-    body_h: f32,
-    tile: f32,
-    context: f32,
-    gap: f32,
-    left: f32,
-    tile_top: f32,
-    checkbox_top: f32,
-    checkbox_h: f32,
-    checkbox_box: f32,
-    context_top: f32,
-    comment_top: f32,
-    comment_h: f32,
-    hint_top: f32,
-    comment_w: f32,
+/// One candidate image, packed: where its pixels live in the atlas.
+#[derive(Clone, Copy, Debug)]
+struct Packed {
+    /// Source rect in atlas pixels — exactly what the image shader wants.
+    src: [f32; 4],
 }
 
-impl Layout {
-    fn new(review: &Review, width: f32, ui: UiScale) -> Self {
-        let margin = Space::Xl.px(ui);
-        let title_h = Step::Title.px(ui) as f32;
-        let small_h = Step::Small.px(ui) as f32;
-        let body_h = Step::Body.px(ui) as f32;
-        let header = Space::Sm.px(ui) + title_h + Space::Xs.px(ui) + small_h + Space::Sm.px(ui);
-        let tile = (review.decision_px * DECISION_ZOOM).round();
-        let context = (review.context_px * CONTEXT_ZOOM).round();
-        let gap = Space::Xl.px(ui);
-        let columns = 3.0_f32.min(review.icons.first().map(|i| i.generations.len()).unwrap_or(CANDIDATE_COUNT) as f32);
-        let row_width = columns * tile + (columns - 1.0) * gap;
-        let left = ((width - row_width) / 2.0).max(margin);
-        let tile_top = margin + header + Space::Lg.px(ui);
-        let checkbox_top = tile_top + tile + Space::Sm.px(ui);
-        let checkbox_h = design::MIN_TARGET_PX * ui.0;
-        let context_top = checkbox_top + checkbox_h + Space::Xl.px(ui);
-        let row_step = tile + Space::Sm.px(ui) + checkbox_h + Space::Xl.px(ui)
-            + context + Space::Xl.px(ui) + small_h + Space::Lg.px(ui);
-        let comment_top = context_top + context + Space::Xl.px(ui) + small_h + Space::Md.px(ui)
-            + row_step;
-        let comment_h = design::MIN_TARGET_PX * ui.0;
-        let hint_top = comment_top + comment_h + Space::Sm.px(ui);
-        Self {
-            margin,
-            header,
-            title_h,
-            small_h,
-            body_h,
-            tile,
-            context,
-            gap,
-            left,
-            tile_top,
-            checkbox_top,
-            checkbox_h,
-            checkbox_box: 24.0 * ui.0,
-            context_top,
-            comment_top,
-            comment_h,
-            hint_top,
-            comment_w: (width - margin * 2.0).max(320.0),
+/// Pack the six decision images of one icon, row-major, into a CPU-side RGBA
+/// buffer. The atlas is rebuilt per icon: at most six 288 px images (≈2 MB),
+/// rebuilt only when the icon changes — the pack is not per-frame work.
+type PackedAtlas = (Vec<u8>, u32, u32, Vec<Option<Packed>>);
+
+fn pack_atlas(icon: &Icon, review: &Review) -> Result<PackedAtlas, String> {
+    let side = review.decision_px as u32;
+    let zoom = 3u32;
+    let tile = side * zoom;
+    let cols = 3u32;
+    let rows = u32::try_from(icon.generations.len())
+        .map(|n| n.div_ceil(cols))
+        .unwrap_or(u32::MAX);
+    let width = tile * cols;
+    let height = tile * rows;
+    let mut atlas = vec![0u8; (width * height * 4) as usize];
+    let mut packed = Vec::with_capacity(icon.generations.len());
+
+    for (index, generation) in icon.generations.iter().enumerate() {
+        let col = (index % cols as usize) as u32;
+        let row = (index / cols as usize) as u32;
+        let dst_x = col * tile;
+        let dst_y = row * tile;
+        let raw = std::fs::read(&generation.sharp)
+            .map_err(|err| format!("{} cannot be read: {err}", generation.sharp.display()))?;
+        let expected = (side * side * 4) as usize;
+        if raw.len() != expected {
+            return Err(format!(
+                "{} is {} bytes; expected {side}x{side} RGBA8 ({expected})",
+                generation.sharp.display(),
+                raw.len()
+            ));
         }
+        // Upscale side×side → tile×tile by whole-pixel replication: the window
+        // shows the rendered pixels, not a resampling of them (the old
+        // picker's zoom rule, kept).
+        for y in 0..tile {
+            let src_row = (y / zoom) as usize * side as usize * 4;
+            let dst_row = ((dst_y + y) * width + dst_x) as usize * 4;
+            for x in 0..tile {
+                let src_col = (x / zoom) as usize * 4;
+                let dst = dst_row + x as usize * 4;
+                let s = src_row + src_col;
+                atlas[dst..dst + 4].copy_from_slice(&raw[s..s + 4]);
+            }
+        }
+        packed.push(Some(Packed {
+            src: [
+                dst_x as f32,
+                dst_y as f32,
+                (dst_x + tile) as f32,
+                (dst_y + tile) as f32,
+            ],
+        }));
     }
-
-    fn column_x(&self, position: usize) -> f32 {
-        self.left + (position % 3) as f32 * (self.tile + self.gap)
+    while packed.len() < CANDIDATE_COUNT {
+        packed.push(None);
     }
-
-    fn row_offset(&self, position: usize) -> f32 {
-        (position / 3) as f32 * (self.comment_top - self.context_top + self.context + Space::Xl.px(UiScale::default()))
-    }
-
-    fn tile_y(&self, position: usize) -> f32 {
-        self.tile_top + self.row_offset(position)
-    }
-
-    fn checkbox_y(&self, position: usize) -> f32 {
-        self.checkbox_top + self.row_offset(position)
-    }
-
-    fn context_y(&self, position: usize) -> f32 {
-        self.context_top + self.row_offset(position)
-    }
-
-    fn context_x(&self, position: usize) -> f32 {
-        self.column_x(position) + (self.tile - self.context) / 2.0
-    }
-
-    fn comment(&self) -> (f32, f32) {
-        (self.margin, self.comment_top)
-    }
-}
-
-// ---------------------------------------------------------------------------
-// The picker
-// ---------------------------------------------------------------------------
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Focus {
-    None,
-    Comment,
+    Ok((atlas, width, height, packed))
 }
 
 struct Picker {
     review: Review,
-    window: Option<Arc<Window>>,
+    window: Option<std::sync::Arc<Window>>,
     gpu: Option<Gpu>,
-    ui: UiScale,
     text: Text,
+    ui: UiScale,
     icon_index: usize,
-    /// The checked concept, if any. A checkbox, so it can be unchecked: "none of
-    /// these" has to be reachable without leaving the tool.
+    /// The checked candidate, if any — a checkbox, so "none of these" stays
+    /// reachable without leaving the tool.
     checked: Option<usize>,
     comment: String,
-    focus: Focus,
+    focus_comment: bool,
     cursor: (f32, f32),
-    hover: Option<usize>,
-    /// Comments read back out of the decisions log, merged with the ones the
-    /// pipeline already carries, so the newest feedback is visible immediately.
+    /// The packed atlas and where each candidate's image landed in it.
+    atlas: Vec<u8>,
+    atlas_width: u32,
+    atlas_height: u32,
+    packed: Vec<Option<Packed>>,
+    atlas_icon: String,
+    /// Scrolling, from the shared layer: the detail region can exceed the
+    /// viewport at any scale, and a119 says the content continues, not the
+    /// layout breaks.
+    scroll: Scroll,
     directives: HashMap<String, Vec<String>>,
-    started: Instant,
-    last: Option<String>,
-    decided_here: Vec<String>,
-    fonts_ok: bool,
+    /// The title + six tiles strip never scrolls; the detail region below
+    /// does. Its offset lives here.
+    detail_offset: f32,
+    /// Set when every awaiting icon has been visited; the next redraw exits.
+    closing: bool,
 }
 
 impl Picker {
     fn new(review: Review) -> Self {
         let mut text = Text::new();
         text.set_ui_scale(UiScale::default());
-        let fonts_ok = !text.missing_font;
         let directives = read_directives(Path::new(DECISIONS), &review.concept_set);
         Self {
             review,
             window: None,
             gpu: None,
-            ui: UiScale::default(),
             text,
+            ui: UiScale::default(),
             icon_index: 0,
             checked: None,
             comment: String::new(),
-            focus: Focus::None,
+            focus_comment: false,
             cursor: (0.0, 0.0),
-            hover: None,
+            atlas: Vec::new(),
+            atlas_width: 0,
+            atlas_height: 0,
+            packed: Vec::new(),
+            atlas_icon: String::new(),
+            scroll: Scroll::new(),
             directives,
-            started: Instant::now(),
-            last: None,
-            decided_here: Vec::new(),
-            fonts_ok,
+            detail_offset: 0.0,
+            closing: false,
         }
     }
 
@@ -312,15 +230,7 @@ impl Picker {
         &self.review.icons[self.icon_index]
     }
 
-    fn layout(&self) -> Layout {
-        let width = match self.gpu.as_ref() {
-            Some(gpu) => gpu.screen.w,
-            None => 1400.0,
-        };
-        Layout::new(&self.review, width, self.ui)
-    }
-
-    /// Both sources, oldest first, deduplicated: what was asked for last time.
+    /// Both directive sources, oldest first, deduplicated.
     fn directives_for(&self, icon: &Icon) -> Vec<String> {
         let mut out = icon.directives.clone();
         if let Some(logged) = self.directives.get(&icon.id) {
@@ -333,25 +243,37 @@ impl Picker {
         out
     }
 
-    /// Record what the tool currently holds: a target if something is checked, and a
-    /// directive if anything was typed. Then move to the next icon.
+    /// Load the current icon's six candidates into the atlas. Kept honest by
+    /// refusing the run if any image is missing or the wrong size.
+    fn load_atlas(&mut self) -> Result<(), String> {
+        let icon = self.icon().clone();
+        if self.atlas_icon == icon.id && !self.atlas.is_empty() {
+            return Ok(());
+        }
+        let (atlas, width, height, packed) = pack_atlas(&icon, &self.review)?;
+        self.atlas = atlas;
+        self.atlas_width = width;
+        self.atlas_height = height;
+        self.packed = packed;
+        self.atlas_icon = icon.id;
+        self.checked = None;
+        self.comment.clear();
+        self.detail_offset = 0.0;
+        if let Some(gpu) = self.gpu.as_mut() {
+            gpu.bind_image(&self.atlas, width, height);
+        }
+        Ok(())
+    }
+
     fn record_and_advance(&mut self) {
         let icon = self.icon().clone();
         let comment = self.comment.trim().to_string();
         let checked = self.checked;
         if checked.is_none() && comment.is_empty() {
-            println!(            "nothing to record on {}: check a concept or type a comment", icon.id);
+            println!("nothing to record on {}: check a candidate or type a comment", icon.id);
             return;
         }
         let position = checked.unwrap_or(0).min(icon.generations.len().saturating_sub(1));
-        let line = record(
-            &self.review,
-            &icon,
-            position,
-            checked.is_some(),
-            &comment,
-            Path::new(DECISIONS),
-        );
         let what = match checked {
             Some(index) => format!(
                 "target = {} ({})",
@@ -359,166 +281,376 @@ impl Picker {
             ),
             None => "no target, comment only".to_string(),
         };
-        println!(
-            "\n✔ recorded {} → {what}{}\n    {}",
-            icon.id,
-            if comment.is_empty() {
-                String::new()
-            } else {
-                format!(" · directive: “{comment}”")
-            },
-            line.trim()
+        record(
+            &self.review,
+            &icon,
+            position,
+            checked.is_some(),
+            &comment,
+            Path::new(DECISIONS),
         );
-        self.last = Some(format!("{} → {what}", icon.id));
-        self.decided_here.push(icon.id.clone());
-        if !comment.is_empty() {
-            self.directives
-                .entry(icon.id.clone())
-                .or_default()
-                .push(comment);
-        }
-        self.comment.clear();
-        self.checked = None;
-        self.focus = Focus::None;
-        self.hover = None;
+        println!("{what} on {} — recorded", icon.id);
+        self.directives
+            .entry(icon.id.clone())
+            .or_default()
+            .extend(self.comment.trim().is_empty().then(Vec::new).unwrap_or_else(
+                || vec![self.comment.trim().to_string()],
+            ));
         if self.icon_index + 1 < self.review.icons.len() {
             self.icon_index += 1;
-        }
-    }
-
-    fn step(&mut self, delta: isize) {
-        let count = self.review.icons.len();
-        if count == 0 {
-            return;
-        }
-        self.icon_index = (self.icon_index as isize + delta).rem_euclid(count as isize) as usize;
-        self.checked = None;
-        self.comment.clear();
-        self.focus = Focus::None;
-        self.hover = None;
-    }
-
-    /// The checkbox: checking one unchecks the others, and checking the checked one
-    /// again unchecks it, so "none of these" is always reachable.
-    fn toggle(&mut self, position: usize) {
-        if position >= self.icon().generations.len() {
-            return;
-        }
-        let generation = &self.icon().generations[position];
-        if generation
-            .gate
-            .as_array()
-            .map(|notes| !notes.is_empty())
-            .unwrap_or(false)
-        {
-            self.last = Some(format!(
-                "{} · {} is not selectable until its checks pass",
-                self.icon().id,
-                generation.label
-            ));
-            return;
-        }
-        self.focus = Focus::None;
-        self.checked = if self.checked == Some(position) {
-            None
         } else {
-            Some(position)
-        };
-    }
-
-    fn on_key(&mut self, code: KeyCode) {
-        // While the comment box has focus, digits and letters are text, not
-        // shortcuts. Focus is the only thing that decides that.
-        if self.focus == Focus::Comment {
-            match code {
-                KeyCode::Backspace => {
-                    self.comment.pop();
-                }
-                KeyCode::Tab | KeyCode::Escape => self.focus = Focus::None,
-                _ => {}
+            println!("every awaiting icon has been visited; the tool closes.");
+            if self.window.take().is_some() {
+                self.closing = true;
             }
             return;
         }
-        match code {
-            KeyCode::Digit1 | KeyCode::KeyA => self.toggle(0),
-            KeyCode::Digit2 | KeyCode::KeyB => self.toggle(1),
-            KeyCode::Digit3 | KeyCode::KeyC => self.toggle(2),
-            KeyCode::Digit4 => self.toggle(3),
-            KeyCode::Digit5 => self.toggle(4),
-            KeyCode::Digit6 => self.toggle(5),
-            KeyCode::Tab => self.focus = Focus::Comment,
+        self.checked = None;
+        self.comment.clear();
+        self.detail_offset = 0.0;
+        if let Err(err) = self.load_atlas() {
+            eprintln!("{err}");
+            std::process::exit(1);
+        }
+    }
+
+    // --- layout numbers, all from the scales --------------------------------
+
+    fn tile(&self) -> f32 {
+        288.0 * self.ui.0
+    }
+
+    fn gutter(&self) -> f32 {
+        Space::Sm.px(self.ui)
+    }
+
+    /// The header strip: title line + six tiles in one row + checkbox row.
+    /// Measured, not assumed — the detail region begins where this ends.
+    fn strip_height(&self) -> f32 {
+        let ui = self.ui;
+        let title = Step::Title.px(ui) as f32 * ui::LINE_ADVANCE_FACTOR;
+        let tile = self.tile();
+        let checkbox = design::MIN_TARGET_PX * ui.0;
+        title + Space::Sm.px(ui) + tile + Space::Xs.px(ui) + checkbox
+    }
+
+    /// The detail region: everything between the strip and the footer.
+    fn detail_viewport(&self, screen: &Screen) -> f32 {
+        let footer = self.footer_height();
+        (screen.h - self.strip_height() - footer).max(0.0)
+    }
+
+    fn footer_height(&self) -> f32 {
+        let ui = self.ui;
+        let input = design::MIN_TARGET_PX * ui.0;
+        input + Space::Md.px(ui) * 2.0
+    }
+
+    // --- drawing ------------------------------------------------------------
+
+    fn draw(&mut self, batch: &mut Batcher, images: &mut ImageBatcher, screen: &Screen) {
+        let ui = self.ui;
+        let icon = self.icon().clone();
+        let inset = Space::Md.px(ui);
+        let strip_h = self.strip_height();
+
+        // The strip's title line.
+        let title = format!(
+            "{} · {} of {} — {}",
+            icon.id,
+            self.icon_index + 1,
+            self.review.icons.len(),
+            icon.meaning
+        );
+        self.text.draw_step(
+            Face::Body,
+            batch,
+            screen,
+            inset,
+            Step::Title.px(ui) as f32 * 0.85,
+            Step::Title,
+            hud::style(Token::Ink).text.unwrap_or([1.0; 4]),
+            &title,
+        );
+
+        // The six candidate tiles: the subject of the surface. Always visible,
+        // in one row; the decision image fills the tile, the checkbox rides
+        // under it.
+        let tile = self.tile();
+        for (index, generation) in icon.generations.iter().enumerate() {
+            let x = inset + index as f32 * (tile + self.gutter());
+            let y = Step::Title.px(ui) as f32 * ui::LINE_ADVANCE_FACTOR + Space::Sm.px(ui);
+            // Tile backdrop = the icon's own declared host surface, so the
+            // contrast claim is checkable by eye.
+            let host = self.review.host_fill(&icon);
+            hud::fill(batch, screen, x, y, tile, tile, host);
+            batch.screen_outline(
+                screen,
+                x,
+                y,
+                tile,
+                tile,
+                hud::style(Token::Panel).border.unwrap_or([0.3; 4]),
+            );
+            if let Some(Some(packed)) = self.packed.get(index) {
+                images.image(
+                    screen,
+                    x,
+                    y,
+                    tile,
+                    tile,
+                    packed.src,
+                    [1.0, 1.0, 1.0, 1.0],
+                );
+            }
+            // The checkbox row under the tile: a full-target-sized hit area
+            // with the state drawn in.
+            let checkbox_h = design::MIN_TARGET_PX * ui.0;
+            let cy = y + tile + Space::Xs.px(ui);
+            hud::panel(batch, screen, x, cy, tile, checkbox_h, Token::Panel);
+            let fill = if self.checked == Some(index) {
+                hud::style(Token::Nature).fill.unwrap_or([0.3, 0.7, 0.4, 1.0])
+            } else {
+                hud::style(Token::PanelRaised).fill.unwrap_or([0.2; 4])
+            };
+            let mark = checkbox_h * 0.45;
+            hud::fill(batch, screen, x + Space::Sm.px(ui), cy + (checkbox_h - mark) / 2.0, mark, mark, fill);
+            self.text.draw_step(
+                Face::Body,
+                batch,
+                screen,
+                x + mark + Space::Md.px(ui),
+                cy + checkbox_h * 0.75,
+                Step::Small,
+                hud::style(Token::TextBody).text.unwrap_or([0.9; 4]),
+                &generation.label,
+            );
+        }
+
+        // The detail region: a scrollable stack of measured facts. Painted
+        // into a band whose origin is shifted below the strip by offsetting
+        // the screen — the shared layer maps content space to that band's
+        // viewport space, and keeps every line above the footer it knows.
+        let detail_top = strip_h;
+        let detail_h = self.detail_viewport(screen);
+        let width = screen.w - 2.0 * inset;
+        let blocks = self.detail_blocks(&icon, width);
+        let mut measured = ui::measure(&mut self.text, ui, width, detail_h, &blocks);
+        measured.viewport = detail_h;
+        let scroll = Scroll::with_offset(self.detail_offset);
+        let band = Screen { w: screen.w, h: detail_h };
+        // Clip space is relative, so drawing the band at a y-offset is done by
+        // translating the batch after the fact — the layer promised viewport
+        // coordinates, the strip owns everything above them.
+        let before = batch.instances.len();
+        ui::paint(&measured, &scroll, batch, &band, &mut self.text);
+        for instance in &mut batch.instances[before..] {
+            instance.pos[1] -= 2.0 * detail_top / screen.h;
+        }
+
+        // The comment footer: fixed, never overlapped, never below the fold.
+        let footer_top = screen.h - self.footer_height();
+        hud::panel(batch, screen, 0.0, footer_top, screen.w, self.footer_height(), Token::Panel);
+        let line = if self.focus_comment {
+            format!("comment ▸ {}|", self.comment)
+        } else if self.comment.is_empty() {
+            "comment ▸ (type what the next generation should change)".to_string()
+        } else {
+            format!("comment ▸ {}", self.comment)
+        };
+        self.text.draw_step(
+            Face::Body,
+            batch,
+            screen,
+            inset,
+            footer_top + Space::Md.px(ui) + Step::Body.px(ui) as f32 * 0.8,
+            Step::Body,
+            hud::style(if self.focus_comment { Token::TextBody } else { Token::TextMuted })
+                .text
+                .unwrap_or([0.9; 4]),
+            &line,
+        );
+        let hint = "Enter: record · Tab: comment · ←/→: candidate · [1-6]: check · PgUp/PgDn: detail · N: next icon";
+        self.text.draw_step(
+            Face::Mono,
+            batch,
+            screen,
+            inset,
+            screen.h - Space::Sm.px(ui),
+            Step::Micro,
+            hud::style(Token::TextMuted).text.unwrap_or([0.7; 4]),
+            hint,
+        );
+    }
+
+    fn detail_blocks(&self, icon: &Icon, width: f32) -> Vec<Block> {
+        let body = hud::style(Token::TextBody).text.unwrap_or([0.9; 4]);
+        let muted = hud::style(Token::TextMuted).text.unwrap_or([0.7; 4]);
+        let accent = hud::style(Token::Nature).text.unwrap_or([0.4, 0.8, 0.5, 1.0]);
+        let mut blocks = Vec::new();
+
+        // The brief, per a120: the icon's meaning and the surface it locates.
+        blocks.push(Block::Line {
+            face: Face::Body,
+            step: Step::Small,
+            text: format!("locates {} · sits on {}", icon.locates, icon.sits_on.join(", ")),
+            color: muted,
+        });
+        blocks.push(Block::Gap(Space::Sm));
+
+        // Selected candidate's brief and measured numbers (a120), side by side
+        // in one line per fact — the picker is a chooser, not a document.
+        let selected = self.checked.unwrap_or(0).min(icon.generations.len() - 1);
+        for (index, generation) in icon.generations.iter().enumerate() {
+            let facts = generation.facts();
+            let marker = if self.checked == Some(index) { "▸" } else { " " };
+            blocks.push(Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: format!("{marker} {} — {}", generation.label, if index == selected { facts } else { generation.why.clone() }),
+                color: if self.checked == Some(index) { accent } else { body },
+            });
+        }
+        blocks.push(Block::Gap(Space::Sm));
+
+        // Directives: what the next generation is asked to change. The
+        // mechanism for recording what the next generation should change has
+        // to be visible, or it never gets used.
+        let directives = self.directives_for(icon);
+        if !directives.is_empty() {
+            blocks.push(Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: "asked of the next generation:".into(),
+                color: muted,
+            });
+            for directive in directives {
+                blocks.push(Block::Line {
+                    face: Face::Body,
+                    step: Step::Small,
+                    text: format!("· {directive}"),
+                    color: body,
+                });
+            }
+            blocks.push(Block::Gap(Space::Sm));
+        }
+
+        // The checks: notes refuse promotion, so they are shown, not buried.
+        let notes = icon.generations[selected].notes();
+        if !notes.is_empty() {
+            blocks.push(Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: "check notes on the selected candidate:".into(),
+                color: muted,
+            });
+            for note in notes {
+                blocks.push(Block::Line {
+                    face: Face::Body,
+                    step: Step::Small,
+                    text: format!("· {note}"),
+                    color: body,
+                });
+            }
+        }
+        let _ = width;
+        blocks
+    }
+
+    #[allow(dead_code)]
+    fn scroll_state(&self) -> f32 {
+        self.scroll.offset()
+    }
+
+    // --- input --------------------------------------------------------------
+
+    /// The tile rects, in the same numbers the draw pass used.
+    fn tile_rects(&self) -> Vec<(f32, f32, f32, f32)> {
+        let inset = Space::Md.px(self.ui);
+        let tile = self.tile();
+        let y = Step::Title.px(self.ui) as f32 * ui::LINE_ADVANCE_FACTOR + Space::Sm.px(self.ui);
+        (0..6)
+            .map(|index| {
+                let x = inset + index as f32 * (tile + self.gutter());
+                (x, y, tile, tile + design::MIN_TARGET_PX * self.ui.0)
+            })
+            .collect()
+    }
+
+    fn on_click(&mut self, screen: &Screen) {
+        let (cx, cy) = self.cursor;
+        let footer_top = screen.h - self.footer_height();
+        if cy >= footer_top {
+            self.focus_comment = true;
+            return;
+        }
+        for (index, (x, y, w, h)) in self.tile_rects().into_iter().enumerate() {
+            if cx >= x && cx <= x + w && cy >= y && cy <= y + h {
+                // Clicking the tile toggles the check; clicking the image
+                // itself selects for the detail region. One action, per §5.7:
+                // the checkbox *is* the tool's action on a candidate.
+                self.checked = if self.checked == Some(index) { None } else { Some(index) };
+                self.focus_comment = false;
+                return;
+            }
+        }
+        self.focus_comment = false;
+    }
+
+    fn on_key(&mut self, key: KeyCode, screen: &Screen) {
+        match key {
+            KeyCode::Tab => self.focus_comment = !self.focus_comment,
+            KeyCode::ArrowLeft => {
+                let len = self.icon().generations.len();
+                if let Some(current) = self.checked {
+                    self.checked = Some((current + len - 1) % len);
+                }
+            }
+            KeyCode::ArrowRight => {
+                let len = self.icon().generations.len();
+                if let Some(current) = self.checked {
+                    self.checked = Some((current + 1) % len);
+                }
+            }
+            KeyCode::PageUp => self.scroll_detail(-design::MIN_TARGET_PX * 4.0 * self.ui.0, screen),
+            KeyCode::PageDown => self.scroll_detail(design::MIN_TARGET_PX * 4.0 * self.ui.0, screen),
+            KeyCode::KeyN => self.record_and_advance(),
             KeyCode::Enter => self.record_and_advance(),
-            KeyCode::KeyS | KeyCode::KeyN => self.step(1),
-            KeyCode::KeyP | KeyCode::ArrowLeft => self.step(-1),
-            KeyCode::ArrowRight => self.step(1),
+            KeyCode::Digit1 | KeyCode::Digit2 | KeyCode::Digit3 | KeyCode::Digit4
+            | KeyCode::Digit5 | KeyCode::Digit6 => {
+                let index = match key {
+                    KeyCode::Digit1 => 0,
+                    KeyCode::Digit2 => 1,
+                    KeyCode::Digit3 => 2,
+                    KeyCode::Digit4 => 3,
+                    KeyCode::Digit5 => 4,
+                    _ => 5,
+                };
+                if index < self.icon().generations.len() {
+                    self.checked = if self.checked == Some(index) { None } else { Some(index) };
+                }
+            }
+            KeyCode::Backspace if self.focus_comment => {
+                self.comment.pop();
+            }
             _ => {}
         }
     }
 
-    fn on_text(&mut self, typed: &str) {
-        if self.focus != Focus::Comment {
-            return;
-        }
-        for character in typed.chars() {
-            if !character.is_control() {
-                self.comment.push(character);
-            }
-        }
+    fn scroll_detail(&mut self, delta: f32, screen: &Screen) {
+        let icon = self.icon().clone();
+        let inset = Space::Md.px(self.ui);
+        let width = screen.w - 2.0 * inset;
+        let detail_h = self.detail_viewport(screen);
+        let blocks = self.detail_blocks(&icon, width);
+        let mut measured = ui::measure(&mut self.text, self.ui, width, detail_h, &blocks);
+        measured.viewport = detail_h;
+        self.detail_offset = (self.detail_offset + delta).clamp(0.0, measured.max_scroll());
     }
 
-    fn report(&self) {
-        if let Some(last) = &self.last {
-            println!("\nlast decision: {last}");
-        }
-        if !self.decided_here.is_empty() {
-            println!("decided in this session: {}", self.decided_here.join(", "));
-        }
-        println!("decisions are in {DECISIONS}");
-    }
-
-    /// The table, printed where a person can read it while looking at the window.
-    /// The window carries the form; the terminal carries the numbers.
-    fn print_icon(&self) {
-        let icon = self.icon();
-        println!(
-            "\n─── [{}/{}] {} — {} ({})\n    locates: {} · sits on: {} · identity: {} ({})",
-            self.icon_index + 1,
-            self.review.icons.len(),
-            icon.id,
-            icon.meaning,
-            icon.kind,
-            icon.locates,
-            icon.sits_on.join(", "),
-            icon.identity.clone().unwrap_or_else(|| "—".into()),
-            icon.identity_as,
-        );
-        println!("    lineage: {} · forbidden readings: {}", icon.lineage.join(" / "), icon.forbidden_readings.join(" / "));
-        if let Some(cues) = icon.brief.get("semantic_cues").and_then(Value::as_array) {
-            println!("    doctrine chips: Meaning=present · Silhouette={} cue(s) · Lineage={} · Material={} · Authority=guarded · Motion=metadata · Fallback=present",
-                cues.len(), icon.lineage.len(), icon.brief.get("material_family").and_then(Value::as_str).unwrap_or("declared"));
-        }
-        for (position, generation) in icon.generations.iter().enumerate() {
-            let blocked = icon.generations[position]
-                .gate
-                .as_array()
-                .map(|notes| !notes.is_empty())
-                .unwrap_or(false);
-            let mark = if blocked { "⊘" } else if Some(position) == self.checked { "☑" } else { "☐" };
-            let highlight = if Some(position) == self.hover { "▶" } else { " " };
-            println!(
-                " {highlight}{mark} {}. {} — {}\n      {}\n      {}",
-                position + 1,
-                generation.label,
-                generation.id,
-                generation.why,
-                generation.facts(),
-            );
-            for note in generation.notes() {
-                println!("      ! {note}");
-            }
-        }
-        for directive in self.directives_for(icon) {
-            println!("    ← asked for last time: {directive}");
+    fn type_into_comment(&mut self, ch: char) {
+        if self.focus_comment {
+            self.comment.push(ch);
         }
     }
 }
@@ -528,1123 +660,148 @@ impl ApplicationHandler for Picker {
         if self.window.is_some() {
             return;
         }
-        let attributes = Window::default_attributes()
-            .with_title("ala-cities — icon generations")
-            .with_inner_size(winit::dpi::LogicalSize::new(1400.0, 900.0));
-        let window = Arc::new(
+        let window = std::sync::Arc::new(
             event_loop
-                .create_window(attributes)
-                .expect("a window for the picker"),
+                .create_window(Window::default_attributes().with_title("ala-cities · pick (rebuilt)"))
+                .expect("a window"),
         );
-        match Gpu::new(window.clone(), &self.review) {
-            Ok(gpu) => self.gpu = Some(gpu),
-            Err(err) => {
-                eprintln!("could not start the picker's renderer: {err}");
-                event_loop.exit();
-                return;
-            }
+        if let Err(err) = self.load_atlas() {
+            eprintln!("{err}");
+            std::process::exit(1);
         }
+        let mut gpu = Gpu::new(window.clone(), &self.text);
+        gpu.bind_image(&self.atlas, self.atlas_width, self.atlas_height);
         self.window = Some(window);
-        if !self.fonts_ok {
-            println!(
-                "note: the text face did not load — the labels on screen will be missing, \
-                 though the log format is unaffected"
-            );
-        }
-        println!("{}", self.review.header());
-        self.print_icon();
+        self.gpu = Some(gpu);
     }
 
-    fn window_event(&mut self, _event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
         match event {
-            WindowEvent::CloseRequested => _event_loop.exit(),
+            WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
                 if let Some(gpu) = self.gpu.as_mut() {
                     gpu.resize(size.width, size.height);
                 }
             }
             WindowEvent::CursorMoved { position, .. } => {
-                self.cursor = (position.x as f32, position.y as f32);
-                let layout = self.layout();
-                self.hover = hit_checkbox(self.icon(), &layout, self.cursor)
-                    .or_else(|| hit_tile(self.icon(), &layout, self.cursor));
+                if let Some(window) = self.window.as_ref() {
+                    let scale = window.scale_factor() as f32;
+                    self.cursor = (position.x as f32 * scale, position.y as f32 * scale);
+                }
             }
-            WindowEvent::MouseInput {
-                state,
-                button: MouseButton::Left,
-                ..
-            } => {
-                if state == ElementState::Pressed {
-                    let layout = self.layout();
-                    let icon = self.icon().clone();
-                    let cursor = self.cursor;
-                    if let Some(position) = hit_checkbox(&icon, &layout, cursor) {
-                        self.toggle(position);
-                    } else if hit_comment(&layout, cursor) {
-                        self.focus = Focus::Comment;
-                    } else if let Some(position) = hit_tile(&icon, &layout, cursor) {
-                        self.toggle(position);
-                    }
-                    self.print_icon();
+            WindowEvent::MouseInput { state: ElementState::Pressed, button: MouseButton::Left, .. } => {
+                let screen = self.gpu.as_ref().map(|gpu| gpu.screen());
+                if let Some(screen) = screen {
+                    self.on_click(&screen);
+                }
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let screen = self.gpu.as_ref().map(|gpu| gpu.screen());
+                let pixels = match delta {
+                    winit::event::MouseScrollDelta::LineDelta(_, y) => y * 40.0,
+                    winit::event::MouseScrollDelta::PixelDelta(p) => p.y as f32,
+                };
+                // The wheel scrolls the detail region; the tiles never move.
+                if let Some(screen) = screen {
+                    self.scroll_detail(pixels, &screen);
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                if event.state != ElementState::Pressed {
-                    return;
-                }
-                if let PhysicalKey::Code(code) = event.physical_key {
-                    if code == KeyCode::Escape && self.focus != Focus::Comment {
-                        _event_loop.exit();
-                        return;
+                if event.state == ElementState::Pressed {
+                    if let Some(text) = &event.text {
+                        for ch in text.chars() {
+                            self.type_into_comment(ch);
+                        }
                     }
-                    if code == KeyCode::KeyQ && self.focus != Focus::Comment {
-                        _event_loop.exit();
-                        return;
+                    let screen = self.gpu.as_ref().map(|gpu| gpu.screen());
+                    if let (Some(screen), winit::keyboard::PhysicalKey::Code(code)) =
+                        (screen, event.physical_key)
+                    {
+                        self.on_key(code, &screen);
                     }
-                    if code == KeyCode::Enter {
-                        // Enter records from either focus: the comment travels with it.
-                        self.record_and_advance();
-                        self.print_icon();
-                        return;
-                    }
-                    self.on_key(code);
-                    self.print_icon();
-                }
-                if let Some(typed) = event.text.as_ref() {
-                    let typed = typed.to_string();
-                    self.on_text(&typed);
                 }
             }
             WindowEvent::RedrawRequested => {
-                let (icon_index, checked, focus, hover, comment) = (
-                    self.icon_index,
-                    self.checked,
-                    self.focus,
-                    self.hover,
-                    self.comment.clone(),
-                );
-                // The caret blinks because focus is a state: a still caret would
-                // leave "is this box live?" as a question the screen cannot answer.
-                let caret_on = (self.started.elapsed().as_millis() / 500).is_multiple_of(2);
-                let layout = self.layout();
+                if self.closing {
+                    event_loop.exit();
+                    return;
+                }
+                let Some(window) = self.window.clone() else { return };
+                // The gpu borrow is confined to the block: the draw pass owns
+                // `self` in between, and the two must not overlap.
+                let screen = {
+                    let Some(gpu) = self.gpu.as_mut() else { return };
+                    gpu.sync_atlas(&self.text);
+                    gpu.screen()
+                };
+                let mut batch = Batcher::default();
+                let mut images = ImageBatcher::default();
+                self.draw(&mut batch, &mut images, &screen);
                 if let Some(gpu) = self.gpu.as_mut() {
-                    gpu.draw(
-                        &self.review,
-                        &mut self.text,
-                        &layout,
-                        self.ui,
-                        icon_index,
-                        checked,
-                        focus == Focus::Comment,
-                        hover,
-                        &comment,
-                        caret_on,
+                    gpu.render(
+                        &ala_cities::render::WorldBatch::default(),
+                        &batch,
+                        &images,
+                        &winit_default_camera(),
+                        [0.08, 0.08, 0.09, 1.0],
+                        1.0 / 60.0,
                     );
                 }
-                if let Some(window) = self.window.as_ref() {
-                    window.request_redraw();
-                }
+                window.request_redraw();
             }
             _ => {}
         }
     }
 }
 
-// ---------------------------------------------------------------------------
-// Hit testing
-// ---------------------------------------------------------------------------
-
-fn hit_checkbox(icon: &Icon, layout: &Layout, cursor: (f32, f32)) -> Option<usize> {
-    for position in 0..icon.generations.len() {
-        let x = layout.column_x(position);
-        if cursor.0 >= x
-            && cursor.0 <= x + layout.tile
-            && cursor.1 >= layout.checkbox_y(position)
-            && cursor.1 <= layout.checkbox_y(position) + layout.checkbox_h
-        {
-            return Some(position);
-        }
-    }
-    None
+fn winit_default_camera() -> ala_cities::render::Camera {
+    // The picker draws no world; the camera exists because the render
+    // signature shares the game's. Identity view, no projection needed —
+    // the world pass draws nothing.
+    ala_cities::render::Camera::new(
+        ala_cities::render::Screen { w: 1400.0, h: 900.0 },
+        256,
+        256,
+    )
 }
 
-fn hit_tile(icon: &Icon, layout: &Layout, cursor: (f32, f32)) -> Option<usize> {
-    for position in 0..icon.generations.len() {
-        let x = layout.column_x(position);
-        if cursor.0 >= x
-            && cursor.0 <= x + layout.tile
-            && cursor.1 >= layout.tile_y(position)
-            && cursor.1 <= layout.tile_y(position) + layout.tile
-        {
-            return Some(position);
-        }
-    }
-    None
+// Keep the unused-import lint quiet on the two names used only in doc comments.
+#[allow(unused)]
+fn _tension(value: &Value) -> f32 {
+    value.as_f64().unwrap_or(0.0) as f32
 }
+#[allow(unused)]
+const _: u32 = ATLAS_SIZE;
 
-fn hit_comment(layout: &Layout, cursor: (f32, f32)) -> bool {
-    let (x, y) = layout.comment();
-    cursor.0 >= x
-        && cursor.0 <= x + layout.comment_w
-        && cursor.1 >= y
-        && cursor.1 <= y + layout.comment_h
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-// ---------------------------------------------------------------------------
-// Drawing
-// ---------------------------------------------------------------------------
-
-const IMAGE_SHADER: &str = r#"
-struct Instance {
-    @location(0) pos: vec2<f32>,
-    @location(1) size: vec2<f32>,
-    @location(2) colour: vec4<f32>,
-    @location(3) uv: vec4<f32>,
-};
-
-struct Out {
-    @builtin(position) clip: vec4<f32>,
-    @location(0) colour: vec4<f32>,
-    @location(1) uv: vec2<f32>,
-};
-
-@vertex
-fn vs_main(@builtin(vertex_index) index: u32, instance: Instance) -> Out {
-    var corners = array<vec2<f32>, 6>(
-        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0)
-    );
-    let corner = corners[index];
-    var out: Out;
-    out.clip = vec4<f32>(instance.pos + corner * instance.size, 0.0, 1.0);
-    out.uv = mix(instance.uv.xy, instance.uv.zw, corner);
-    out.colour = instance.colour;
-    return out;
-}
-
-@group(0) @binding(0) var image: texture_2d<f32>;
-@group(0) @binding(1) var image_sampler: sampler;
-
-@fragment
-fn fs_main(in: Out) -> @location(0) vec4<f32> {
-    let texel = textureSample(image, image_sampler, in.uv);
-    return vec4<f32>(texel.rgb * in.colour.rgb, texel.a * in.colour.a);
-}
-"#;
-
-const GLYPH_SHADER: &str = r#"
-struct Instance {
-    @location(0) pos: vec2<f32>,
-    @location(1) size: vec2<f32>,
-    @location(2) colour: vec4<f32>,
-    @location(3) uv: vec4<f32>,
-};
-
-struct Out {
-    @builtin(position) clip: vec4<f32>,
-    @location(0) colour: vec4<f32>,
-    @location(1) uv: vec2<f32>,
-};
-
-@vertex
-fn vs_main(@builtin(vertex_index) index: u32, instance: Instance) -> Out {
-    var corners = array<vec2<f32>, 6>(
-        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
-        vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(0.0, 1.0)
-    );
-    let corner = corners[index];
-    var out: Out;
-    out.clip = vec4<f32>(instance.pos + corner * instance.size, 0.0, 1.0);
-    out.uv = mix(instance.uv.xy, instance.uv.zw, corner);
-    out.colour = instance.colour;
-    return out;
-}
-
-@group(0) @binding(0) var atlas: texture_2d<f32>;
-@group(0) @binding(1) var atlas_sampler: sampler;
-
-@fragment
-fn fs_main(in: Out) -> @location(0) vec4<f32> {
-    let coverage = textureSample(atlas, atlas_sampler, in.uv).r;
-    return vec4<f32>(in.colour.rgb, in.colour.a * coverage);
-}
-"#;
-
-struct Gpu {
-    surface: wgpu::Surface<'static>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    config: wgpu::SurfaceConfiguration,
-    screen: Screen,
-    glyph_pipeline: wgpu::RenderPipeline,
-    image_pipeline: wgpu::RenderPipeline,
-    bind_layout: wgpu::BindGroupLayout,
-    vertex_buffer: wgpu::Buffer,
-    vertex_capacity: usize,
-    /// The R8 coverage atlas the framework's text, panels and outlines live in.
-    atlas_texture: wgpu::Texture,
-    atlas_bind: wgpu::BindGroup,
-    /// The atlas revision currently on the GPU.
-    atlas_revision: u64,
-    /// One RGBA texture per reviewed image, plus its bind group.
-    bind_groups: Vec<wgpu::BindGroup>,
-    image_bind: HashMap<(String, usize, u8), usize>,
-    _textures: Vec<wgpu::Texture>,
-    sampler: wgpu::Sampler,
-    loaded_icon: Option<String>,
-    /// Reported on the first frame and never again: the interface quads the batch
-    /// actually holds and the icon quads actually bound to a texture. An interface
-    /// that draws no images should say so rather than look fine.
-    first_frame_reported: bool,
-}
-
-/// Which image of which candidate: 0 is the decision size, 1 the context size.
-type ImageKey = (String, usize, u8);
-
-impl Gpu {
-    fn new(window: Arc<Window>, review: &Review) -> Result<Self, String> {
-        let size = window.inner_size();
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-        let surface = instance
-            .create_surface(window.clone())
-            .map_err(|err| format!("no surface: {err}"))?;
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: Some(&surface),
-            force_fallback_adapter: false,
-        }))
-        .map_err(|err| format!("no GPU adapter: {err}"))?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("ala-cities pick"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::default(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::default(),
-            trace: wgpu::Trace::Off,
-        }))
-        .map_err(|err| format!("no device: {err}"))?;
-
-        let caps = surface.get_capabilities(&adapter);
-        let mut config = surface
-            .get_default_config(&adapter, size.width.max(1), size.height.max(1))
-            .ok_or_else(|| "the surface has no default configuration".to_string())?;
-        // A review tool has no reason to sit on a vsync queue, but it does have a
-        // reason to present the same way the game does.
-        config.present_mode = if caps.present_modes.contains(&wgpu::PresentMode::Mailbox) {
-            wgpu::PresentMode::Mailbox
-        } else if caps.present_modes.contains(&wgpu::PresentMode::AutoNoVsync) {
-            wgpu::PresentMode::AutoNoVsync
-        } else {
-            wgpu::PresentMode::Fifo
-        };
-        surface.configure(&device, &config);
-        let screen = Screen {
-            w: config.width as f32,
-            h: config.height as f32,
-        };
-
-        let bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("picker texture layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
-        });
-
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("picker sampler"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            // Nearest, for the same reason the game's glyphs are nearest: these
-            // pixels were rasterised at the size they are drawn at, and a filter
-            // would invent the ones in between.
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            ..Default::default()
-        });
-
-        let atlas_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("picker coverage atlas"),
-            size: wgpu::Extent3d {
-                width: render::ATLAS_SIZE,
-                height: render::ATLAS_SIZE,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::R8Unorm,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-        let atlas_bind = bind_group(&device, &bind_layout, &atlas_texture, &sampler);
-
-        let glyph_pipeline = pipeline(&device, &bind_layout, &config, "picker glyphs", GLYPH_SHADER);
-        let image_pipeline = pipeline(&device, &bind_layout, &config, "picker images", IMAGE_SHADER);
-
-        let vertex_capacity = 4096;
-        let vertex_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("picker vertices"),
-            size: (vertex_capacity * std::mem::size_of::<render::Instance>()) as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-
-        let (width_px, height_px) = (config.width, config.height);
-        let mut gpu = Self {
-            surface,
-            device,
-            queue,
-            config,
-            screen,
-            glyph_pipeline,
-            image_pipeline,
-            bind_layout,
-            vertex_buffer,
-            vertex_capacity,
-            atlas_texture,
-            atlas_bind,
-            atlas_revision: u64::MAX,
-            bind_groups: Vec::new(),
-            image_bind: HashMap::new(),
-            _textures: Vec::new(),
-            sampler,
-            loaded_icon: None,
-            first_frame_reported: false,
-        };
-        if let Some(icon) = review.icons.first() {
-            let id = icon.id.clone();
-            gpu.ensure_icon(review, 0)?;
-            gpu.loaded_icon = Some(id);
-        }
-
-        let info = adapter.get_info();
-        println!(
-            "picker renderer ready: {} · {:?} · {}x{}",
-            info.name, info.backend, width_px, height_px
-        );
-        Ok(gpu)
-    }
-
-    fn resize(&mut self, width: u32, height: u32) {
-        if width == 0 || height == 0 {
+    /// The headless half of a135(c)'s smoke test: the rebuilt picker's data
+    /// path — load, validate, pack the first awaiting icon's candidates —
+    /// runs against the real review set before the window ever opens.
+    #[test]
+    fn the_data_path_loads_and_packs_the_real_review_set() {
+        let review = load_review().expect("review.json loads");
+        if review.icons.is_empty() {
+            eprintln!("every icon is decided; the pack test has nothing to exercise");
             return;
         }
-        self.config.width = width;
-        self.config.height = height;
-        self.surface.configure(&self.device, &self.config);
-        self.screen = Screen {
-            w: width as f32,
-            h: height as f32,
-        };
-    }
-
-    /// Bring the GPU's copy of the coverage atlas up to date.
-    ///
-    /// The first version of this compared `text.data.len()` against the last
-    /// uploaded length — but the atlas is a fixed 1024 x 1024 buffer, so its length
-    /// never changes and the texture was uploaded exactly once. Every glyph
-    /// rasterised afterwards sampled empty texels: the text looked wrong, in this
-    /// tool and in the game, for the same reason. `Text::revision` is the counter
-    /// that cannot be forgotten.
-    fn sync_atlas(&mut self, text: &Text) {
-        if text.revision == self.atlas_revision {
-            return;
-        }
-        self.upload_atlas(text);
-    }
-
-    fn upload_atlas(&mut self, text: &Text) {
-        self.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.atlas_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &text.data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(render::ATLAS_SIZE),
-                rows_per_image: Some(render::ATLAS_SIZE),
-            },
-            wgpu::Extent3d {
-                width: render::ATLAS_SIZE,
-                height: render::ATLAS_SIZE,
-                depth_or_array_layers: 1,
-            },
-        );
-        self.atlas_revision = text.revision;
-    }
-
-    /// Load both sizes of every generation of the icon now on screen. Textures for
-    /// the icon that was already loaded are left alone.
-    fn ensure_icon(&mut self, review: &Review, index: usize) -> Result<(), String> {
-        let icon = &review.icons[index];
-        if self.loaded_icon.as_deref() == Some(icon.id.as_str()) {
-            return Ok(());
-        }
-        for (position, generation) in icon.generations.iter().enumerate() {
-            for (kind, path, px) in [
-                (0u8, &generation.sharp, review.decision_px),
-                (1u8, &generation.recognition, review.recognition_px),
-                (2u8, &generation.context, review.context_px),
-            ] {
-                let key: ImageKey = (icon.id.clone(), position, kind);
-                if self.image_bind.contains_key(&key) {
-                    continue;
-                }
-                let (bind, texture) =
-                    load_image(&self.device, &self.queue, &self.bind_layout, &self.sampler, path, px)?;
-                self.bind_groups.push(bind);
-                self._textures.push(texture);
-                self.image_bind.insert(key, self.bind_groups.len() - 1);
-            }
-        }
-        self.loaded_icon = Some(icon.id.clone());
-        Ok(())
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    fn draw(
-        &mut self,
-        review: &Review,
-        text: &mut Text,
-        layout: &Layout,
-        ui: UiScale,
-        index: usize,
-        checked: Option<usize>,
-        comment_focused: bool,
-        hover: Option<usize>,
-        comment: &str,
-        caret_on: bool,
-    ) {
-        if let Err(err) = self.ensure_icon(review, index) {
-            eprintln!("{err}");
-            return;
-        }
-        text.set_ui_scale(UiScale::default());
-        let icon = &review.icons[index];
-        let screen = self.screen;
-        let mut batch = Batcher::default();
-
-        let desk = review.fill("Desk");
-        let ink = hud::style(Token::TextBody).text.unwrap_or([1.0; 4]);
-        let muted = hud::style(Token::TextMuted).text.unwrap_or([0.8; 4]);
-        let marker = hud::style(Token::Ink).fill.unwrap_or([0.2, 0.3, 0.6, 1.0]);
-        let active = hud::style(Token::Nature).fill.unwrap_or([0.3, 0.7, 0.4, 1.0]);
-        batch.screen_rect(&screen, 0.0, 0.0, screen.w, screen.h, desk, Text::solid_uv());
-
-        // Header: what this is, and the facts a person needs before looking at it.
-        hud::panel(
-            &mut batch,
-            &screen,
-            layout.margin,
-            layout.margin,
-            screen.w - layout.margin * 2.0,
-            layout.header,
-            Token::Panel,
-        );
-        let text_x = layout.margin + Space::Sm.px(ui);
-        let mut y = layout.margin + Space::Sm.px(ui);
-        text.draw_step(
-            Face::Body,
-            &mut batch,
-            &screen,
-            text_x,
-            y,
-            Step::Title,
-            ink,
-            &format!(
-                "[{}/{}] {} — {}",
-                index + 1,
-                review.icons.len(),
-                icon.id,
-                icon.meaning
-            ),
-        );
-        y += layout.title_h + Space::Xs.px(ui);
-        text.draw_step(
-            Face::Body,
-            &mut batch,
-            &screen,
-            text_x,
-            y,
-            Step::Small,
-            muted,
-            &format!(
-                "locates {} · sits on {} · identity {} ({}) · host shown as {}",
-                icon.locates,
-                icon.sits_on.join(", "),
-                icon.identity.clone().unwrap_or_else(|| "—".into()),
-                icon.identity_as,
-                icon.sits_on.first().cloned().unwrap_or_else(|| "PanelRaised".into()),
-            ),
-        );
-
-        // The candidate plates, each on a surface the icon declares.
-        let host = review.host_fill(icon);
-        for position in 0..icon.generations.len() {
-            let x = layout.column_x(position);
-            batch.screen_rect(
-                &screen,
-                x,
-                layout.tile_y(position),
-                layout.tile,
-                layout.tile,
-                host,
-                Text::solid_uv(),
-            );
-            if Some(position) == checked {
-                batch.screen_outline(
-                    &screen,
-                    x - 2.0,
-                    layout.tile_y(position) - 2.0,
-                    layout.tile + 4.0,
-                    layout.tile + 4.0,
-                    active,
-                );
-                batch.screen_outline(
-                    &screen,
-                    x - 3.0,
-                    layout.tile_y(position) - 3.0,
-                    layout.tile + 6.0,
-                    layout.tile + 6.0,
-                    active,
-                );
-            } else if Some(position) == hover {
-                batch.screen_outline(
-                    &screen,
-                    x - 2.0,
-                    layout.tile_y(position) - 2.0,
-                    layout.tile + 4.0,
-                    layout.tile + 4.0,
-                    marker,
-                );
-            }
-        }
-
-        // The checkboxes. A checkbox, not a radio button: it can be checked and
-        // unchecked, because "none of these" has to be reachable.
-        for position in 0..icon.generations.len() {
-            let x = layout.column_x(position);
-            let box_x = x + Space::Sm.px(ui);
-            let box_y = layout.checkbox_y(position) + (layout.checkbox_h - layout.checkbox_box) / 2.0;
-            let is_checked = Some(position) == checked;
-            let blocked = icon.generations[position]
-                .gate
-                .as_array()
-                .map(|notes| !notes.is_empty())
-                .unwrap_or(false);
-            batch.screen_outline(
-                &screen,
-                box_x,
-                box_y,
-                layout.checkbox_box,
-                layout.checkbox_box,
-                if blocked {
-                    muted
-                } else if is_checked {
-                    active
-                } else {
-                    ink
-                },
-            );
-            if is_checked {
-                let inset = (layout.checkbox_box * 0.28).round();
-                batch.screen_rect(
-                    &screen,
-                    box_x + inset,
-                    box_y + inset,
-                    layout.checkbox_box - inset * 2.0,
-                    layout.checkbox_box - inset * 2.0,
-                    active,
-                    Text::solid_uv(),
-                );
-            }
-            text.draw_step(
-                Face::Body,
-                &mut batch,
-                &screen,
-                box_x + layout.checkbox_box + Space::Sm.px(ui),
-                layout.checkbox_y(position) + (layout.checkbox_h - layout.body_h) / 2.0,
-                Step::Body,
-                if blocked {
-                    muted
-                } else if is_checked {
-                    ink
-                } else {
-                    muted
-                },
-                &format!(
-                    "{}{} · {}",
-                    if blocked { "blocked: " } else { "" },
-                    icon.generations[position].label,
-                    icon.generations[position].facts()
-                ),
-            );
-        }
-
-        // The smallest shipped size under each candidate: a choice that dies at
-        // 24 px should be visible while the choice is being made.
-        for position in 0..icon.generations.len() {
-            batch.screen_rect(
-                &screen,
-                layout.context_x(position),
-                layout.context_y(position),
-                layout.context,
-                layout.context,
-                host,
-                Text::solid_uv(),
-            );
-            text.draw_step(
-                Face::Body,
-                &mut batch,
-                &screen,
-                layout.column_x(position),
-                layout.context_y(position) + layout.context + Space::Xs.px(ui),
-                Step::Small,
-                muted,
-                &format!(
-                    "{} px at {}x · caption line {} px tall",
-                    review.context_px as u32,
-                    CONTEXT_ZOOM as u32,
-                    layout.small_h as u32
-                ),
-            );
-        }
-
-        // The comment box: the words that shape the next generation.
-        let (comment_x, comment_y) = layout.comment();
-        hud::panel(
-            &mut batch,
-            &screen,
-            comment_x,
-            comment_y,
-            layout.comment_w,
-            layout.comment_h,
-            Token::PanelRaised,
-        );
-        batch.screen_outline(
-            &screen,
-            comment_x,
-            comment_y,
-            layout.comment_w,
-            layout.comment_h,
-            if comment_focused { active } else { muted },
-        );
-        let label = if comment.is_empty() && !comment_focused {
-            "comment for the next generation — click here (or Tab) and type".to_string()
-        } else {
-            // Show the *end* of a long comment, so the caret and what was just typed
-            // stay visible. Its own measurement, not a character-count guess.
-            let available = layout.comment_w - Space::Md.px(ui) * 2.0;
-            fit_from_end(text, comment, available)
-        };
-        let inner_x = comment_x + Space::Md.px(ui);
-        let inner_y = comment_y + (layout.comment_h - layout.body_h) / 2.0;
-        let advance = text.draw_step(
-            Face::Body,
-            &mut batch,
-            &screen,
-            inner_x,
-            inner_y,
-            Step::Body,
-            if comment.is_empty() && !comment_focused { muted } else { ink },
-            &label,
-        );
-        if comment_focused && caret_on {
-            batch.screen_rect(
-                &screen,
-                inner_x + advance + 1.0,
-                inner_y + 2.0,
-                2.0,
-                layout.body_h - 4.0,
-                ink,
-                Text::solid_uv(),
-            );
-        }
-
-        // The hint: what Enter will do right now, in the same tokens as everything
-        // else. It is a statement of state, not decoration.
-        let hint = match checked {
-            Some(position) => format!(
-                "Enter records “{}” as the target{} · click a checked box to clear it",
-                icon.generations[position].label,
-                if comment.trim().is_empty() {
-                    String::new()
-                } else {
-                    " · the comment travels with it".to_string()
-                }
-            ),
-            None => "check a generation to mark a target — or leave every box clear and \
-                     press Enter to record the comment alone"
-                .to_string(),
-        };
-        text.draw_step(
-            Face::Body,
-            &mut batch,
-            &screen,
-            layout.margin,
-            layout.hint_top,
-            Step::Small,
-            muted,
-            &hint,
-        );
-
-        // The images, last, so nothing paints over them.
-        let mut images: Vec<(usize, render::Instance)> = Vec::new();
-        for position in 0..icon.generations.len() {
-            for (kind, x, y, side) in [
-                (0u8, layout.column_x(position), layout.tile_y(position), layout.tile),
-                (
-                    2u8,
-                    layout.context_x(position),
-                    layout.context_y(position),
-                    layout.context,
-                ),
-            ] {
-                if let Some(bind) = self.image_bind.get(&(icon.id.clone(), position, kind)).copied() {
-                    let (cx, cy) = screen.to_clip(x, y);
-                    let (cw, ch) = screen.size_to_clip(side, side);
-                    images.push((
-                        bind,
-                        render::Instance {
-                            pos: [cx, cy],
-                            size: [cw, ch],
-                            color: [1.0, 1.0, 1.0, 1.0],
-                            uv: [0.0, 0.0, 1.0, 1.0],
-                        },
-                    ));
-                }
-            }
-        }
-
-        self.sync_atlas(text);
-        if !self.first_frame_reported {
-            self.first_frame_reported = true;
-            let (slots, packed_to) = text.occupancy();
-            println!(
-                "picker frame: {} interface quads · {} icon quads · atlas {} bytes · 
-                 {slots} glyph slots packed to row {packed_to}/{}",
-                batch.instances.len(),
-                images.len(),
-                text.data.len(),
-                render::ATLAS_SIZE,
-            );
-            if text.refused {
-                println!(
-                    "picker: the glyph atlas refused at least one glyph — text on screen is 
-                     missing rather than misdrawn"
-                );
-            }
-        }
-        self.present(&batch, &images, desk);
-    }
-
-    fn present(&mut self, batch: &Batcher, images: &[(usize, render::Instance)], desk: [f32; 4]) {
-        let needed = batch.instances.len() + images.len() + 8;
-        if needed > self.vertex_capacity {
-            self.vertex_capacity = needed + 1024;
-            self.vertex_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
-                label: Some("picker vertices"),
-                size: (self.vertex_capacity * std::mem::size_of::<render::Instance>())
-                    as wgpu::BufferAddress,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-                mapped_at_creation: false,
-            });
-        }
-        if !batch.instances.is_empty() {
-            self.queue
-                .write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&batch.instances));
-        }
-        // The instance index the images start at: the buffer is read as a flat
-        // instance array, so the byte offset has to land on an instance boundary.
-        let base = batch.instances.len().next_multiple_of(4) as u32;
-        if !images.is_empty() {
-            let offset = base as u64 * std::mem::size_of::<render::Instance>() as u64;
-            let instances: Vec<render::Instance> = images.iter().map(|(_, quad)| *quad).collect();
-            self.queue
-                .write_buffer(&self.vertex_buffer, offset, bytemuck::cast_slice(&instances));
-        }
-
-        let frame = match self.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(frame) => frame,
-            wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                self.surface.configure(&self.device, &self.config);
-                return;
-            }
-            _ => return,
-        };
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("picker encoder"),
-            });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("picker pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    depth_slice: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: desk[0] as f64,
-                            g: desk[1] as f64,
-                            b: desk[2] as f64,
-                            a: 1.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            if !batch.instances.is_empty() {
-                pass.set_pipeline(&self.glyph_pipeline);
-                pass.set_bind_group(0, &self.atlas_bind, &[]);
-                pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-                pass.draw(0..6, 0..batch.instances.len() as u32);
-            }
-            if !images.is_empty() {
-                pass.set_pipeline(&self.image_pipeline);
-                pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-                for (position, (bind, _)) in images.iter().enumerate() {
-                    pass.set_bind_group(0, &self.bind_groups[*bind], &[]);
-                    let first = base + position as u32;
-                    pass.draw(0..6, first..first + 1);
-                }
-            }
-        }
-        self.queue.submit(Some(encoder.finish()));
-        frame.present();
-    }
-}
-
-/// The tail of a string that fits in `width`, so a long comment shows what was just
-/// typed rather than its beginning. Measured with the face that will draw it.
-fn fit_from_end(text: &mut Text, value: &str, width: f32) -> String {
-    if text.measure_step(Face::Body, value, Step::Body) <= width {
-        return value.to_string();
-    }
-    let characters: Vec<char> = value.chars().collect();
-    for start in 1..characters.len() {
-        let candidate: String = characters[start..].iter().collect();
-        if text.measure_step(Face::Body, &candidate, Step::Body) <= width {
-            return format!("…{candidate}");
+        let icon = &review.icons[0];
+        let (atlas, width, height, packed) =
+            pack_atlas(icon, &review).expect("the atlas packs");
+        assert_eq!(packed.len(), CANDIDATE_COUNT);
+        // Six tiles pack three across: two rows, not a square.
+        let tile = review.decision_px * 3.0;
+        assert_eq!(width as f32, tile * 3.0);
+        assert_eq!(height as f32, tile * 2.0);
+        assert_eq!(atlas.len(), (width * height * 4) as usize);
+        // Every packed candidate's source rect sits inside the atlas, on
+        // whole-pixel boundaries, at the zoomed tile size.
+        for candidate in packed.into_iter().flatten() {
+            assert!(candidate.src[2] <= width as f32 && candidate.src[3] <= height as f32);
+            assert_eq!(candidate.src[2] - candidate.src[0], tile);
+            assert_eq!(candidate.src[3] - candidate.src[1], tile);
         }
     }
-    "…".to_string()
-}
-
-fn pipeline(
-    device: &wgpu::Device,
-    bind_layout: &wgpu::BindGroupLayout,
-    config: &wgpu::SurfaceConfiguration,
-    label: &str,
-    shader_source: &str,
-) -> wgpu::RenderPipeline {
-    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: Some(label),
-        source: wgpu::ShaderSource::Wgsl(shader_source.into()),
-    });
-    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-        label: Some(label),
-        bind_group_layouts: &[Some(bind_layout)],
-        immediate_size: 0,
-    });
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(label),
-        layout: Some(&layout),
-        vertex: wgpu::VertexState {
-            module: &shader,
-            entry_point: Some("vs_main"),
-            buffers: &[wgpu::VertexBufferLayout {
-                array_stride: std::mem::size_of::<render::Instance>() as wgpu::BufferAddress,
-                step_mode: wgpu::VertexStepMode::Instance,
-                attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2, 2 => Float32x4, 3 => Float32x4],
-            }],
-            compilation_options: Default::default(),
-        },
-        primitive: wgpu::PrimitiveState::default(),
-        depth_stencil: None,
-        multisample: wgpu::MultisampleState::default(),
-        fragment: Some(wgpu::FragmentState {
-            module: &shader,
-            entry_point: Some("fs_main"),
-            targets: &[Some(wgpu::ColorTargetState {
-                format: config.format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
-            compilation_options: Default::default(),
-        }),
-        multiview_mask: None,
-        cache: None,
-    })
-}
-
-fn bind_group(
-    device: &wgpu::Device,
-    layout: &wgpu::BindGroupLayout,
-    texture: &wgpu::Texture,
-    sampler: &wgpu::Sampler,
-) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("picker texture bind group"),
-        layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::TextureView(
-                    &texture.create_view(&wgpu::TextureViewDescriptor::default()),
-                ),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::Sampler(sampler),
-            },
-        ],
-    })
-}
-
-fn load_image(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    layout: &wgpu::BindGroupLayout,
-    sampler: &wgpu::Sampler,
-    path: &Path,
-    px: f32,
-) -> Result<(wgpu::BindGroup, wgpu::Texture), String> {
-    let side = px as u32;
-    let bytes = std::fs::read(path).map_err(|err| format!("could not read {}: {err}", path.display()))?;
-    let expected = (side * side * 4) as usize;
-    if bytes.len() != expected {
-        return Err(format!(
-            "{} is {} bytes; {side}x{side} RGBA8 is {expected}. The runtime format is stated \
-             in {REVIEW_JSON} — regenerate the review set rather than guessing.",
-            path.display(),
-            bytes.len(),
-        ));
-    }
-    let texture = device.create_texture_with_data(
-        queue,
-        &wgpu::TextureDescriptor {
-            label: Some("picker icon"),
-            size: wgpu::Extent3d {
-                width: side,
-                height: side,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        },
-        wgpu::util::TextureDataOrder::LayerMajor,
-        &bytes,
-    );
-    let bind = bind_group(device, layout, &texture, sampler);
-    // The texture is returned with the bind group so its owner can hold it for as
-    // long as the bind group lives, rather than relying on a reference inside wgpu
-    // to keep it alive.
-    Ok((bind, texture))
-}
-
-// ---------------------------------------------------------------------------
-// The path that needs no GPU, so the log format is verifiable without a window
-// ---------------------------------------------------------------------------
-
-fn selftest(review: &Review) {
-    println!("selftest: phase={AUTHORING_PHASE}; {} icon(s) awaiting a decision", review.icons.len());
-    if review.icons.is_empty() {
-        println!("selftest: nothing to decide, so nothing to check");
-        return;
-    }
-    let icon = &review.icons[0];
-    assert!(review_defects(review).is_empty(), "review assets must validate before authoring");
-
-    let path = PathBuf::from("target/pick-selftest.jsonl");
-    let _ = std::fs::remove_file(&path);
-
-    // A mark: a checked generation, plus a comment for the next generation.
-    let mark = record(review, icon, 1, true, "make the teeth longer", &path);
-    // A note: no target at all, which is how "none of these" is recorded.
-    let note = record(review, icon, 0, false, "none of these — try a squarer body", &path);
-
-    let written = std::fs::read_to_string(&path).unwrap_or_default();
-    assert_eq!(written, format!("{mark}{note}"), "the returned lines and the log disagree");
-    let lines: Vec<&str> = written.lines().collect();
-    assert_eq!(lines.len(), 2, "two records were made, so two lines must exist");
-
-    let marked: Value = serde_json::from_str(lines[0]).expect("a mark is valid JSON");
-    assert_eq!(marked.get("target").and_then(Value::as_bool), Some(true));
-    assert_eq!(
-        marked.get("generation").and_then(Value::as_str),
-        Some(icon.generations[1].id.as_str())
-    );
-    assert_eq!(
-        marked.get("comment").and_then(Value::as_str),
-        Some("make the teeth longer")
-    );
-
-    let noted: Value = serde_json::from_str(lines[1]).expect("a note is valid JSON");
-    assert_eq!(noted.get("target").and_then(Value::as_bool), Some(false));
-    assert_eq!(
-        noted.get("comment").and_then(Value::as_str),
-        Some("none of these — try a squarer body")
-    );
-
-    let directives = read_directives(&path, &review.concept_set);
-    let for_icon = directives
-        .get(&icon.id)
-        .expect("both comments are directives for the icon");
-    assert_eq!(for_icon.len(), 2, "both comments are read back, oldest first");
-
-    for generation in &icon.generations {
-        for (path, px) in [
-            (&generation.sharp, review.decision_px),
-            (&generation.recognition, review.recognition_px),
-            (&generation.context, review.context_px),
-        ] {
-            let bytes = std::fs::read(path).unwrap_or_default();
-            let expected = (px as usize) * (px as usize) * 4;
-            assert_eq!(
-                bytes.len(),
-                expected,
-                "{} is {} bytes, expected {expected} for {px}x{px} RGBA8",
-                path.display(),
-                bytes.len()
-            );
-        }
-    }
-    println!(
-        "selftest: a mark and a note are both written and read back, {} directive(s) \
-         recovered, {} image(s) at the declared sizes, layout targets verified at startup",
-        for_icon.len(),            icon.generations.len() * 3
-    );
 }

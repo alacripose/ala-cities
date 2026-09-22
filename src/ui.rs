@@ -222,6 +222,13 @@ impl Scroll {
         Self { offset: 0.0 }
     }
 
+    /// A scroll region resuming at a caller-held offset. The offset stays
+    /// private so it can only ever be read back through `offset()` and moved
+    /// through `scroll_by`, which clamps against the measured content.
+    pub fn with_offset(offset: f32) -> Self {
+        Self { offset }
+    }
+
     /// Scroll by a wheel delta (positive delta scrolls toward the top, the
     /// direction a wheel's roll away from the user reads as). Clamped, never
     /// overscrolled into emptiness.

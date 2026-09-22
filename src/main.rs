@@ -27,7 +27,8 @@ use ala_cities::sim::{BuildingKind, Terrain, World, Zone, DAYS_PER_MONTH, SIM_HZ
 use ala_cities::design::{self, Space, Step, Target, UiScale};
 use ala_cities::hud::{self, Token};
 use ala_cities::render::{
-    self, Batcher, Camera, Face, Gpu, Layer, Screen, Text, WorldBatch, LEVEL_HEIGHT, TILE,
+    self, Batcher, Camera, Face, Gpu, ImageBatcher, Layer, Screen, Text, WorldBatch,
+    LEVEL_HEIGHT, TILE,
 };
 #[allow(unused_imports)]
 use ala_cities::ui;
@@ -86,6 +87,7 @@ struct App {
     gpu: Option<Gpu>,
     text: Text,
     batch: Batcher,
+    image_batch: ImageBatcher,
     /// The city's own quads: world space, depth-tested.
     world_batch: WorldBatch,
     camera: Camera,
@@ -140,6 +142,7 @@ impl App {
             gpu: None,
             text: Text::new(),
             batch: Batcher::default(),
+            image_batch: ImageBatcher::default(),
             world_batch: WorldBatch::default(),
             camera: Camera::new(screen, MAP, MAP),
 
@@ -2004,7 +2007,7 @@ impl App {
         self.last_frame = now;
         let camera = self.camera;
         if let Some(gpu) = self.gpu.as_mut() {
-            gpu.render(&self.world_batch, &self.batch, &camera, clear, seconds);
+            gpu.render(&self.world_batch, &self.batch, &self.image_batch, &camera, clear, seconds);
         }
     }
 
