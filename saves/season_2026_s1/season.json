@@ -1,0 +1,15 @@
+{
+  "id": "season_2026_s1",
+  "schema_version": 1,
+  "timezone": "UTC",
+  "opened_at_unix_ms": 1790060453006,
+  "purpose": "the city's own record",
+  "campaigns": [
+    "C1 — sim core"
+  ],
+  "counters": {
+    "tickets_filed": 0,
+    "tickets_retired": 0,
+    "corrections_appended": 0
+  }
+}

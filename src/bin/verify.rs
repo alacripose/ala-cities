@@ -191,23 +191,115 @@ fn main() -> ExitCode {
                 let mut reproduced = 0;
                 let mut contradicted = 0;
                 let mut late = 0;
+                let mut superseded = 0;
+                let mut unchecked = 0;
+
+                println!("  world snapshot at tick {}", world.clock.tick);
+
+                // A claim is about the world at the tick it was made. This is a
+                // final-state check, so a claim that no longer holds may still
+                // be true when it was written — the honest reading is that some
+                // later recorded action changed the tile. The distinction that
+                // matters: explained by a record, or not.
+                enum Explanation {
+                    /// A later terminal ticket names one of these tiles.
+                    Recorded(String),
+                    /// The city grew over the zone. Expected, and not something a
+                    /// ticket would record: growth is simulation, not paper.
+                    Grown,
+                    /// The world changed under a ticket that never reached a
+                    /// terminal state. This is the stall, visible on the record.
+                    Open(String),
+                }
+
+                let explain = |ticket: &ala_cities::gov::Ticket| -> Option<Explanation> {
+                    let tiles = ticket.expectation.tiles();
+                    if tiles.is_empty() {
+                        return None;
+                    }
+                    if let Some(later) = government.tickets.iter().find(|later| {
+                        later.opened_tick > ticket.opened_tick
+                            && later.terminal.is_some()
+                            && later.expectation.tiles().iter().any(|t| tiles.contains(t))
+                    }) {
+                        return Some(Explanation::Recorded(later.id.clone()));
+                    }
+                    if let Some(later) = government.tickets.iter().find(|later| {
+                        later.opened_tick > ticket.opened_tick
+                            && later.terminal.is_none()
+                            && later.expectation.tiles().iter().any(|t| tiles.contains(t))
+                    }) {
+                        return Some(Explanation::Open(later.id.clone()));
+                    }
+                    // A zone claim whose tile now carries a structure was not
+                    // contradicted: the zone was set, and the city then built on
+                    // it, which is the zone doing its job.
+                    if matches!(ticket.expectation, ala_cities::gov::Expectation::ZonedTiles(_))
+                        && tiles.iter().any(|t| {
+                            world
+                                .tiles
+                                .get(*t as usize)
+                                .is_some_and(|tile| tile.building.is_some())
+                        })
+                    {
+                        return Some(Explanation::Grown);
+                    }
+                    None
+                };
 
                 for ticket in &government.tickets {
                     if ticket.expectation == ala_cities::gov::Expectation::None {
+                        continue;
+                    }
+                    // A claim is about the world at the tick it was closed. A
+                    // snapshot older than the claim cannot speak to it, and
+                    // saying "the world does not show this" about a world from
+                    // before the work happened is a false finding — the kind
+                    // that teaches a reader to ignore the verifier.
+                    if ticket
+                        .closed_tick
+                        .is_some_and(|closed| closed > world.clock.tick)
+                    {
+                        unchecked += 1;
                         continue;
                     }
                     let result = ala_cities::gov::check_expectation(&world, &ticket.expectation);
                     match ticket.terminal {
                         Some(RetirementReason::CompletedAndValidated) => match result {
                             Ok(()) => reproduced += 1,
-                            Err(why) => {
-                                contradicted += 1;
-                                findings.push(format!(
-                                    "{} was validated as \"{}\" and the world does not show it now: {why}",
-                                    ticket.id,
-                                    ticket.expectation.describe()
-                                ));
-                            }
+                            Err(why) => match explain(ticket) {
+                                Some(Explanation::Recorded(by)) => {
+                                    superseded += 1;
+                                    println!(
+                                        "  superseded — {} was validated as \"{}\" and {by} later changed that tile; the claim was true when it was written",
+                                        ticket.id,
+                                        ticket.expectation.describe()
+                                    );
+                                }
+                                Some(Explanation::Grown) => {
+                                    superseded += 1;
+                                    println!(
+                                        "  grown over — {} was validated as \"{}\" and the city has since built on it, which is the zone working rather than a claim failing",
+                                        ticket.id,
+                                        ticket.expectation.describe()
+                                    );
+                                }
+                                Some(Explanation::Open(by)) => {
+                                    contradicted += 1;
+                                    findings.push(format!(
+                                        "{} was validated as \"{}\" and the world has since changed under {by}, which is still open — the record has not caught up with the city"
+                                        , ticket.id, ticket.expectation.describe()
+                                    ));
+                                }
+                                None => {
+                                    contradicted += 1;
+                                    findings.push(format!(
+                                        "{} was validated as \"{}\" and the world does not show it now, with nothing later on the record to account for the change: {why}",
+                                        ticket.id,
+                                        ticket.expectation.describe()
+                                    ));
+                                }
+                            },
                         },
                         Some(RetirementReason::CompletedButUnverified) if result.is_ok() => {
                             late += 1;
@@ -220,8 +312,13 @@ fn main() -> ExitCode {
                     }
                 }
                 println!(
-                    "world read-back — {reproduced} reproduced, {contradicted} contradicted, {late} late"
+                    "world read-back — {reproduced} reproduced, {contradicted} contradicted, {superseded} superseded by later recorded work, {late} late"
                 );
+                if unchecked > 0 {
+                    println!(
+                        "  not checkable — {unchecked} claim(s) were closed after this snapshot; check them against a later world save or a replay"
+                    );
+                }
             }
             Err(err) => {
                 findings.push(format!(

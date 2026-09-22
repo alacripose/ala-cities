@@ -561,10 +561,16 @@ impl Gpu {
             .get_default_config(&adapter, size.width.max(1), size.height.max(1))
             .expect("a surface configuration");
 
-        // Uncapped by default so a 240 Hz panel is actually fed. AutoNoVsync is
-        // used rather than Mailbox or Immediate because those two crash when
-        // unsupported, while the Auto modes fall back to something supported.
-        config.present_mode = if present_modes.contains(&wgpu::PresentMode::AutoNoVsync) {
+        // Uncapped, so a 240 Hz panel is actually fed.
+        //
+        // Mailbox is preferred because it does not tear, and it is chosen only
+        // when the surface actually reports it: unlike the Auto modes, Mailbox
+        // does not fall back when unsupported — it crashes. This machine's own
+        // capabilities were read as `[Fifo, FifoRelaxed, Mailbox, Immediate]`,
+        // which is why the branch exists rather than an assumption.
+        config.present_mode = if present_modes.contains(&wgpu::PresentMode::Mailbox) {
+            wgpu::PresentMode::Mailbox
+        } else if present_modes.contains(&wgpu::PresentMode::AutoNoVsync) {
             wgpu::PresentMode::AutoNoVsync
         } else {
             wgpu::PresentMode::Fifo

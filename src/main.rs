@@ -24,7 +24,7 @@ use winit::window::{Window, WindowId};
 use ala_cities::gov::{Expectation, Government, Op, TicketKind, ALL_OPS};
 use ala_cities::session::{write_feedback, Interaction, Session};
 use ala_cities::sim::citizen::CitizenState;
-use ala_cities::sim::{BuildingKind, Terrain, World, Zone, SIM_HZ};
+use ala_cities::sim::{BuildingKind, Terrain, World, Zone, DAYS_PER_MONTH, SIM_HZ, TICKS_PER_DAY};
 
 use hud::{Token, SIZE_BODY, SIZE_DISPLAY, SIZE_SMALL};
 use render::{Batcher, Camera, Face, Gpu, Screen, Text, TILE};
@@ -32,6 +32,10 @@ use render::{Batcher, Camera, Face, Gpu, Screen, Text, TILE};
 const STAGE: &str = "C1";
 const MAP: u32 = 256;
 const SEED: u64 = 0xC117_2026;
+
+/// Where a session's world snapshot lives. Local and disposable, unlike the
+/// season record beside it, which is the city's history and is tracked.
+const WORLD_SAVE: &str = "saves/world.ron";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Tool {
@@ -207,6 +211,41 @@ impl App {
         }
         if tick.is_multiple_of(200) {
             let _ = self.gov.reconcile(&self.world, tick);
+        }
+
+        // The capture is flushed as the session runs, not only on a clean exit.
+        // A playtest lost to a crash is a playtest somebody has to sit through
+        // again, and the entire point of capturing it is that it survives.
+        if tick.is_multiple_of(600) {
+            if let Ok(events) = self.session.flush() {
+                tracing::debug!(events, "capture flushed mid-session");
+            }
+        }
+
+        // Autosave the world once a sim-month, on the same boundary the
+        // economy already posts on. The record is the part that must survive a
+        // crash; the snapshot is the part that lets the verifier re-read a
+        // verdict out of the world rather than only out of the paperwork, and
+        // without a periodic snapshot there is no world left to check it
+        // against. Measured at the shipped map size: 4.5 MB, ~31 ms — a
+        // once-a-sim-month cost, not a per-frame one.
+        if tick > 0 && tick.is_multiple_of(TICKS_PER_DAY * DAYS_PER_MONTH) {
+            self.autosave();
+        }
+    }
+
+    fn autosave(&mut self) {
+        let path = PathBuf::from(WORLD_SAVE);
+        match self.world.save(&path) {
+            Ok(()) => {
+                tracing::debug!(tick = self.world.clock.tick, "world autosaved");
+            }
+            Err(err) => {
+                // A failed save is surfaced, not swallowed: silently continuing
+                // would let the session end believing its world was on disk.
+                tracing::warn!(%err, "autosave failed");
+                self.toast = Some((format!("autosave failed: {err}"), self.world.clock.tick));
+            }
         }
     }
 
@@ -542,7 +581,7 @@ impl App {
             KeyCode::KeyH => self.show_help = !self.show_help,
             KeyCode::KeyF if self.menu_open => self.feedback_focus = true,
             KeyCode::KeyS if self.menu_open => {
-                let path = PathBuf::from("saves/world.ron");
+                let path = PathBuf::from(WORLD_SAVE);
                 match self.world.save(&path) {
                     Ok(()) => {
                         self.toast = Some((
@@ -556,7 +595,7 @@ impl App {
                 }
             }
             KeyCode::KeyO if self.menu_open => {
-                let path = PathBuf::from("saves/world.ron");
+                let path = PathBuf::from(WORLD_SAVE);
                 match World::load(&path) {
                     Ok(world) => {
                         self.world = world;
@@ -571,7 +610,20 @@ impl App {
                 }
             }
             KeyCode::KeyQ if self.menu_open => {
-                let _ = self.session.flush();
+                match self.session.flush() {
+                    Ok(events) => {
+                        self.toast = Some((
+                            format!("{events} interactions written to {}", self.session.path().display()),
+                            self.world.clock.tick,
+                        ));
+                    }
+                    Err(err) => {
+                        self.toast = Some((
+                            format!("capture not written: {err}"),
+                            self.world.clock.tick,
+                        ));
+                    }
+                }
             }
             _ => {}
         }
@@ -1627,6 +1679,18 @@ impl ApplicationHandler for App {
                 .create_window(attributes)
                 .expect("a window"),
         );
+        // Logged, not assumed: every UI coordinate in this build is a physical
+        // pixel, so on a display with a scale factor above 1 the whole chrome
+        // renders smaller than it was designed. Stating the number here is what
+        // makes that visible instead of arguable.
+        let scale = window.scale_factor();
+        tracing::info!(
+            scale_factor = scale,
+            physical = ?window.inner_size(),
+            logical_body_px = SIZE_BODY as f64 / scale,
+            logical_small_px = SIZE_SMALL as f64 / scale,
+            "interface scale"
+        );
         let gpu = Gpu::new(window, &self.text);
         self.camera.screen = gpu.screen();
         self.camera.zoom = (gpu.screen().h / (MAP as f32 * TILE) * 2.4).max(0.2);
@@ -1698,6 +1762,9 @@ impl ApplicationHandler for App {
     }
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        // A clean exit saves the world; a crash does not need to, because the
+        // autosave has already been running.
+        self.autosave();
         if let Ok(count) = self.session.flush() {
             tracing::info!(events = count, path = %self.session.path().display(), "capture written");
         }

@@ -425,6 +425,21 @@ pub enum Expectation {
 }
 
 impl Expectation {
+    /// The tiles this expectation names.
+    ///
+    /// Used by the verifier to answer the question a stale claim raises: did a
+    /// later recorded action explain this change, or did the world move with
+    /// nothing on the record to account for it? Those are different findings
+    /// and only one of them is a defect.
+    pub fn tiles(&self) -> Vec<u32> {
+        match self {
+            Expectation::RoadTiles(tiles) => tiles.clone(),
+            Expectation::ZonedTiles(tiles) => tiles.iter().map(|(tile, _)| *tile).collect(),
+            Expectation::BuildingAt(tile) | Expectation::Demolished(tile) => vec![*tile],
+            Expectation::None => Vec::new(),
+        }
+    }
+
     pub fn describe(&self) -> String {
         match self {
             Expectation::RoadTiles(tiles) => format!("{} tiles are road", tiles.len()),
@@ -1285,6 +1300,21 @@ pub fn first_damaged_road(world: &World, roads_before: &[u32]) -> Option<u32> {
 mod tests {
     use super::*;
     use crate::sim::{BuildingKind, World};
+
+    /// The verifier's whole supersession check rests on this: an expectation
+    /// must name exactly the tiles it is about, no more and no fewer, or a
+    /// later action on an unrelated tile would look like an explanation.
+    #[test]
+    fn named_tiles_are_exactly_the_tiled_ones() {
+        assert_eq!(Expectation::RoadTiles(vec![3, 9]).tiles(), vec![3, 9]);
+        assert_eq!(
+            Expectation::ZonedTiles(vec![(4, Zone::Residential)]).tiles(),
+            vec![4]
+        );
+        assert_eq!(Expectation::BuildingAt(7).tiles(), vec![7]);
+        assert_eq!(Expectation::Demolished(8).tiles(), vec![8]);
+        assert!(Expectation::None.tiles().is_empty());
+    }
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("ala-cities-gov-{name}"));

@@ -1,0 +1,32 @@
+{"build":"0.1.0-dev","kind":"session.header","opened_wall_ms":1790060130814,"recording":true,"session":"session-1790060024253","stage":"C1"}
+{"tick":59,"wall_ms":1790060030671,"kind":"build_road","tool":"Road","screen":[724.0,300.0],"tile":[101,121],"ticket":"BLD-000001","detail":"29 tiles, filed as BLD-000001"}
+{"tick":89,"wall_ms":1790060033343,"kind":"build_road","tool":"Road","screen":[579.0,391.0],"tile":[118,110],"ticket":"BLD-000002","detail":"29 tiles, filed as BLD-000002"}
+{"tick":106,"wall_ms":1790060034697,"kind":"build_road","tool":"Road","screen":[609.0,393.0],"tile":[105,111],"ticket":"BLD-000003","detail":"11 tiles, filed as BLD-000003"}
+{"tick":125,"wall_ms":1790060036189,"kind":"build_road","tool":"Road","screen":[649.0,385.0],"tile":[110,111],"ticket":"BLD-000004","detail":"10 tiles, filed as BLD-000004"}
+{"tick":140,"wall_ms":1790060037391,"kind":"build_road","tool":"Road","screen":[686.0,383.0],"tile":[114,111],"ticket":"BLD-000005","detail":"10 tiles, filed as BLD-000005"}
+{"tick":162,"wall_ms":1790060039211,"kind":"build_road","tool":"Road","screen":[715.0,335.0],"tile":[101,114],"ticket":"BLD-000006","detail":"17 tiles, filed as BLD-000006"}
+{"tick":180,"wall_ms":1790060040702,"kind":"build_road","tool":"Road","screen":[711.0,369.0],"tile":[101,118],"ticket":"BLD-000007","detail":"17 tiles, filed as BLD-000007"}
+{"tick":239,"wall_ms":1790060044868,"kind":"zone","tool":"Zone","screen":[548.0,490.0],"tile":[102,111],"ticket":"BLD-000008","detail":"24 tiles as residential, filed as BLD-000008"}
+{"tick":277,"wall_ms":1790060047882,"kind":"zone","tool":"Zone","screen":[652.0,496.0],"tile":[106,111],"ticket":"BLD-000009","detail":"32 tiles as commercial, filed as BLD-000009"}
+{"tick":312,"wall_ms":1790060050648,"kind":"zone","tool":"Zone","screen":[721.0,488.0],"tile":[111,111],"ticket":"BLD-000010","detail":"24 tiles as industrial, filed as BLD-000010"}
+{"tick":345,"wall_ms":1790060053302,"kind":"zone","tool":"Zone","screen":[819.0,488.0],"tile":[115,111],"ticket":"BLD-000011","detail":"24 tiles as commercial, filed as BLD-000011"}
+{"tick":384,"wall_ms":1790060056404,"kind":"build_road","tool":"Road","screen":[930.0,291.0],"tile":[118,110],"ticket":"BLD-000012","detail":"6 tiles, filed as BLD-000012"}
+{"tick":399,"wall_ms":1790060057542,"kind":"build_road","tool":"Road","screen":[917.0,509.0],"tile":[123,110],"ticket":"BLD-000013","detail":"12 tiles, filed as BLD-000013"}
+{"tick":417,"wall_ms":1790060058936,"kind":"build_road","tool":"Road","screen":[846.0,510.0],"tile":[123,121],"ticket":"BLD-000014","detail":"5 tiles, filed as BLD-000014"}
+{"tick":434,"wall_ms":1790060060258,"kind":"build_road","tool":"Road","screen":[908.0,450.0],"tile":[119,118],"ticket":"BLD-000015","detail":"4 tiles, filed as BLD-000015"}
+{"tick":474,"wall_ms":1790060063450,"kind":"build_road","tool":"Road","screen":[839.0,389.0],"tile":[119,115],"ticket":"BLD-000016","detail":"1 tiles, filed as BLD-000016"}
+{"tick":495,"wall_ms":1790060065106,"kind":"demolish","tool":"Demolish","screen":[846.0,397.0],"tile":[119,115],"ticket":"INT-000001","detail":"retired rather than deleted, filed as INT-000001"}
+{"tick":517,"wall_ms":1790060066869,"kind":"build_road","tool":"Road","screen":[905.0,369.0],"tile":[118,114],"ticket":"BLD-000017","detail":"5 tiles, filed as BLD-000017"}
+{"tick":569,"wall_ms":1790060070942,"kind":"zone","tool":"Zone","screen":[900.0,486.0],"tile":[119,111],"ticket":"BLD-000018","detail":"32 tiles as residential, filed as BLD-000018"}
+{"tick":604,"wall_ms":1790060073671,"kind":"place_service","tool":"Power","screen":[660.0,526.0],"tile":[110,122],"ticket":"BLD-000019","detail":"power plant 1, filed as BLD-000019"}
+{"tick":625,"wall_ms":1790060075320,"kind":"place_service","tool":"Power","screen":[810.0,268.0],"tile":[117,109],"ticket":"BLD-000020","detail":"power plant 14, filed as BLD-000020"}
+{"tick":664,"wall_ms":1790060078559,"kind":"place_service","tool":"Power","screen":[503.0,276.0],"tile":[102,109],"ticket":"BLD-000021","detail":"power plant 35, filed as BLD-000021"}
+{"tick":679,"wall_ms":1790060079901,"kind":"place_service","tool":"Power","screen":[946.0,411.0],"tile":[124,116],"ticket":"BLD-000022","detail":"power plant 40, filed as BLD-000022"}
+{"tick":888,"wall_ms":1790060100015,"kind":"build_road","tool":"Road","screen":[479.0,693.0],"tile":[101,122],"ticket":"BLD-000023","detail":"9 tiles, filed as BLD-000023"}
+{"tick":907,"wall_ms":1790060101940,"kind":"build_road","tool":"Road","screen":[930.0,689.0],"tile":[101,130],"ticket":"BLD-000024","detail":"23 tiles, filed as BLD-000024"}
+{"tick":919,"wall_ms":1790060103082,"kind":"build_road","tool":"Road","screen":[922.0,520.0],"tile":[123,130],"ticket":"BLD-000025","detail":"10 tiles, filed as BLD-000025"}
+{"tick":955,"wall_ms":1790060106487,"kind":"build_road","tool":"Road","screen":[907.0,607.0],"tile":[102,126],"ticket":"BLD-000026","detail":"21 tiles, filed as BLD-000026"}
+{"tick":971,"wall_ms":1790060108089,"kind":"build_road","tool":"Road","screen":[751.0,675.0],"tile":[114,122],"ticket":"BLD-000027","detail":"8 tiles, filed as BLD-000027"}
+{"tick":999,"wall_ms":1790060110868,"kind":"build_road","tool":"Road","screen":[629.0,674.0],"tile":[108,122],"ticket":"BLD-000028","detail":"8 tiles, filed as BLD-000028"}
+{"tick":1033,"wall_ms":1790060114154,"kind":"zone","tool":"Zone","screen":[609.0,591.0],"tile":[102,122],"ticket":"BLD-000029","detail":"24 tiles as residential, filed as BLD-000029"}
+{"tick":1054,"wall_ms":1790060116156,"kind":"place_service","tool":"Power","screen":[648.0,583.0],"tile":[109,125],"ticket":"BLD-000030","detail":"power plant 81, filed as BLD-000030"}

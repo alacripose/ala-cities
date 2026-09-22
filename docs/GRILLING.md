@@ -197,3 +197,114 @@ Each is recorded in `README.md` and is reversible:
 
 > **1: Confirm. Go for the moon.**
 > **2: Real tangible repo, tracking everything as you would in a github project for maximal compatibility.**
+
+---
+
+# Appendix — verbatim transcript
+
+Everything above compresses and interprets. This appendix does not: it is the
+raw text of what was actually asked and answered, so that a paraphrase elsewhere
+in this document can always be checked against the thing it paraphrases. Where
+the two disagree, **this appendix wins.**
+
+Answers are reproduced exactly as written, including typos (`asyncroonously`,
+`asychronously`) and the mislabelled `q29` in round 6.
+
+## The initiating request
+
+> read the two files in this project, use the skill grilling with docs and
+> wayfinder, and create a city builder game
+
+## Round 1 — the three roots
+
+Questions: Q1 deliverable form and runtime · Q2 what binds the game to the
+doctrine · Q3 core loop and genre.
+
+> **a1:** rust game engine, all real time, but follows the gameplay of cities
+> skylines 2, while following the unified design doc
+
+## Round 2 — foundation and scope
+
+Questions: Q4 Rust foundation · Q5 which doctrine binds the simulation · Q6 v1
+scope · Q7 how much of `UNIFIED_DESIGN.md` binds.
+
+> **a4:** rust+ webgpu, no bevy
+> **a5:** a both but the state machine cannot stall
+> **a6:** a, b, and c
+> **a7:** As much as possible within the ui
+
+## Round 3 — runtime, target, timing
+
+Questions: Q8 target runtime · Q9 what replaces Bevy · Q10 what "cannot stall"
+may mean · Q11 how a+b+c get built · Q12 materials, assets, fonts · Q13
+real-time model.
+
+> **a8:** A
+> **a9:** A but we should avoid reinventing wheels when open source solutions
+> are available
+> **a10:** Your best decision, just as long as the game state always has
+> something extra for the user to do
+> **a11:** a+b
+> **a12:** A
+> **a13:** fixed timestep for agent movement that interpolates based off their
+> work done
+
+## Round 4 — the wheel map and the governed verbs
+
+Questions: Q14 the concrete wheel map · Q15 where work comes from · Q16 what the
+save *is* · Q17 never-granted list vs CS2's real verbs · Q18 build mode vs
+Inspect lens · Q19 map scale and agent budget.
+
+> **a14:** Yes, use already available high performance tools where available
+> **a15:** a
+> **a16:** C
+> **a17:** a
+> **a18:** b, just like cities skylines, the user should be able to build
+> asyncroonously and work on their own goals away from the agents
+> **a19:** a
+
+## Round 5 — governance granularity, time, and testing
+
+Questions: Q20 who the ticket system governs · Q21 time model and the stall
+bound · Q22 definition of done and the oracle · Q23 HUD architecture · Q24
+audio.
+
+> **a20:** C
+> **a21:** yeah, just remember to support higher framerates since my monitor can
+> display up to 240hz
+> **a22:** A but make sure that every version can be playtested within the repo,
+> letting the user leave feedback at the end of each testing stage
+> **a23:** We are building a city builder game. The design docs are there for
+> best reference.
+> **a24:** b
+
+*Note on a20:* the recommendation was (a) — builds and aggregates only. The
+answer was `C` — sample citizen behaviour into tickets — with the dedup policy
+left to the agent when it was raised again in round 6.
+
+## Round 6 — the last frontier
+
+Questions: Q25 the a5/a23 contradiction · Q26 the sampling policy · Q27 playtest
+and feedback · Q28 audio content. The user's fourth answer was labelled `q29`; it
+answers Q28.
+
+> **a25:** Your best guess here lol
+> **a26:** A
+> **a27:** a yes, but allow the user to open the pause menu to leave text
+> feedback at any time in the builds - and every time a test is running
+> (scheduled to be running first) and the user interacts, extensive data
+> analysis and collection happens to see what the user clicked, and where
+> **q29:** a
+
+## Sign-off
+
+> **1:** Confirm. Go for the moon.
+> **2:** Real tangible repo, tracking everything as you would in a github
+> project for maximal compatibility
+
+## Standing instruction carried into the build
+
+Asked for after the first commit, while C1 work was in flight:
+
+> save the grilling questions and the answers I gave you to a document and
+> continue where you were working

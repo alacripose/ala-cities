@@ -936,13 +936,33 @@ impl World {
 
     /// A save. `ron` rather than JSON because a 65k-tile world in JSON is a
     /// text file nobody wants to open.
+    /// Write the world through a temporary file and rename it into place.
+    ///
+    /// An autosave can land mid-frame at an arbitrary moment, and a process
+    /// killed while writing directly to the destination leaves a half-written
+    /// file that parses as nothing. The rename is the part that is atomic, so a
+    /// reader sees either the previous save or the new one, never a fragment.
     pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let text = ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default())
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
-        std::fs::write(path, text)
+        // Compact on purpose. The record files are pretty because a reader has
+        // to look at them; this snapshot is disposable, untracked, and rewritten
+        // on a timer, so the only things that matter are bytes and milliseconds.
+        let text = ron::ser::to_string(self).map_err(|e| std::io::Error::other(e.to_string()))?;
+        let mut tmp = path.as_os_str().to_owned();
+        tmp.push(".tmp");
+        let tmp = std::path::PathBuf::from(tmp);
+        std::fs::write(&tmp, text)?;
+        match std::fs::rename(&tmp, path) {
+            Ok(()) => Ok(()),
+            Err(err) => {
+                // Leaving the partial file behind would be misleading: the
+                // destination is intact, and the tmp is not a save.
+                let _ = std::fs::remove_file(&tmp);
+                Err(err)
+            }
+        }
     }
 
     pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
@@ -1152,6 +1172,67 @@ mod tests {
         );
         assert!(loaded.has_road_access(loaded.index(3, 5)));
         let _ = std::fs::remove_file(&path);
+    }
+
+    /// Ignored by default: it writes a few megabytes of RON to a temporary
+    /// directory to answer one question — what an autosave actually costs at
+    /// the shipped map size. Run it when the save format changes.
+    ///
+    ///     cargo test --lib measure_world_save_cost -- --ignored --nocapture
+    #[test]
+    #[ignore = "measurement, not an invariant"]
+    fn measure_world_save_cost() {
+        use std::time::Instant;
+
+        let mut world = World::new(256, 256, 0xC117_2026);
+        for x in 2..120u32 {
+            world.lay_road(world.index(x, 2), world.index(x, 3));
+        }
+        for i in 0..400u32 {
+            let tile = world.index(2 + i % 100, 6 + i / 100);
+            let _ = world.place_building(tile, BuildingKind::Home);
+        }
+        let dir = std::env::temp_dir().join("ala-cities-measure-save");
+        let path = dir.join("world.ron");
+
+        let started = Instant::now();
+        world.save(&path).expect("save");
+        let wrote = started.elapsed();
+        let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+
+        let started = Instant::now();
+        let loaded = World::load(&path).expect("load");
+        let read = started.elapsed();
+
+        println!(
+            "save: {} bytes in {:.1} ms · load: {:.1} ms · buildings {}",
+            bytes,
+            wrote.as_secs_f64() * 1000.0,
+            read.as_secs_f64() * 1000.0,
+            loaded.buildings.len()
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_save_leaves_no_temporary_behind() {
+        // The rename is what makes an autosave safe to interrupt. If the
+        // temporary file survives, that is the signal the rename did not happen
+        // and the destination is stale rather than new.
+        let mut world = small_city();
+        world.lay_road(world.index(3, 3), world.index(9, 3));
+        let dir = std::env::temp_dir().join("ala-cities-test-atomic");
+        let path = dir.join("world.ron");
+        world.save(&path).expect("save");
+        let mut tmp = path.as_os_str().to_owned();
+        tmp.push(".tmp");
+        assert!(
+            !std::path::Path::new(&tmp).exists(),
+            "a completed save must not leave its temporary file behind"
+        );
+        let loaded = World::load(&path).expect("load");
+        assert_eq!(loaded.roads.len(), world.roads.len());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
