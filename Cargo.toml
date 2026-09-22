@@ -39,6 +39,11 @@ ron = "0.12"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Audio output (C7 a24/a137): the *synthesis* is ours and deterministic
+# (src/audio.rs); rodio is only the output wheel, taken as a dependency
+# because an output device is exactly what wheels are for.
+rodio = "0.20"
+
 # NOTE ON WHAT IS DELIBERATELY *NOT* A DEPENDENCY.
 # The determinism-critical pieces are ours, because a dependency update must
 # never be able to change a replay:

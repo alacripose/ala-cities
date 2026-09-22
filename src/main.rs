@@ -24,8 +24,10 @@ use ala_cities::session::{write_feedback, Interaction, Session};
 use ala_cities::sim::citizen::CitizenState;
 use ala_cities::sim::{BuildingKind, Terrain, World, Zone, DAYS_PER_MONTH, SIM_HZ, TICKS_PER_DAY};
 
+use ala_cities::audio::{self, Sound};
 use ala_cities::design::{self, Space, Step, Target, UiScale};
 use ala_cities::hud::{self, Token};
+use ala_cities::icons::{self, IconSet};
 use ala_cities::render::{
     self, Batcher, Camera, Face, Gpu, ImageBatcher, Layer, Screen, Text, WorldBatch,
     LEVEL_HEIGHT, TILE,
@@ -124,6 +126,13 @@ struct App {
     /// only while it is open, so it can never steal the wheel from the camera.
     ledger_scroll: ui::Scroll,
 
+    /// Icons that a decision promoted into the shipping set. Empty until the
+    /// first decision exists — the toolbar then draws text-only, honestly.
+    icon_set: IconSet,
+    /// UI feedback sounds. `None` when no output device exists: the game runs
+    /// silent rather than failing over feedback.
+    audio: Option<audio::Player>,
+
     /// The most recent refusal, shown as its own tier rather than as an error.
     refusal: Option<String>,
     /// The most recent governed action, so the session chrome can name it.
@@ -172,6 +181,8 @@ impl App {
             feedback: String::new(),
             feedback_focus: false,
             ledger_scroll: ui::Scroll::new(),
+            icon_set: IconSet::default(),
+            audio: None,
             refusal: None,
             last_ticket: None,
             last_verdict: None,
@@ -222,6 +233,7 @@ impl App {
             if let Ok(closed) = self.gov.validate(&self.world, tick) {
                 if let Some(id) = closed.last() {
                     self.toast = Some((format!("{id} validated by reading the world back"), tick));
+                    self.play(Sound::Notify);
                 }
             }
         }
@@ -322,6 +334,7 @@ impl App {
         self.last_ticket = Some(id.clone());
         self.last_verdict = Some(verdict.reason.clone());
         self.refusal = None;
+        self.play(Sound::Place);
         self.capture(
             "build_road",
             Some((from.0, from.1)),
@@ -377,6 +390,7 @@ impl App {
         self.last_ticket = Some(id.clone());
         self.last_verdict = Some(verdict.reason.clone());
         self.refusal = None;
+        self.play(Sound::Place);
         let (cx, cy) = self.world.coords(targets[0]);
         self.capture(
             "zone",
@@ -426,6 +440,7 @@ impl App {
                 self.last_ticket = Some(ticket.clone());
                 self.last_verdict = Some(verdict.reason.clone());
                 self.refusal = None;
+                self.play(Sound::Place);
                 let (x, y) = self.world.coords(tile);
                 self.capture(
                     "place_service",
@@ -477,6 +492,7 @@ impl App {
         self.last_ticket = Some(id.clone());
         self.last_verdict = Some(verdict.reason.clone());
         self.refusal = None;
+        self.play(Sound::Place);
         let (x, y) = self.world.coords(tile);
         self.capture(
             "demolish",
@@ -496,6 +512,14 @@ impl App {
         self.gov.record_refusal(self.world.clock.tick, op.name(), reason);
         self.last_verdict = Some(reason.to_string());
         self.capture("refused", None, format!("{} — {reason}", op.name()));
+        self.play(Sound::Refuse);
+    }
+
+    /// One UI feedback sound, if there is a device to play it on.
+    fn play(&self, sound: Sound) {
+        if let Some(player) = self.audio.as_ref() {
+            player.play(sound);
+        }
     }
 
     fn capture(&mut self, kind: &str, tile: Option<(i32, i32)>, detail: String) {
@@ -606,11 +630,11 @@ impl App {
                     self.world.clock.tick,
                 ));
             }
-            KeyCode::Digit1 => self.tool = Tool::Road,
-            KeyCode::Digit2 => self.tool = Tool::Zone,
-            KeyCode::Digit3 => self.tool = Tool::Power,
-            KeyCode::Digit4 => self.tool = Tool::Demolish,
-            KeyCode::Digit5 => self.tool = Tool::Inspect,
+            KeyCode::Digit1 => self.select_tool(Tool::Road),
+            KeyCode::Digit2 => self.select_tool(Tool::Zone),
+            KeyCode::Digit3 => self.select_tool(Tool::Power),
+            KeyCode::Digit4 => self.select_tool(Tool::Demolish),
+            KeyCode::Digit5 => self.select_tool(Tool::Inspect),
             KeyCode::KeyR if self.tool == Tool::Zone => self.zone = Zone::Residential,
             KeyCode::KeyC if self.tool == Tool::Zone => self.zone = Zone::Commercial,
             KeyCode::KeyI if self.tool == Tool::Zone => self.zone = Zone::Industrial,
@@ -1522,6 +1546,9 @@ impl App {
         self.draw_compass(&screen);
 
         // ---- toolbar --------------------------------------------------------
+        // A decided tool icon replaces the text label at recognition size;
+        // an undecided one keeps its text. The two never mix inside one
+        // button — half-icon, half-text is neither honest nor legible.
         for (tool, rect) in toolbar_layout(&screen, self.ui) {
             let active = tool == self.tool;
             hud::panel(
@@ -1533,31 +1560,80 @@ impl App {
                 rect.h,
                 if active { Token::Ink } else { Token::PanelRaised },
             );
-            // Text is centred against the control's own target height rather
-            // than against a number chosen when the button was 56 px tall.
-            let label_y = rect.y
-                + (rect.h - Step::Body.px(ui) as f32) / 2.0
-                - Step::Body.px(ui) as f32 * 0.5;
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                rect.x + pad(Space::Sm),
-                label_y,
-                Step::Body,
-                if active { Token::TextOnInk } else { Token::TextBody },
-                tool.name(),
-            );
-            hud::label_mono(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                rect.x + pad(Space::Sm),
-                label_y + Step::Body.px(ui) as f32 + pad(Space::Xs),
-                Step::Small,
-                if active { Token::TextOnInk } else { Token::TextMuted },
-                tool.hint(),
-            );
+            let icon_id = match tool {
+                Tool::Road => Some("tool-road"),
+                Tool::Zone => Some("tool-zone"),
+                Tool::Power => Some("tool-power"),
+                Tool::Demolish => Some("tool-demolish"),
+                Tool::Inspect => Some("tool-inspect"),
+            };
+            let shipped = icon_id.and_then(|id| self.icon_set.get(id));
+            if let Some(icon) = shipped {
+                // The icon sits centred on the button's left edge, at the
+                // recognition size the manifest declares — the size it was
+                // checked to be legible at.
+                let size = icon.src[2];
+                let icon_y = rect.y + (rect.h - size) * 0.5;
+                self.image_batch.image(
+                    &screen,
+                    rect.x + pad(Space::Sm),
+                    icon_y,
+                    size,
+                    size,
+                    icon.src,
+                    [1.0; 4],
+                );
+                let text_x = rect.x + pad(Space::Sm) + size + pad(Space::Sm);
+                let label_y = rect.y
+                    + (rect.h - Step::Body.px(ui) as f32) / 2.0
+                    - Step::Body.px(ui) as f32 * 0.5;
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    text_x,
+                    label_y,
+                    Step::Body,
+                    if active { Token::TextOnInk } else { Token::TextBody },
+                    tool.name(),
+                );
+                hud::label_mono(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    text_x,
+                    label_y + Step::Body.px(ui) as f32 + pad(Space::Xs),
+                    Step::Small,
+                    if active { Token::TextOnInk } else { Token::TextMuted },
+                    tool.hint(),
+                );
+            } else {
+                // Text is centred against the control's own target height rather
+                // than against a number chosen when the button was 56 px tall.
+                let label_y = rect.y
+                    + (rect.h - Step::Body.px(ui) as f32) / 2.0
+                    - Step::Body.px(ui) as f32 * 0.5;
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    rect.x + pad(Space::Sm),
+                    label_y,
+                    Step::Body,
+                    if active { Token::TextOnInk } else { Token::TextBody },
+                    tool.name(),
+                );
+                hud::label_mono(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    rect.x + pad(Space::Sm),
+                    label_y + Step::Body.px(ui) as f32 + pad(Space::Xs),
+                    Step::Small,
+                    if active { Token::TextOnInk } else { Token::TextMuted },
+                    tool.hint(),
+                );
+            }
         }
 
         // The zone sub-selector appears only under the tool that uses it, which
@@ -1902,6 +1978,7 @@ impl App {
 
     fn draw(&mut self) {
         self.batch.clear();
+        self.image_batch.clear();
         // The scale is applied once per frame, here, rather than carried
         // through every call site that draws text.
         self.text.set_ui_scale(self.ui);
@@ -1975,6 +2052,19 @@ impl App {
         targets
     }
 
+    /// Select a tool and say so. A re-select of the active tool is silent:
+    /// a sound must indicate something of use (a62), and "you pressed 1 again"
+    /// is not information.
+    fn select_tool(&mut self, tool: Tool) {
+        if self.tool != tool {
+            self.tool = tool;
+            self.play(Sound::Select);
+        }
+    }
+
+    /// Scroll the ledger's list by a wheel delta. Clamped against the list's
+    /// own measurement — the same blocks, frame and measure pass the draw
+    /// uses, so scrolling and painting can never disagree about the content.
     fn scroll_ledger(&mut self, pixels: f32) {
         if !self.show_ledger || pixels == 0.0 {
             return;
@@ -2178,6 +2268,38 @@ impl ApplicationHandler for App {
         self.camera.screen = gpu.screen();
         self.camera.zoom = (gpu.screen().h / (MAP as f32 * TILE) * 2.4).max(0.2);
         self.gpu = Some(gpu);
+
+        // Icons a decision promoted. A load failure is the pipeline's defect
+        // (a decided icon whose render is missing), stated and carried as an
+        // empty set — text toolbar, no invented placeholder art.
+        let (set, atlas, width, height) =
+            match icons::load(
+                std::path::Path::new(ala_cities::iconreview::DECISIONS),
+                std::path::Path::new(ala_cities::iconreview::REVIEW_JSON),
+                std::path::Path::new(ala_cities::iconreview::ASSETS),
+            ) {
+                Ok(loaded) => loaded,
+                Err(defects) => {
+                    tracing::error!(%defects, "icon set failed to load; the toolbar stays text-only");
+                    (IconSet::default(), Vec::new(), 0, 0)
+                }
+            };
+        if set.is_empty() {
+            tracing::info!(
+                "no icons decided yet; the toolbar draws text until the picker promotes one"
+            );
+        } else {
+            tracing::info!(count = set.len(), "decided icons loaded");
+        }
+        if let Some(gpu) = self.gpu.as_mut() {
+            if !atlas.is_empty() {
+                gpu.bind_image(&atlas, width, height);
+            }
+        }
+        self.icon_set = set;
+
+        // Audio output. None when there is no device: silent is honest.
+        self.audio = audio::Player::new();
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
