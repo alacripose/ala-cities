@@ -26,6 +26,13 @@ use wgpu::util::DeviceExt;
 use crate::design::{Step, UiScale};
 
 pub const ATLAS_SIZE: u32 = 1024;
+
+/// The solid region is a real reserved block at the origin, not a patch beside
+/// the glyphs: glyph packing starts below and to the right of it, so no UV
+/// error however large can make a panel sample a letter or a letter sample a
+/// panel. The block is deliberately over-sized for its one texel of use —
+/// what it buys is a boundary that does not depend on anybody's arithmetic.
+pub const SOLID_REGION_TEXELS: u32 = 4;
 pub const TILE: f32 = 12.0;
 
 /// Height of one building level, in world units. One level is a visible step at
@@ -129,8 +136,8 @@ pub enum Face {
 
 pub struct Text {
     fonts: [Option<FontVec>; 2],
-    /// R8 coverage. The first two texels are solid white, so a "solid" draw is
-    /// the same sampling path as a glyph with no special case.
+    /// R8 coverage. The first `SOLID_REGION_TEXELS²` block is solid white, so a
+    /// "solid" draw is the same sampling path as a glyph with no special case.
     pub data: Vec<u8>,
     /// How many times the atlas content has changed — bumped whenever a glyph is
     /// rasterised for the first time, and when the UI scale moves the point size.
@@ -194,9 +201,9 @@ impl Text {
         }
 
         let mut data = vec![0u8; (ATLAS_SIZE * ATLAS_SIZE) as usize];
-        // Solid region at the origin.
-        for y in 0..2u32 {
-            for x in 0..2u32 {
+        // The reserved solid block at the origin; glyphs never pack into it.
+        for y in 0..SOLID_REGION_TEXELS {
+            for x in 0..SOLID_REGION_TEXELS {
                 data[(y * ATLAS_SIZE + x) as usize] = 255;
             }
         }
@@ -205,11 +212,12 @@ impl Text {
             missing_font: fonts[0].is_none(),
             fonts,
             data,
-            // Revision 1, not 0: the empty atlas with its solid-white texels is
+            // Revision 1, not 0: the empty atlas with its solid block is
             // itself content the GPU does not have yet.
             revision: 1,
-            pen_x: 4,
-            pen_y: 0,
+            // Glyph territory starts past the reserved block, on both axes.
+            pen_x: SOLID_REGION_TEXELS,
+            pen_y: SOLID_REGION_TEXELS,
             row_height: 0,
             cache: HashMap::new(),
             refused: false,
@@ -298,13 +306,16 @@ impl Text {
         defects
     }
 
-    /// UVs of the solid white texel. Every non-text quad uses this.
+    /// UVs of a texel deep inside the reserved solid block — its inner texel,
+    /// sampled at a point, a full two texels from any glyph territory.
+    /// Every non-text quad uses this.
     pub fn solid_uv() -> [f32; 4] {
+        let solid = 1.5 / ATLAS_SIZE as f32;
         [
-            0.5 / ATLAS_SIZE as f32,
-            0.5 / ATLAS_SIZE as f32,
-            0.5 / ATLAS_SIZE as f32,
-            0.5 / ATLAS_SIZE as f32,
+            solid,
+            solid,
+            solid,
+            solid,
         ]
     }
 
@@ -344,7 +355,7 @@ impl Text {
         // reaching into its neighbour would look like a font bug and not be one.
         let pad = 1;
         if self.pen_x + w + pad >= ATLAS_SIZE {
-            self.pen_x = 4;
+            self.pen_x = SOLID_REGION_TEXELS;
             self.pen_y += self.row_height + pad;
             self.row_height = 0;
         }
@@ -372,11 +383,18 @@ impl Text {
         self.row_height = self.row_height.max(h + pad);
 
         Some(Slot {
+            // The far edges stop half a texel short of the gutter. A rect that
+            // spans exactly `w` texels puts the quad's far column *on* the
+            // boundary at `at_x + w` — one texel past the glyph, in the zero
+            // gutter — so every glyph loses its last column and row the moment
+            // interpolation lands a hair across, which is every UI scale but
+            // 100 %. Insetting by half a texel keeps every device pixel's
+            // sample inside the glyph's own coverage.
             uv: [
                 at_x as f32 / ATLAS_SIZE as f32,
                 at_y as f32 / ATLAS_SIZE as f32,
-                (at_x + w) as f32 / ATLAS_SIZE as f32,
-                (at_y + h) as f32 / ATLAS_SIZE as f32,
+                (at_x + w) as f32 / ATLAS_SIZE as f32 - 0.5 / ATLAS_SIZE as f32,
+                (at_y + h) as f32 / ATLAS_SIZE as f32 - 0.5 / ATLAS_SIZE as f32,
             ],
             w: w as f32,
             h: h as f32,
@@ -2069,6 +2087,72 @@ mod tests {
         let uv = Text::solid_uv();
         assert!(uv[0] > 0.0 && uv[0] < 1.0);
         assert_eq!(uv[0], uv[2], "a solid draw samples one texel");
+    }
+
+    /// C6's atlas mechanism 1, as a regression: a glyph's far UV edge must stop
+    /// short of the zero-coverage gutter, because a rect that lands *on* the
+    /// boundary lets every device pixel past the glyph's last full texel sample
+    /// transparent — which is what made every stroke lose its edge at every UI
+    /// scale but 100 %.
+    #[test]
+    fn a_glyphs_far_uv_edge_stops_short_of_the_gutter() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the UV check is not exercised");
+            return;
+        }
+        let slot = text
+            .rasterise(Face::Body, 'H', 32)
+            .expect("a rasterisable glyph");
+        let texel = 1.0 / ATLAS_SIZE as f32;
+        assert!(
+            slot.uv[2] < slot.uv[0] + slot.w as f32 * texel,
+            "the far edge must sit strictly inside the glyph's texel span, not on the boundary"
+        );
+        assert!(
+            slot.uv[3] < slot.uv[1] + slot.h as f32 * texel,
+            "the bottom edge must sit strictly inside the glyph's texel span, not on the boundary"
+        );
+        // And the inset is the half-texel the mechanism named, on both axes.
+        assert!((slot.uv[0] + slot.w as f32 * texel - slot.uv[2] - 0.5 * texel).abs() < 1e-6);
+    }
+
+    /// C6's atlas mechanism 2, as a regression: glyph territory must start past
+    /// the reserved solid block, so a fill whose UV drifts cannot land on glyph
+    /// coverage and a glyph cannot pack into the solid block.
+    #[test]
+    fn glyph_territory_never_touches_the_solid_block() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the packing check is not exercised");
+            return;
+        }
+        for ch in ['H', 'e', 'm', 'g', ':', '.'] {
+            // Through `slot`, the caching path, because that is what fills the
+            // atlas; `rasterise` alone never packs.
+            text.slot(Face::Body, ch, 32)
+                .expect("a rasterisable glyph");
+        }
+        let (packed, down) = text.occupancy();
+        assert!(packed > 0, "the glyphs were packed");
+        assert!(
+            down >= SOLID_REGION_TEXELS,
+            "packing never returns above the solid block"
+        );
+        // Every glyph's own rect starts at or beyond the block on both axes.
+        for slot in text.cache.values() {
+            let x = (slot.uv[0] * ATLAS_SIZE as f32).floor() as u32;
+            let y = (slot.uv[1] * ATLAS_SIZE as f32).floor() as u32;
+            assert!(
+                x >= SOLID_REGION_TEXELS && y >= SOLID_REGION_TEXELS,
+                "a glyph packed into the reserved solid block at ({x}, {y})"
+            );
+        }
+        // The solid draw samples a texel strictly inside the block.
+        let uv = Text::solid_uv();
+        let x = (uv[0] * ATLAS_SIZE as f32).floor() as u32;
+        let y = (uv[1] * ATLAS_SIZE as f32).floor() as u32;
+        assert!(x < SOLID_REGION_TEXELS && y < SOLID_REGION_TEXELS);
     }
 
     /// What the quads would paint, composited on the CPU from the atlas they
