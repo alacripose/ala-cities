@@ -3,6 +3,6 @@
   "ticket": "BLD-000001",
   "grade": "B",
   "kind": "world_read_back",
-  "detail": "read back from world state at tick 108: 36 tiles are road",
-  "tick": 108
+  "detail": "read back from world state at tick 68: 19 tiles are road",
+  "tick": 68
 }

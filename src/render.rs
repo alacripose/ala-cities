@@ -1,23 +1,53 @@
 //! Rendering.
 //!
-//! One pipeline draws everything: tiles, roads, buildings, agents, panels and
-//! glyphs are all instanced quads sampling a single-channel coverage atlas. A
-//! solid fill samples a texel that is already 1.0, a glyph samples its own
-//! coverage, and the fragment shader multiplies the colour's alpha by whatever
-//! it sampled. That is the whole renderer.
+//! Two passes, one shader family. The **world** is instanced quads in world
+//! space with a real depth buffer and a free orbit camera; the **interface** is
+//! instanced quads already flattened to clip space, so the HUD is exact at any
+//! camera angle and never moves with the camera.
 //!
-//! There is no uniform buffer and no matrix maths on the GPU: the camera is
-//! flattened on the CPU into clip-space rectangles, which is both simpler and
-//! faster for a 2D top-down view.
+//! Both sample the same single-channel coverage atlas: a solid fill samples a
+//! texel that is already 1.0, a glyph samples its own coverage, and the
+//! fragment shader multiplies the colour's alpha by what it sampled. That is
+//! still the whole renderer — what changed is that a quad now has a position, a
+//! right vector and an up vector in world space rather than a screen rectangle,
+//! which is what lets a building be a box and a camera be free.
+//!
+//! The camera is **orthographic**, deliberately: a city builder is read at a
+//! consistent tile size, and orthographic projection keeps two tiles the same
+//! size wherever they are on screen.
 
 use std::collections::HashMap;
 
 use ab_glyph::{Font, FontVec, PxScale, ScaleFont};
 use bytemuck::{Pod, Zeroable};
+use glam::{Mat4, Vec2, Vec3, Vec4};
 use wgpu::util::DeviceExt;
+
+use crate::design::{Step, UiScale};
 
 pub const ATLAS_SIZE: u32 = 1024;
 pub const TILE: f32 = 12.0;
+
+/// Height of one building level, in world units. One level is a visible step at
+/// the default zoom rather than a token amount of extrusion.
+pub const LEVEL_HEIGHT: f32 = 7.0;
+
+/// The light, fixed in world space. One direction used for both face shading
+/// and the offset of the contact shadows, so a shadow cannot disagree with the
+/// face it belongs to.
+pub const LIGHT: Vec3 = Vec3::new(0.42, 0.50, 0.76);
+
+/// Which pass a world quad belongs to. Opaque geometry writes depth; overlays
+/// test against it and do not.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Layer {
+    Opaque,
+    Overlay,
+}
+
+// ---------------------------------------------------------------------------
+// Text
+// ---------------------------------------------------------------------------
 
 /// One instanced quad, already in clip space.
 #[repr(C)]
@@ -25,6 +55,21 @@ pub const TILE: f32 = 12.0;
 pub struct Instance {
     pub pos: [f32; 2],
     pub size: [f32; 2],
+    pub color: [f32; 4],
+    pub uv: [f32; 4],
+}
+
+/// One instanced quad in world space.
+///
+/// `right` and `up` are half-extents: the quad spans `center ± right ± up`, so a
+/// box face, a ground tile and a vertical wall are the same primitive with
+/// different basis vectors and no vertices.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+pub struct WorldInstance {
+    pub center: [f32; 3],
+    pub right: [f32; 3],
+    pub up: [f32; 3],
     pub color: [f32; 4],
     pub uv: [f32; 4],
 }
@@ -62,6 +107,9 @@ pub struct Text {
     cache: HashMap<(u8, char, u32), Slot>,
     pub refused: bool,
     pub missing_font: bool,
+    /// The UI scale every draw is measured at. Held here rather than threaded
+    /// through forty call sites, and set once per frame.
+    ui: UiScale,
 }
 
 impl Text {
@@ -98,9 +146,7 @@ impl Text {
         // nothing: legibility degrades, correctness does not.
         let mono = match load(&mono_paths) {
             Some(font) => Some(font),
-            None => body
-                .as_ref()
-                .and_then(|(path, _)| load(&[path.as_str()])),
+            None => body.as_ref().and_then(|(path, _)| load(&[path.as_str()])),
         };
         let fonts = [body.map(|(_, f)| f), mono.map(|(_, f)| f)];
         if fonts[0].is_none() {
@@ -124,12 +170,32 @@ impl Text {
             row_height: 0,
             cache: HashMap::new(),
             refused: false,
+            ui: UiScale::default(),
         }
+    }
+
+    /// Set the UI scale used by every subsequent draw and measurement.
+    pub fn set_ui_scale(&mut self, ui: UiScale) {
+        self.ui = ui;
+    }
+
+    pub fn ui_scale(&self) -> UiScale {
+        self.ui
+    }
+
+    /// Device pixels for a step at the current UI scale.
+    pub fn px(&self, step: Step) -> u32 {
+        step.px(self.ui)
     }
 
     /// UVs of the solid white texel. Every non-text quad uses this.
     pub fn solid_uv() -> [f32; 4] {
-        [0.5 / ATLAS_SIZE as f32, 0.5 / ATLAS_SIZE as f32, 0.5 / ATLAS_SIZE as f32, 0.5 / ATLAS_SIZE as f32]
+        [
+            0.5 / ATLAS_SIZE as f32,
+            0.5 / ATLAS_SIZE as f32,
+            0.5 / ATLAS_SIZE as f32,
+            0.5 / ATLAS_SIZE as f32,
+        ]
     }
 
     fn rasterise(&mut self, face: Face, ch: char, size: u32) -> Option<Slot> {
@@ -164,8 +230,8 @@ impl Text {
             }
         });
 
-        // A one-pixel gutter, so linear filtering cannot bleed one glyph into
-        // its neighbour. Getting this wrong looks like a font bug and is not.
+        // A one-pixel gutter, because the sampler clamps and a glyph's coverage
+        // reaching into its neighbour would look like a font bug and not be one.
         let pad = 1;
         if self.pen_x + w + pad >= ATLAS_SIZE {
             self.pen_x = 4;
@@ -230,8 +296,19 @@ impl Text {
         width
     }
 
-    /// Draw text with its top-left at `(x, y)` in screen pixels, pushing quads
-    /// into the batcher through `screen`.
+    /// Measure at a design step rather than a raw size.
+    pub fn measure_step(&mut self, face: Face, text: &str, step: Step) -> f32 {
+        let px = self.px(step);
+        self.measure(face, text, px)
+    }
+
+    /// Draw text with its top-left at `(x, y)` in screen pixels.
+    ///
+    /// Positions are **snapped to whole pixels** before the quad is emitted.
+    /// The pen advances in floats so the spacing stays correct, but each glyph
+    /// lands on the pixel grid — a glyph drawn at a fractional position is
+    /// resampled by the sampler and reads as blurry text, which is exactly what
+    /// the first build looked like.
     #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &mut self,
@@ -252,8 +329,8 @@ impl Text {
             if slot.w > 0.0 {
                 batch.screen_rect(
                     screen,
-                    pen + slot.x_offset,
-                    y + slot.y_offset,
+                    (pen + slot.x_offset).round(),
+                    (y + slot.y_offset).round(),
                     slot.w,
                     slot.h,
                     color,
@@ -264,10 +341,38 @@ impl Text {
         }
         pen - x
     }
+
+    /// Draw at a design step. The size comes from the scale, never from a
+    /// call site.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_step(
+        &mut self,
+        face: Face,
+        batch: &mut Batcher,
+        screen: &Screen,
+        x: f32,
+        y: f32,
+        step: Step,
+        color: [f32; 4],
+        text: &str,
+    ) -> f32 {
+        let px = self.px(step);
+        self.draw(face, batch, screen, x, y, px, color, text)
+    }
 }
 
-/// The CPU-side batcher. Quads are already in clip space by the time they get
-/// here, which is what removes the need for a GPU-side camera.
+impl Default for Text {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Batchers
+// ---------------------------------------------------------------------------
+
+/// The CPU-side interface batcher. Quads are already in clip space by the time
+/// they get here, which is what keeps the HUD independent of the camera.
 #[derive(Default)]
 pub struct Batcher {
     pub instances: Vec<Instance>,
@@ -278,7 +383,6 @@ impl Batcher {
         self.instances.clear();
     }
 
-    /// A rectangle in clip space.
     pub fn clip_rect(
         &mut self,
         x: f32,
@@ -296,7 +400,8 @@ impl Batcher {
         });
     }
 
-    /// A rectangle in screen pixels, top-left origin.
+    /// A rectangle in screen pixels, top-left origin, snapped to whole pixels
+    /// so panel edges do not sit half a pixel off the grid.
     #[allow(clippy::too_many_arguments)]
     pub fn screen_rect(
         &mut self,
@@ -308,8 +413,8 @@ impl Batcher {
         color: [f32; 4],
         uv: [f32; 4],
     ) {
-        let (cx, cy) = screen.to_clip(x, y);
-        let (cw, ch) = screen.size_to_clip(w, h);
+        let (cx, cy) = screen.to_clip(x.round(), y.round());
+        let (cw, ch) = screen.size_to_clip(w.round().max(1.0), h.round().max(1.0));
         self.clip_rect(cx, cy, cw, ch, color, uv);
     }
 
@@ -332,6 +437,159 @@ impl Batcher {
     }
 }
 
+/// The world batcher. Two lists, because the passes differ in depth behaviour
+/// rather than in geometry.
+#[derive(Default)]
+pub struct WorldBatch {
+    pub opaque: Vec<WorldInstance>,
+    pub overlay: Vec<WorldInstance>,
+    /// Direction from the scene toward the camera, so a box can skip the faces
+    /// pointing away from it.
+    cull: Vec3,
+}
+
+impl WorldBatch {
+    pub fn clear(&mut self, toward_camera: Vec3) {
+        self.opaque.clear();
+        self.overlay.clear();
+        self.cull = toward_camera;
+    }
+
+    pub fn count(&self) -> usize {
+        self.opaque.len() + self.overlay.len()
+    }
+
+    pub fn push(
+        &mut self,
+        layer: Layer,
+        center: Vec3,
+        right: Vec3,
+        up: Vec3,
+        color: [f32; 4],
+        uv: [f32; 4],
+    ) {
+        let instance = WorldInstance {
+            center: center.to_array(),
+            right: right.to_array(),
+            up: up.to_array(),
+            color,
+            uv,
+        };
+        match layer {
+            Layer::Opaque => self.opaque.push(instance),
+            Layer::Overlay => self.overlay.push(instance),
+        }
+    }
+
+    /// A quad lying flat on the ground plane at height `z`.
+    #[allow(clippy::too_many_arguments)]
+    pub fn ground_rect(
+        &mut self,
+        layer: Layer,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        z: f32,
+        color: [f32; 4],
+    ) {
+        self.push(
+            layer,
+            Vec3::new(x + w / 2.0, y + h / 2.0, z),
+            Vec3::new(w / 2.0, 0.0, 0.0),
+            Vec3::new(0.0, h / 2.0, 0.0),
+            color,
+            Text::solid_uv(),
+        );
+    }
+
+    /// A flat border of the given thickness, drawn inside the rectangle's
+    /// edges. Four thin quads, because there is no line primitive.
+    #[allow(clippy::too_many_arguments)]
+    pub fn ground_border(
+        &mut self,
+        layer: Layer,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        z: f32,
+        thickness: f32,
+        color: [f32; 4],
+    ) {
+        self.ground_rect(layer, x, y, w, thickness, z, color);
+        self.ground_rect(layer, x, y + h - thickness, w, thickness, z, color);
+        self.ground_rect(layer, x, y, thickness, h, z, color);
+        self.ground_rect(layer, x + w - thickness, y, thickness, h, z, color);
+    }
+
+    /// An axis-aligned box: four walls and a roof, with the faces pointing away
+    /// from the camera skipped and every face shaded by the fixed light. The
+    /// floor is not drawn because nothing can see it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn building(
+        &mut self,
+        center_x: f32,
+        center_y: f32,
+        half: f32,
+        height: f32,
+        base: [f32; 4],
+        alpha: f32,
+    ) {
+        let z = height / 2.0;
+        let roof = shade(base, Vec3::Z, alpha);
+        let walls = [
+            // normal, centre offset, right extent, up extent
+            (Vec3::Y, Vec3::new(0.0, half, 0.0), Vec3::X * half, Vec3::Z * z),
+            (Vec3::NEG_Y, Vec3::new(0.0, -half, 0.0), Vec3::X * half, Vec3::Z * z),
+            (Vec3::X, Vec3::new(half, 0.0, 0.0), Vec3::Y * half, Vec3::Z * z),
+            (Vec3::NEG_X, Vec3::new(-half, 0.0, 0.0), Vec3::Y * half, Vec3::Z * z),
+        ];
+
+        // The roof is always visible from above, and that is the only
+        // direction this camera can be.
+        self.push(
+            Layer::Opaque,
+            Vec3::new(center_x, center_y, height),
+            Vec3::X * half,
+            Vec3::Y * half,
+            roof,
+            Text::solid_uv(),
+        );
+
+        for (normal, offset, right, up) in walls {
+            if normal.dot(self.cull) <= 0.01 {
+                continue;
+            }
+            self.push(
+                Layer::Opaque,
+                Vec3::new(center_x, center_y, z) + offset,
+                right,
+                up,
+                shade(base, normal, alpha),
+                Text::solid_uv(),
+            );
+        }
+    }
+}
+
+/// Flat shading from the fixed light. A face turned away from the light keeps a
+/// floor of its own colour so nothing goes black.
+fn shade(base: [f32; 4], normal: Vec3, alpha: f32) -> [f32; 4] {
+    let lambert = normal.dot(LIGHT.normalize()).max(0.0);
+    let amount = 0.55 + 0.45 * lambert;
+    [
+        base[0] * amount,
+        base[1] * amount,
+        base[2] * amount,
+        base[3] * alpha,
+    ]
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
+
 /// Screen geometry and the identity transform. The HUD is in pixels and never
 /// moves with the camera.
 #[derive(Clone, Copy, Debug)]
@@ -352,96 +610,264 @@ impl Screen {
     pub fn bottom_anchor(&self, height: f32, margin: f32) -> f32 {
         self.h - height - margin
     }
+
+    /// Screen pixels to normalised device coordinates, depth ignored.
+    pub fn to_ndc(self, x: f32, y: f32) -> Vec2 {
+        Vec2::new((x / self.w) * 2.0 - 1.0, 1.0 - (y / self.h) * 2.0)
+    }
 }
+
+// ---------------------------------------------------------------------------
+// Camera
+// ---------------------------------------------------------------------------
+
+/// How far the camera may tilt. Below the minimum the ground is nearly edge-on
+/// and clicks stop resolving to tiles; at the maximum the yaw stops meaning
+/// anything.
+pub const MIN_PITCH: f32 = 20.0_f32.to_radians();
+pub const MAX_PITCH: f32 = 88.0_f32.to_radians();
+pub const DEFAULT_PITCH: f32 = 52.0_f32.to_radians();
 
 #[derive(Clone, Copy, Debug)]
 pub struct Camera {
-    /// Centre of the view in world pixels.
-    pub x: f32,
-    pub y: f32,
-    /// Screen pixels per world pixel.
+    /// The point on the ground the camera orbits.
+    pub focus: Vec3,
+    /// Free rotation about the vertical axis. Wraps.
+    pub yaw: f32,
+    /// Free tilt above the horizon, clamped to keep the ground readable.
+    pub pitch: f32,
+    /// Screen pixels per world unit at the focus plane.
     pub zoom: f32,
     pub screen: Screen,
 }
 
 impl Camera {
     pub fn new(screen: Screen, map_width: u32, map_height: u32) -> Self {
-        let scale = screen.h / (map_height as f32 * TILE) * 1.6;
+        let fit = screen.h / (map_height as f32 * TILE);
         Self {
-            x: (map_width as f32 * TILE) / 2.0,
-            y: (map_height as f32 * TILE) / 2.0,
-            zoom: scale.max(0.2),
+            focus: Vec3::new(
+                (map_width as f32 * TILE) / 2.0,
+                (map_height as f32 * TILE) / 2.0,
+                0.0,
+            ),
+            yaw: 0.0,
+            pitch: DEFAULT_PITCH,
+            zoom: (fit * 2.4).max(0.2),
             screen,
         }
     }
 
-    pub fn clamp_to(&mut self, map_width: u32, map_height: u32) {
-        self.zoom = self.zoom.clamp(0.15, 6.0);
-        let margin = 200.0;
-        self.x = self
-            .x
-            .clamp(-margin, map_width as f32 * TILE + margin);
-        self.y = self
-            .y
-            .clamp(-margin, map_height as f32 * TILE + margin);
-    }
-
-    pub fn pan(&mut self, dx_screen: f32, dy_screen: f32) {
-        self.x -= dx_screen / self.zoom;
-        self.y -= dy_screen / self.zoom;
-    }
-
-    pub fn zoom_by(&mut self, factor: f32, at_screen: (f32, f32)) {
-        let before = self.screen_to_world(at_screen.0, at_screen.1);
-        self.zoom = (self.zoom * factor).clamp(0.15, 6.0);
-        let after = self.screen_to_world(at_screen.0, at_screen.1);
-        self.x += before.0 - after.0;
-        self.y += before.1 - after.1;
-    }
-
-    pub fn world_to_screen(&self, x: f32, y: f32) -> (f32, f32) {
-        (
-            (x - self.x) * self.zoom + self.screen.w / 2.0,
-            (y - self.y) * self.zoom + self.screen.h / 2.0,
+    /// The direction the camera looks, from `yaw` and `pitch`.
+    pub fn forward(&self) -> Vec3 {
+        let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
+        let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
+        Vec3::new(
+            -sin_yaw * cos_pitch,
+            -cos_yaw * cos_pitch,
+            -sin_pitch,
         )
     }
 
-    pub fn screen_to_world(&self, sx: f32, sy: f32) -> (f32, f32) {
-        (
-            (sx - self.screen.w / 2.0) / self.zoom + self.x,
-            (sy - self.screen.h / 2.0) / self.zoom + self.y,
-        )
+    /// The camera's up, in world space.
+    pub fn up(&self) -> Vec3 {
+        let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
+        let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
+        Vec3::new(sin_yaw * sin_pitch, cos_yaw * sin_pitch, -cos_pitch)
     }
 
-    pub fn screen_to_tile(&self, sx: f32, sy: f32) -> (i32, i32) {
-        let (wx, wy) = self.screen_to_world(sx, sy);
-        ((wx / TILE).floor() as i32, (wy / TILE).floor() as i32)
+    pub fn right(&self) -> Vec3 {
+        self.forward().cross(self.up()).normalize()
     }
 
-    /// The clip-space rectangle for a world-space rectangle.
-    pub fn world_rect(&self, batch: &mut Batcher, x: f32, y: f32, w: f32, h: f32, color: [f32; 4]) {
-        let (sx, sy) = self.world_to_screen(x, y);
-        batch.screen_rect(
-            &self.screen,
-            sx,
-            sy,
-            w * self.zoom,
-            h * self.zoom,
-            color,
-            Text::solid_uv(),
+    /// The vector pointing from the scene back toward the camera, used for
+    /// face culling.
+    pub fn toward_camera(&self) -> Vec3 {
+        -self.forward()
+    }
+
+    /// World → clip. Orthographic, so this is a rotation and a scale.
+    pub fn view_proj(&self) -> Mat4 {
+        let half_h = self.screen.h / 2.0 / self.zoom;
+        let half_w = self.screen.w / 2.0 / self.zoom;
+        // A symmetric depth range: the city is shallow next to the depth
+        // precision of a 32-bit buffer, and a symmetric range cannot clip a
+        // building that leans toward the camera.
+        let projection = Mat4::orthographic_rh(-half_w, half_w, -half_h, half_h, -4096.0, 4096.0);
+        projection * self.view()
+    }
+
+    pub fn view(&self) -> Mat4 {
+        let r = self.right();
+        let u = self.up();
+        let f = self.forward();
+        // Rows of the rotation are (right, up, -forward): the classic look-at
+        // basis, built as columns because that is how a matrix is assembled.
+        let rotation = Mat4::from_cols(
+            Vec4::new(r.x, u.x, -f.x, 0.0),
+            Vec4::new(r.y, u.y, -f.y, 0.0),
+            Vec4::new(r.z, u.z, -f.z, 0.0),
+            Vec4::new(0.0, 0.0, 0.0, 1.0),
         );
+        rotation * Mat4::from_translation(-self.focus)
+    }
+
+    /// World point → screen pixels.
+    pub fn world_to_screen(&self, p: Vec3) -> (f32, f32) {
+        let clip = self.view_proj() * p.extend(1.0);
+        let w = if clip.w.abs() < f32::EPSILON {
+            1.0
+        } else {
+            clip.w
+        };
+        (
+            (clip.x / w * 0.5 + 0.5) * self.screen.w,
+            (0.5 - clip.y / w * 0.5) * self.screen.h,
+        )
+    }
+
+    /// The exact cursor ray in world space.
+    ///
+    /// Two points are unprojected and the ray between them returned, so this
+    /// holds at any yaw, any pitch and any zoom. Deriving a tile from a screen
+    /// rectangle instead would be a tile or two wrong the moment the camera
+    /// tilts, and would read as "the game is broken" rather than "the picking
+    /// is approximate".
+    pub fn ray(&self, sx: f32, sy: f32) -> (Vec3, Vec3) {
+        let inverse = self.view_proj().inverse();
+        let ndc = self.screen.to_ndc(sx, sy);
+        let near = inverse * Vec4::new(ndc.x, ndc.y, 0.0, 1.0);
+        let far = inverse * Vec4::new(ndc.x, ndc.y, 1.0, 1.0);
+        let near = near.truncate() / near.w;
+        let far = far.truncate() / far.w;
+        (near, far)
+    }
+
+    /// Where a screen point lands on the ground plane, if it lands on it at all.
+    ///
+    /// A ray pointing above the horizon never meets the ground, and returning
+    /// `None` there is the honest answer — the cursor is off the world.
+    pub fn pick_ground(&self, sx: f32, sy: f32) -> Option<Vec2> {
+        let (near, far) = self.ray(sx, sy);
+        let direction = far - near;
+        if direction.z.abs() < 1e-6 {
+            return None;
+        }
+        let t = -near.z / direction.z;
+        if t < 0.0 {
+            return None;
+        }
+        let hit = near + direction * t;
+        Some(Vec2::new(hit.x, hit.y))
+    }
+
+    /// The tile a screen point is over.
+    pub fn screen_to_tile(&self, sx: f32, sy: f32) -> Option<(i32, i32)> {
+        let ground = self.pick_ground(sx, sy)?;
+        Some(((ground.x / TILE).floor() as i32, (ground.y / TILE).floor() as i32))
     }
 
     /// Which tiles are on screen, so the client can skip the other 60,000.
+    ///
+    /// Computed from the four screen corners projected onto the ground. When a
+    /// corner misses the ground (the view is tilted enough to see the horizon)
+    /// the widest reading is used, because drawing too much is a performance
+    /// question and drawing too little is a hole in the city.
     pub fn visible_tiles(&self, map_width: u32, map_height: u32) -> (u32, u32, u32, u32) {
-        let (left, top) = self.screen_to_tile(0.0, 0.0);
-        let (right, bottom) = self.screen_to_tile(self.screen.w, self.screen.h);
+        let corners = [
+            (0.0, 0.0),
+            (self.screen.w, 0.0),
+            (0.0, self.screen.h),
+            (self.screen.w, self.screen.h),
+            (self.screen.w / 2.0, self.screen.h / 2.0),
+        ];
+        let mut min = Vec2::splat(f32::INFINITY);
+        let mut max = Vec2::splat(f32::NEG_INFINITY);
+        let mut hits = 0;
+        for (sx, sy) in corners {
+            if let Some(ground) = self.pick_ground(sx, sy) {
+                min = min.min(ground);
+                max = max.max(ground);
+                hits += 1;
+            }
+        }
+        if hits == 0 {
+            // Nothing on screen is ground: fall back to a window around the
+            // focus rather than to nothing.
+            let centre = Vec2::new(self.focus.x, self.focus.y);
+            let span = 64.0 * TILE;
+            min = centre - span;
+            max = centre + span;
+        }
+        let clamp = |v: f32, limit: u32| v.clamp(0.0, limit as f32) as u32;
         (
-            left.clamp(0, map_width as i32) as u32,
-            top.clamp(0, map_height as i32) as u32,
-            right.clamp(0, map_width as i32) as u32,
-            bottom.clamp(0, map_height as i32) as u32,
+            clamp(min.x / TILE - 1.0, map_width),
+            clamp(min.y / TILE - 1.0, map_height),
+            clamp(max.x / TILE + 1.0, map_width),
+            clamp(max.y / TILE + 1.0, map_height),
         )
+    }
+
+    pub fn clamp_to(&mut self, map_width: u32, map_height: u32) {
+        self.zoom = self.zoom.clamp(0.15, 8.0);
+        self.pitch = self.pitch.clamp(MIN_PITCH, MAX_PITCH);
+        let margin = 200.0;
+        self.focus.x = self
+            .focus
+            .x
+            .clamp(-margin, map_width as f32 * TILE + margin);
+        self.focus.y = self
+            .focus
+            .y
+            .clamp(-margin, map_height as f32 * TILE + margin);
+        self.focus.z = 0.0;
+        // Keep the angle in one turn so it never grows without bound.
+        let turn = std::f32::consts::TAU;
+        self.yaw = self.yaw.rem_euclid(turn);
+    }
+
+    /// Pan across the ground plane, in screen pixels of drag. The pan follows
+    /// the screen axes, so a drag moves the city with the cursor rather than
+    /// with the world's own axes.
+    pub fn pan(&mut self, dx_screen: f32, dy_screen: f32) {
+        let u = self.up();
+        let r = self.right();
+        // Only the ground-plane component moves the focus; otherwise panning
+        // would lift or sink the camera.
+        let rx = Vec2::new(r.x, r.y);
+        let ux = Vec2::new(u.x, u.y);
+        let lift = Vec2::new(u.z, u.z);
+        // Screen-up on the ground is shorter than screen-up in the plane by the
+        // tilt, and dividing by it keeps the drag tracking the cursor.
+        let ground_up = if lift.x.abs() < 1e-3 { 1.0 } else { 1.0 - lift.x.abs() };
+        self.focus.x -= (dx_screen * rx.x + dy_screen * ux.x / ground_up) / self.zoom;
+        self.focus.y -= (dx_screen * rx.y + dy_screen * ux.y / ground_up) / self.zoom;
+    }
+
+    /// Orbit: free rotation and free tilt, both driven by a drag.
+    pub fn orbit(&mut self, dx_screen: f32, dy_screen: f32) {
+        self.yaw -= dx_screen * 0.006;
+        self.pitch = (self.pitch + dy_screen * 0.005).clamp(MIN_PITCH, MAX_PITCH);
+    }
+
+    pub fn zoom_by(&mut self, factor: f32, at_screen: (f32, f32)) {
+        // Zoom toward the cursor: the ground point under it stays under it.
+        let before = self.pick_ground(at_screen.0, at_screen.1);
+        self.zoom = (self.zoom * factor).clamp(0.15, 8.0);
+        if let (Some(before), Some(after)) = (before, self.pick_ground(at_screen.0, at_screen.1)) {
+            self.focus.x += before.x - after.x;
+            self.focus.y += before.y - after.y;
+        }
+    }
+
+    /// A compass bearing: the world direction the **top of the screen** faces,
+    /// in degrees clockwise from north, where north is +Y.
+    ///
+    /// This is deliberately the screen's up rather than the camera's view
+    /// direction, because that is the question the corner indicator answers —
+    /// panning the city north on screen is a different act from looking along
+    /// north, and only one of them is what a player checks.
+    pub fn bearing_degrees(&self) -> f32 {
+        self.yaw.to_degrees().rem_euclid(360.0)
     }
 }
 
@@ -475,22 +901,49 @@ impl FrameStats {
     }
 }
 
+// ---------------------------------------------------------------------------
+// GPU
+// ---------------------------------------------------------------------------
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+struct CameraUniform {
+    view_proj: [f32; 16],
+}
+
 pub struct Gpu {
     pub window: std::sync::Arc<winit::window::Window>,
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
+    /// Interface pipeline: clip-space quads, depth always passes.
     pub pipeline: wgpu::RenderPipeline,
+    /// World pipelines: world-space quads, depth-tested.
+    pub world_opaque: wgpu::RenderPipeline,
+    pub world_overlay: wgpu::RenderPipeline,
     pub bind_group: wgpu::BindGroup,
+    pub world_bind_group: wgpu::BindGroup,
+    pub camera_buffer: wgpu::Buffer,
+    depth: wgpu::Texture,
+    depth_view: wgpu::TextureView,
     pub atlas_texture: wgpu::Texture,
     instances: wgpu::Buffer,
     instance_capacity: usize,
+    world_opaque_buffer: wgpu::Buffer,
+    world_opaque_capacity: usize,
+    world_overlay_buffer: wgpu::Buffer,
+    world_overlay_capacity: usize,
     pub present_modes: Vec<wgpu::PresentMode>,
     pub adapter_name: String,
     pub stats: FrameStats,
     pub atlas_uploaded: u64,
+    /// The last camera the frame was drawn with, for the picking check the
+    /// client runs at startup.
+    pub last_camera: Option<Camera>,
 }
+
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 const SHADER: &str = r#"
 struct Instance {
@@ -530,11 +983,87 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 }
 "#;
 
+/// The world shader. A quad is a centre plus two half-extents, so a wall, a roof
+/// and a ground tile are the same primitive and there are no vertices to upload.
+const WORLD_SHADER: &str = r#"
+struct Camera {
+    view_proj: mat4x4<f32>,
+};
+
+@group(0) @binding(0) var<uniform> camera: Camera;
+@group(0) @binding(1) var atlas_texture: texture_2d<f32>;
+@group(0) @binding(2) var atlas_sampler: sampler;
+
+struct Instance {
+    @location(0) center: vec3<f32>,
+    @location(1) right: vec3<f32>,
+    @location(2) up: vec3<f32>,
+    @location(3) color: vec4<f32>,
+    @location(4) uv: vec4<f32>,
+};
+
+struct VertexOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) color: vec4<f32>,
+    @location(1) uv: vec2<f32>,
+};
+
+@vertex
+fn vs_world(@builtin(vertex_index) index: u32, instance: Instance) -> VertexOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(-1.0, 1.0),
+        vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0)
+    );
+    let corner = corners[index];
+    let world = instance.center + instance.right * corner.x + instance.up * corner.y;
+    var out: VertexOut;
+    out.clip = camera.view_proj * vec4<f32>(world, 1.0);
+    out.uv = mix(instance.uv.xy, instance.uv.zw, corner * 0.5 + vec2<f32>(0.5, 0.5));
+    out.color = instance.color;
+    return out;
+}
+
+@fragment
+fn fs_world(in: VertexOut) -> @location(0) vec4<f32> {
+    let coverage = textureSample(atlas_texture, atlas_sampler, in.uv).r;
+    return vec4<f32>(in.color.rgb, in.color.a * coverage);
+}
+"#;
+
+fn world_attributes() -> [wgpu::VertexAttribute; 5] {
+    [
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x3,
+            offset: 0,
+            shader_location: 0,
+        },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x3,
+            offset: 12,
+            shader_location: 1,
+        },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x3,
+            offset: 24,
+            shader_location: 2,
+        },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 36,
+            shader_location: 3,
+        },
+        wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Float32x4,
+            offset: 52,
+            shader_location: 4,
+        },
+    ]
+}
+
 impl Gpu {
     pub fn new(window: std::sync::Arc<winit::window::Window>, text: &Text) -> Self {
         let size = window.inner_size();
-        let instance =
-            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance
             .create_surface(window.clone())
             .expect("a surface for the window");
@@ -581,29 +1110,64 @@ impl Gpu {
             label: Some("quad shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER.into()),
         });
+        let world_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("world shader"),
+            source: wgpu::ShaderSource::Wgsl(WORLD_SHADER.into()),
+        });
 
-        let bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("atlas layout"),
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Texture {
-                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            view_dimension: wgpu::TextureViewDimension::D2,
-                            multisampled: false,
-                        },
-                        count: None,
+        let atlas_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("atlas layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
+
+        let world_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("world layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
                     },
-                ],
-            });
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
+        });
 
         let texture = device.create_texture_with_data(
             &queue,
@@ -626,20 +1190,24 @@ impl Gpu {
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        // **Nearest**, not linear. The atlas is coverage data rasterised at the
+        // exact pixel size it is drawn at, and glyph positions are snapped, so
+        // linear filtering has nothing to interpolate and would only soften
+        // every edge it touches.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("atlas sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::MipmapFilterMode::Nearest,
             ..Default::default()
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("atlas bind group"),
-            layout: &bind_group_layout,
+            layout: &atlas_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -652,45 +1220,90 @@ impl Gpu {
             ],
         });
 
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("quad layout"),
-            bind_group_layouts: &[Some(&bind_group_layout)],
-            immediate_size: 0,
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("camera"),
+            contents: bytemuck::bytes_of(&CameraUniform {
+                view_proj: Mat4::IDENTITY.to_cols_array(),
+            }),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let attributes = [
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x2,
-                offset: 0,
-                shader_location: 0,
+        let world_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("world bind group"),
+            layout: &world_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+
+        let interface_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("interface layout"),
+                bind_group_layouts: &[Some(&atlas_layout)],
+                immediate_size: 0,
+            });
+        let world_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("world layout"),
+                bind_group_layouts: &[Some(&world_layout)],
+                immediate_size: 0,
+            });
+
+        let blend = Some(wgpu::BlendState {
+            color: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
             },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x2,
-                offset: 8,
-                shader_location: 1,
+            alpha: wgpu::BlendComponent {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
             },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x4,
-                offset: 16,
-                shader_location: 2,
-            },
-            wgpu::VertexAttribute {
-                format: wgpu::VertexFormat::Float32x4,
-                offset: 32,
-                shader_location: 3,
-            },
-        ];
+        });
 
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("quad pipeline"),
-            layout: Some(&pipeline_layout),
+            label: Some("interface pipeline"),
+            layout: Some(&interface_pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Instance>() as u64,
                     step_mode: wgpu::VertexStepMode::Instance,
-                    attributes: &attributes,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 8,
+                            shader_location: 1,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 16,
+                            shader_location: 2,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 32,
+                            shader_location: 3,
+                        },
+                    ],
                 }],
                 compilation_options: Default::default(),
             },
@@ -703,25 +1316,23 @@ impl Gpu {
                 polygon_mode: wgpu::PolygonMode::Fill,
                 conservative: false,
             },
-            depth_stencil: None,
+            // The pass carries a depth attachment, so even the interface
+            // pipeline has to declare a depth state. It always passes: the HUD
+            // is in front of the world by construction.
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(wgpu::CompareFunction::Always),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
             multisample: wgpu::MultisampleState::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::SrcAlpha,
-                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                        alpha: wgpu::BlendComponent {
-                            src_factor: wgpu::BlendFactor::One,
-                            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                            operation: wgpu::BlendOperation::Add,
-                        },
-                    }),
+                    blend,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
                 compilation_options: Default::default(),
@@ -730,11 +1341,89 @@ impl Gpu {
             cache: None,
         });
 
+        let world_pipeline = |label: &str,
+                              entry: &str,
+                              depth_write: bool,
+                              compare: wgpu::CompareFunction| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(label),
+                layout: Some(&world_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &world_shader,
+                    entry_point: Some(entry),
+                    buffers: &[wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<WorldInstance>() as u64,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &world_attributes(),
+                    }],
+                    compilation_options: Default::default(),
+                },
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw,
+                    // No back-face culling: a quad drawn with a basis pointing
+                    // away is skipped on the CPU, where a box already knows
+                    // which of its faces the camera can see.
+                    cull_mode: None,
+                    unclipped_depth: false,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    conservative: false,
+                },
+                depth_stencil: Some(wgpu::DepthStencilState {
+                    format: DEPTH_FORMAT,
+                    depth_write_enabled: Some(depth_write),
+                    depth_compare: Some(compare),
+                    stencil: Default::default(),
+                    bias: Default::default(),
+                }),
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &world_shader,
+                    entry_point: Some("fs_world"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: config.format,
+                        blend,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+
+        let world_opaque = world_pipeline(
+            "world opaque",
+            "vs_world",
+            true,
+            wgpu::CompareFunction::LessEqual,
+        );
+        let world_overlay = world_pipeline(
+            "world overlay",
+            "vs_world",
+            false,
+            wgpu::CompareFunction::LessEqual,
+        );
+
+        let (depth, depth_view) = create_depth(&device, &config);
+
         // Start with room for a full-screen-worth of quads; it grows on demand.
         let instance_capacity = 4096;
         let instances = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("instances"),
+            label: Some("interface instances"),
             contents: bytemuck::cast_slice(&vec![Instance::zeroed(); instance_capacity]),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+        let world_capacity = 8192;
+        let world_opaque_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("world instances (opaque)"),
+            contents: bytemuck::cast_slice(&vec![WorldInstance::zeroed(); world_capacity]),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
+        let world_overlay_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("world instances (overlay)"),
+            contents: bytemuck::cast_slice(&vec![WorldInstance::zeroed(); world_capacity]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -744,6 +1433,7 @@ impl Gpu {
             backend = ?info.backend,
             present_modes = ?present_modes,
             format = ?config.format,
+            depth = ?DEPTH_FORMAT,
             "renderer ready"
         );
 
@@ -754,14 +1444,25 @@ impl Gpu {
             queue,
             config,
             pipeline,
+            world_opaque,
+            world_overlay,
             bind_group,
+            world_bind_group,
+            camera_buffer,
+            depth,
+            depth_view,
             atlas_texture: texture,
             instances,
             instance_capacity,
+            world_opaque_buffer,
+            world_opaque_capacity: world_capacity,
+            world_overlay_buffer,
+            world_overlay_capacity: world_capacity,
             present_modes,
             adapter_name: info.name,
             stats: FrameStats::default(),
             atlas_uploaded: 0,
+            last_camera: None,
         }
     }
 
@@ -772,6 +1473,9 @@ impl Gpu {
         self.config.width = width;
         self.config.height = height;
         self.surface.configure(&self.device, &self.config);
+        let (depth, depth_view) = create_depth(&self.device, &self.config);
+        self.depth = depth;
+        self.depth_view = depth_view;
     }
 
     pub fn screen(&self) -> Screen {
@@ -807,13 +1511,13 @@ impl Gpu {
         self.atlas_uploaded += 1;
     }
 
-    fn ensure_capacity(&mut self, needed: usize) {
+    fn ensure_instance_capacity(&mut self, needed: usize) {
         if needed <= self.instance_capacity {
             return;
         }
         let capacity = needed.next_power_of_two();
         self.instances = self.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("instances"),
+            label: Some("interface instances"),
             size: (capacity * std::mem::size_of::<Instance>()) as u64,
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
@@ -821,7 +1525,37 @@ impl Gpu {
         self.instance_capacity = capacity;
     }
 
-    pub fn render(&mut self, batch: &Batcher, clear: [f32; 4], frame_seconds: f32) -> bool {
+    fn ensure_world_capacity(&mut self, opaque: usize, overlay: usize) {
+        if opaque > self.world_opaque_capacity {
+            let capacity = opaque.next_power_of_two();
+            self.world_opaque_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("world instances (opaque)"),
+                size: (capacity * std::mem::size_of::<WorldInstance>()) as u64,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.world_opaque_capacity = capacity;
+        }
+        if overlay > self.world_overlay_capacity {
+            let capacity = overlay.next_power_of_two();
+            self.world_overlay_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("world instances (overlay)"),
+                size: (capacity * std::mem::size_of::<WorldInstance>()) as u64,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.world_overlay_capacity = capacity;
+        }
+    }
+
+    pub fn render(
+        &mut self,
+        world: &WorldBatch,
+        hud: &Batcher,
+        camera: &Camera,
+        clear: [f32; 4],
+        frame_seconds: f32,
+    ) -> bool {
         let frame = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame) => frame,
             wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
@@ -832,10 +1566,34 @@ impl Gpu {
             _ => return false,
         };
 
-        self.ensure_capacity(batch.instances.len());
-        if !batch.instances.is_empty() {
+        self.last_camera = Some(*camera);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::bytes_of(&CameraUniform {
+                view_proj: camera.view_proj().to_cols_array(),
+            }),
+        );
+
+        self.ensure_instance_capacity(hud.instances.len());
+        self.ensure_world_capacity(world.opaque.len(), world.overlay.len());
+        if !hud.instances.is_empty() {
             self.queue
-                .write_buffer(&self.instances, 0, bytemuck::cast_slice(&batch.instances));
+                .write_buffer(&self.instances, 0, bytemuck::cast_slice(&hud.instances));
+        }
+        if !world.opaque.is_empty() {
+            self.queue.write_buffer(
+                &self.world_opaque_buffer,
+                0,
+                bytemuck::cast_slice(&world.opaque),
+            );
+        }
+        if !world.overlay.is_empty() {
+            self.queue.write_buffer(
+                &self.world_overlay_buffer,
+                0,
+                bytemuck::cast_slice(&world.overlay),
+            );
         }
 
         let view = frame
@@ -864,17 +1622,42 @@ impl Gpu {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 timestamp_writes: None,
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
 
-            if !batch.instances.is_empty() {
+            // The city, with depth written.
+            if !world.opaque.is_empty() {
+                pass.set_pipeline(&self.world_opaque);
+                pass.set_bind_group(0, &self.world_bind_group, &[]);
+                pass.set_vertex_buffer(0, self.world_opaque_buffer.slice(..));
+                pass.draw(0..6, 0..world.opaque.len() as u32);
+            }
+
+            // Overlays: shadows, ghosts, the grid, the cursor. Depth-tested
+            // against the city, not written, so they cannot hide each other.
+            if !world.overlay.is_empty() {
+                pass.set_pipeline(&self.world_overlay);
+                pass.set_bind_group(0, &self.world_bind_group, &[]);
+                pass.set_vertex_buffer(0, self.world_overlay_buffer.slice(..));
+                pass.draw(0..6, 0..world.overlay.len() as u32);
+            }
+
+            // The interface, always in front.
+            if !hud.instances.is_empty() {
                 pass.set_pipeline(&self.pipeline);
                 pass.set_bind_group(0, &self.bind_group, &[]);
                 pass.set_vertex_buffer(0, self.instances.slice(..));
-                pass.draw(0..6, 0..batch.instances.len() as u32);
+                pass.draw(0..6, 0..hud.instances.len() as u32);
             }
         }
 
@@ -882,59 +1665,270 @@ impl Gpu {
         frame.present();
         let refresh = if self
             .present_modes
-            .contains(&wgpu::PresentMode::AutoNoVsync) { 240.0 } else { 60.0 };
+            .contains(&wgpu::PresentMode::AutoNoVsync)
+        {
+            240.0
+        } else {
+            60.0
+        };
         self.stats.observe(frame_seconds, refresh);
         true
     }
+}
+
+fn create_depth(
+    device: &wgpu::Device,
+    config: &wgpu::SurfaceConfiguration,
+) -> (wgpu::Texture, wgpu::TextureView) {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("depth"),
+        size: wgpu::Extent3d {
+            width: config.width.max(1),
+            height: config.height.max(1),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: DEPTH_FORMAT,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    (texture, view)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn the_camera_round_trips_a_point() {
-        let screen = Screen { w: 1600.0, h: 900.0 };
-        let camera = Camera {
-            x: 500.0,
-            y: 400.0,
+    fn camera(yaw: f32, pitch: f32) -> Camera {
+        Camera {
+            focus: Vec3::new(500.0, 400.0, 0.0),
+            yaw,
+            pitch,
             zoom: 2.0,
-            screen,
-        };
-        let (sx, sy) = camera.world_to_screen(600.0, 500.0);
-        let (wx, wy) = camera.screen_to_world(sx, sy);
-        assert!((wx - 600.0).abs() < 0.01);
-        assert!((wy - 500.0).abs() < 0.01);
+            screen: Screen {
+                w: 1600.0,
+                h: 900.0,
+            },
+        }
     }
 
     #[test]
-    fn a_tile_picks_back_the_tile_it_was_drawn_at() {
-        let screen = Screen { w: 1600.0, h: 900.0 };
-        let camera = Camera {
-            x: 0.0,
-            y: 0.0,
-            zoom: 1.0,
-            screen,
-        };
-        let (sx, sy) = camera.world_to_screen(7.0 * TILE + 3.0, 9.0 * TILE + 3.0);
-        assert_eq!(camera.screen_to_tile(sx, sy), (7, 9));
+    fn the_camera_round_trips_a_ground_point_at_any_angle() {
+        // The whole point of an inverse projection: the answers have to hold
+        // for every yaw and every tilt, not just the one the tests were written
+        // against.
+        let mut checked = 0;
+        for yaw_step in 0..12 {
+            for pitch_step in 0..7 {
+                let yaw = yaw_step as f32 * 30.0_f32.to_radians();
+                let pitch = MIN_PITCH
+                    + (MAX_PITCH - MIN_PITCH) * (pitch_step as f32 / 6.0);
+                let camera = camera(yaw, pitch);
+                let world = Vec3::new(560.0, 372.0, 0.0);
+                let (sx, sy) = camera.world_to_screen(world);
+                let picked = camera
+                    .pick_ground(sx, sy)
+                    .expect("a point on the ground must pick back");
+                assert!(
+                    (picked.x - world.x).abs() < 0.05 && (picked.y - world.y).abs() < 0.05,
+                    "yaw {:.0}° pitch {:.0}°: ({}, {}) picked back as ({}, {})",
+                    yaw.to_degrees(),
+                    pitch.to_degrees(),
+                    world.x,
+                    world.y,
+                    picked.x,
+                    picked.y
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked >= 80, "the sweep barely ran: {checked} cases");
+    }
+
+    #[test]
+    fn a_tile_picks_back_the_tile_it_was_drawn_at_at_any_angle() {
+        for yaw_step in 0..8 {
+            for pitch_step in 0..4 {
+                let yaw = yaw_step as f32 * 45.0_f32.to_radians();
+                let pitch =
+                    MIN_PITCH + (MAX_PITCH - MIN_PITCH) * (pitch_step as f32 / 3.0);
+                let camera = camera(yaw, pitch);
+                let (tx, ty) = (7i32, 9i32);
+                let centre = Vec3::new(
+                    tx as f32 * TILE + TILE * 0.5,
+                    ty as f32 * TILE + TILE * 0.5,
+                    0.0,
+                );
+                let (sx, sy) = camera.world_to_screen(centre);
+                assert_eq!(
+                    camera.screen_to_tile(sx, sy),
+                    Some((tx, ty)),
+                    "yaw {:.0}° pitch {:.0}°",
+                    yaw.to_degrees(),
+                    pitch.to_degrees()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_orthographic_view_reports_distance_rather_than_faking_a_horizon() {
+        // Under an orthographic projection every screen point meets the ground
+        // plane, so there is no "sky" to report. What matters is that the far
+        // edge of the screen reports a *distant* tile instead of being clamped
+        // into the city, and that the visible set stays bounded.
+        let camera = camera(0.0, MIN_PITCH);
+        let near = camera
+            .pick_ground(camera.screen.w / 2.0, camera.screen.h)
+            .expect("the near edge is ground");
+        let far = camera
+            .pick_ground(camera.screen.w / 2.0, 0.0)
+            .expect("the far edge is ground");
+        assert!(
+            far.y > near.y,
+            "looking north, the top of the screen must be further north"
+        );
+        let (left, top, right, bottom) = camera.visible_tiles(256, 256);
+        assert!(right > left && bottom > top, "the visible set collapsed");
+        assert!(
+            right - left <= 256 && bottom - top <= 256,
+            "the visible set escaped the map: {left},{top},{right},{bottom}"
+        );
     }
 
     #[test]
     fn zooming_keeps_the_point_under_the_cursor() {
-        let screen = Screen { w: 1600.0, h: 900.0 };
-        let mut camera = Camera {
-            x: 100.0,
-            y: 100.0,
-            zoom: 1.0,
-            screen,
-        };
+        let mut camera = camera(0.7, 0.9);
         let cursor = (900.0, 300.0);
-        let before = camera.screen_to_world(cursor.0, cursor.1);
+        let before = camera.pick_ground(cursor.0, cursor.1).expect("ground");
         camera.zoom_by(1.5, cursor);
-        let after = camera.screen_to_world(cursor.0, cursor.1);
-        assert!((before.0 - after.0).abs() < 0.5, "x drifted");
-        assert!((before.1 - after.1).abs() < 0.5, "y drifted");
+        let after = camera.pick_ground(cursor.0, cursor.1).expect("ground");
+        assert!((before.x - after.x).abs() < 0.5, "x drifted");
+        assert!((before.y - after.y).abs() < 0.5, "y drifted");
+    }
+
+    #[test]
+    fn tilting_and_rotating_stay_inside_their_limits() {
+        let mut camera = camera(0.0, DEFAULT_PITCH);
+        camera.orbit(100_000.0, -100_000.0);
+        camera.clamp_to(256, 256);
+        assert!((MIN_PITCH..=MAX_PITCH).contains(&camera.pitch));
+        assert!((0.0..std::f32::consts::TAU).contains(&camera.yaw));
+        camera.orbit(-250_000.0, 900_000.0);
+        camera.clamp_to(256, 256);
+        assert!((MIN_PITCH..=MAX_PITCH).contains(&camera.pitch));
+        assert!((0.0..std::f32::consts::TAU).contains(&camera.yaw));
+    }
+
+    #[test]
+    fn a_box_draws_the_faces_the_camera_can_see_and_no_more() {
+        let mut batch = WorldBatch::default();
+        // Looking straight down: the roof is visible and all four walls are
+        // edge-on, so only the roof is worth drawing.
+        batch.clear(Vec3::Z);
+        batch.building(0.0, 0.0, 5.0, 10.0, [1.0, 1.0, 1.0, 1.0], 1.0);
+        let straight_down = batch.opaque.len();
+
+        batch.clear(Vec3::new(0.0, -0.7, 0.7));
+        batch.building(0.0, 0.0, 5.0, 10.0, [1.0, 1.0, 1.0, 1.0], 1.0);
+        let tilted = batch.opaque.len();
+
+        assert_eq!(straight_down, 1, "a top-down box is one roof");
+        assert!(
+            tilted > straight_down,
+            "a tilted camera must see walls as well as a roof"
+        );
+        assert!(tilted <= 5, "a box is at most five faces");
+    }
+
+    #[test]
+    fn a_visible_set_always_contains_the_focus() {
+        let camera = camera(1.1, 0.8);
+        let (left, top, right, bottom) = camera.visible_tiles(256, 256);
+        let (tx, ty) = (camera.focus.x / TILE, camera.focus.y / TILE);
+        assert!(
+            left as f32 <= tx && tx <= right as f32 && top as f32 <= ty && ty <= bottom as f32,
+            "the tile under the camera was not in the visible set"
+        );
+    }
+
+    #[test]
+    fn the_bearing_says_where_the_top_of_the_screen_points() {
+        let mut camera = camera(0.0, DEFAULT_PITCH);
+        assert!(
+            camera.bearing_degrees() < 1.0,
+            "at rest the top of the screen is north"
+        );
+        // A quarter turn clockwise puts the top of the screen on east.
+        camera.yaw = std::f32::consts::FRAC_PI_2;
+        assert!((camera.bearing_degrees() - 90.0).abs() < 1.0);
+        camera.yaw = std::f32::consts::PI;
+        assert!((camera.bearing_degrees() - 180.0).abs() < 1.0);
+        // And it is a bearing, not a running total.
+        camera.yaw = -std::f32::consts::FRAC_PI_2;
+        assert!(
+            (camera.bearing_degrees() - 270.0).abs() < 1.0,
+            "a negative rotation must read as a bearing"
+        );
+    }
+
+    #[test]
+    fn the_top_of_the_screen_really_is_north_at_rest() {
+        // The bearing is a claim about the projection, so it is checked
+        // against the projection rather than trusted.
+        let camera = camera(0.0, DEFAULT_PITCH);
+        let centre = camera.focus;
+        let (sx, sy) = camera.world_to_screen(centre);
+        let ground = camera
+            .pick_ground(sx, sy)
+            .expect("the centre of the screen is ground");
+        assert!((ground.x - centre.x).abs() < 0.5);
+        assert!((ground.y - centre.y).abs() < 0.5);
+        // A point north of the focus (larger y) must be higher on screen.
+        let (_, north_y) = camera.world_to_screen(centre + Vec3::new(0.0, 100.0, 0.0));
+        assert!(north_y < sy, "north pointed down the screen");
+    }
+
+    #[test]
+    fn glyphs_land_on_the_pixel_grid() {
+        // Blurry text was a real defect, not a taste question: a glyph drawn at
+        // a fractional position is resampled by the sampler.
+        let mut text = Text::new();
+        let mut batch = Batcher::default();
+        let screen = Screen {
+            w: 1600.0,
+            h: 900.0,
+        };
+        text.draw_step(
+            Face::Body,
+            &mut batch,
+            &screen,
+            10.37,
+            20.61,
+            Step::Body,
+            [1.0; 4],
+            "ticket 12",
+        );
+        assert!(!batch.instances.is_empty());
+        for instance in &batch.instances {
+            let (x, y) = screen.to_clip(0.0, 0.0);
+            let _ = (x, y);
+            let sx = (instance.pos[0] + 1.0) / 2.0 * screen.w;
+            let sy = (1.0 - instance.pos[1]) / 2.0 * screen.h;
+            // Within a thousandth of a pixel: the point is that glyphs are not
+            // resampled, not that the float round trip is exact.
+            assert!(
+                (sx - sx.round()).abs() < 1e-3,
+                "a glyph sat at a fractional x: {sx}"
+            );
+            assert!(
+                (sy - sy.round()).abs() < 1e-3,
+                "a glyph sat at a fractional y: {sy}"
+            );
+        }
     }
 
     #[test]

@@ -8,6 +8,7 @@
 //! renderer runs uncapped so a 240 Hz panel is actually fed. Agents are drawn by
 //! the *work they have completed*, never by a frame clock.
 
+mod design;
 mod hud;
 mod render;
 
@@ -15,6 +16,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
+use glam::Vec3;
 use winit::application::ApplicationHandler;
 use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -26,8 +28,9 @@ use ala_cities::session::{write_feedback, Interaction, Session};
 use ala_cities::sim::citizen::CitizenState;
 use ala_cities::sim::{BuildingKind, Terrain, World, Zone, DAYS_PER_MONTH, SIM_HZ, TICKS_PER_DAY};
 
-use hud::{Token, SIZE_BODY, SIZE_DISPLAY, SIZE_SMALL};
-use render::{Batcher, Camera, Face, Gpu, Screen, Text, TILE};
+use design::{Space, Step, Target, UiScale};
+use hud::Token;
+use render::{Batcher, Camera, Face, Gpu, Layer, Screen, Text, WorldBatch, LEVEL_HEIGHT, TILE};
 
 const STAGE: &str = "C1";
 const MAP: u32 = 256;
@@ -83,8 +86,14 @@ struct App {
     gpu: Option<Gpu>,
     text: Text,
     batch: Batcher,
+    /// The city's own quads: world space, depth-tested.
+    world_batch: WorldBatch,
     camera: Camera,
     atlas_dirty: bool,
+    /// The interface scale, cycled from the pause menu.
+    ui: UiScale,
+    /// Whether the first frame's geometry has been reported yet.
+    logged_first_frame: bool,
 
     world: World,
     gov: Government,
@@ -95,6 +104,7 @@ struct App {
     cursor: (f32, f32),
     press_tile: Option<(i32, i32)>,
     panning: bool,
+    orbiting: bool,
     last_cursor: (f32, f32),
 
     last_frame: Instant,
@@ -130,8 +140,11 @@ impl App {
             gpu: None,
             text: Text::new(),
             batch: Batcher::default(),
+            world_batch: WorldBatch::default(),
             camera: Camera::new(screen, MAP, MAP),
             atlas_dirty: true,
+            ui: UiScale::default(),
+            logged_first_frame: false,
             world,
             gov,
             session,
@@ -140,6 +153,7 @@ impl App {
             cursor: (0.0, 0.0),
             press_tile: None,
             panning: false,
+            orbiting: false,
             last_cursor: (0.0, 0.0),
             last_frame: Instant::now(),
             accumulator: 0.0,
@@ -569,6 +583,22 @@ impl App {
                     _ => 1,
                 };
             }
+            // Home returns the view to the configured angle without touching
+            // the city, so getting lost in a free camera is never destructive.
+            KeyCode::Home => {
+                self.camera.pitch = render::DEFAULT_PITCH;
+                self.camera.yaw = 0.0;
+            }
+            // The interface scale lives behind the pause menu rather than on a
+            // bare key, because a stray press should not re-lay-out everything.
+            KeyCode::KeyU if self.menu_open => {
+                self.ui = self.ui.next();
+                self.atlas_dirty = true;
+                self.toast = Some((
+                    format!("interface scale {}", self.ui.label()),
+                    self.world.clock.tick,
+                ));
+            }
             KeyCode::Digit1 => self.tool = Tool::Road,
             KeyCode::Digit2 => self.tool = Tool::Zone,
             KeyCode::Digit3 => self.tool = Tool::Power,
@@ -635,12 +665,17 @@ impl App {
         }
         match button {
             MouseButton::Left if pressed => {
-                let (tx, ty) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+                // An exact ray, not a screen rectangle: with a free camera this
+                // is the only version that stays right when the view tilts.
+                let Some((tx, ty)) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1)
+                else {
+                    return;
+                };
                 if !self.world.in_bounds(tx, ty) {
                     return;
                 }
                 let screen = self.screen();
-                if toolbar_hit(&screen, self.cursor.0, self.cursor.1).is_some() {
+                if toolbar_hit(&screen, self.ui, self.cursor.0, self.cursor.1).is_some() {
                     return;
                 }
                 self.press_tile = Some((tx, ty));
@@ -656,7 +691,10 @@ impl App {
             }
             MouseButton::Left => {
                 if let Some(from) = self.press_tile.take() {
-                    let (tx, ty) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+                    let Some((tx, ty)) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1)
+                    else {
+                        return;
+                    };
                     match self.tool {
                         Tool::Road => self.act_road(from, (tx, ty)),
                         Tool::Zone => {
@@ -669,11 +707,15 @@ impl App {
                     }
                 }
             }
+            // Right-drag orbits: free rotation and free tilt, so the camera is
+            // a thing the player points rather than a series of preset angles.
             MouseButton::Right if pressed => {
-                self.panning = true;
+                self.orbiting = true;
                 self.last_cursor = self.cursor;
             }
-            MouseButton::Right => self.panning = false,
+            MouseButton::Right => self.orbiting = false,
+            // Middle-drag pans, and it is separate from orbiting so a player can
+            // move the city without changing the angle they are reading it at.
             MouseButton::Middle if pressed => {
                 self.panning = true;
                 self.last_cursor = self.cursor;
@@ -705,6 +747,8 @@ impl App {
     fn draw_world(&mut self) {
         let (left, top, right, bottom) = self.camera.visible_tiles(MAP, MAP);
         let tick = self.world.clock.tick;
+        // Face culling is decided against the camera that is about to draw.
+        self.world_batch.clear(self.camera.toward_camera());
 
         for y in top..bottom {
             for x in left..right {
@@ -717,7 +761,8 @@ impl App {
                     Terrain::Ground => Token::Ground,
                 };
                 let ground_color = hud::style(ground).fill.unwrap_or([0.2, 0.3, 0.2, 1.0]);
-                self.camera.world_rect(&mut self.batch, wx, wy, TILE, TILE, ground_color);
+                self.world_batch
+                    .ground_rect(Layer::Opaque, wx, wy, TILE, TILE, 0.0, ground_color);
 
                 if t.zone != Zone::None && t.building.is_none() {
                     let token = match t.zone {
@@ -727,19 +772,62 @@ impl App {
                         Zone::None => Token::Ground,
                     };
                     let color = hud::style(token).fill.unwrap_or([0.5, 0.5, 0.5, 1.0]);
-                    self.camera
-                        .world_rect(&mut self.batch, wx + 1.0, wy + 1.0, TILE - 2.0, TILE - 2.0, hud::with_alpha(color, 0.45));
+                    // Zones are painted *on* the ground, so they are an overlay
+                    // slightly above it rather than a replacement for it.
+                    self.world_batch.ground_rect(
+                        Layer::Overlay,
+                        wx + 1.0,
+                        wy + 1.0,
+                        TILE - 2.0,
+                        TILE - 2.0,
+                        0.05,
+                        hud::with_alpha(color, 0.45),
+                    );
+                    // A border, so a zoned district reads as a shape at a
+                    // glancing angle where the fill alone would not.
+                    self.world_batch.ground_border(
+                        Layer::Overlay,
+                        wx + 1.0,
+                        wy + 1.0,
+                        TILE - 2.0,
+                        TILE - 2.0,
+                        0.06,
+                        1.0,
+                        hud::with_alpha(color, 0.7),
+                    );
                     if !t.powered {
                         // Unpowered and zoned is the condition the cases are
                         // sampled from, so it is visible rather than reported.
                         let brown = hud::style(Token::Brownout).text.unwrap_or([1.0, 0.6, 0.0, 1.0]);
-                        self.camera.world_rect(&mut self.batch, wx + 4.0, wy + 4.0, TILE - 8.0, TILE - 8.0, brown);
+                        self.world_batch.ground_rect(
+                            Layer::Overlay,
+                            wx + 4.0,
+                            wy + 4.0,
+                            TILE - 8.0,
+                            TILE - 8.0,
+                            0.08,
+                            brown,
+                        );
                     }
                 }
 
                 if t.road {
                     let color = hud::style(Token::Road).fill.unwrap_or([0.3, 0.3, 0.3, 1.0]);
-                    self.camera.world_rect(&mut self.batch, wx, wy, TILE, TILE, color);
+                    let edge = hud::style(Token::RoadEdge).fill.unwrap_or([0.5, 0.5, 0.5, 1.0]);
+                    // Roads sit just above the ground so their edges stay
+                    // readable at a glancing angle without z-fighting.
+                    self.world_batch
+                        .ground_rect(Layer::Opaque, wx, wy, TILE, TILE, 0.4, color);
+                    self.world_batch.ground_border(
+                        Layer::Opaque,
+                        wx,
+                        wy,
+                        TILE,
+                        TILE,
+                        0.42,
+                        1.0,
+                        hud::with_alpha(edge, 0.5),
+                    );
                 }
 
                 if let Some(index) = t.building {
@@ -754,7 +842,31 @@ impl App {
                             BuildingKind::PowerPlant => hud::style(Token::Powered).text.unwrap_or([0.5, 0.9, 0.6, 1.0]),
                         }
                     };
-                    self.camera.world_rect(&mut self.batch, wx + 1.5, wy + 1.5, TILE - 3.0, TILE - 3.0, color);
+                    let height = building_height(b, tick);
+                    // A contact shadow, offset along the same light that shades
+                    // the faces, so a shadow cannot point away from its own
+                    // building.
+                    let shadow = hud::style(Token::Desk).fill.unwrap_or([0.06, 0.06, 0.07, 1.0]);
+                    let reach = shadow_reach(height);
+                    self.world_batch.ground_rect(
+                        Layer::Overlay,
+                        wx + 1.5 + reach.0,
+                        wy + 1.5 + reach.1,
+                        TILE - 3.0,
+                        TILE - 3.0,
+                        0.1,
+                        hud::with_alpha(shadow, 0.35),
+                    );
+                    // The building is a box, extruded by level. This is the
+                    // whole of the 3D: a footprint, a height, and five quads.
+                    self.world_batch.building(
+                        wx + TILE / 2.0,
+                        wy + TILE / 2.0,
+                        (TILE - 3.0) / 2.0,
+                        height,
+                        color,
+                        1.0,
+                    );
                 }
             }
         }
@@ -770,13 +882,15 @@ impl App {
             if x < left || x >= right || y < top || y >= bottom {
                 continue;
             }
-            self.camera.world_rect(
-                &mut self.batch,
-                x as f32 * TILE + 2.0,
-                y as f32 * TILE + 2.0,
-                TILE - 4.0,
-                TILE - 4.0,
+            // A ghost of its own volume: still on the map, visibly not a
+            // building, and never a fill that could be mistaken for one.
+            self.world_batch.building(
+                x as f32 * TILE + TILE / 2.0,
+                y as f32 * TILE + TILE / 2.0,
+                (TILE - 4.0) / 2.0,
+                building.level as f32 * LEVEL_HEIGHT * 0.6,
                 retired_color,
+                0.25,
             );
         }
 
@@ -793,17 +907,14 @@ impl App {
                 continue;
             }
             // Only full-detail agents are drawn; offscreen cohorts are counted,
-            // not rendered, which is what keeps the frame budget honest.
-            let distance = (x as i32 - self.camera.screen_to_tile(
-                self.camera.screen.w / 2.0,
-                self.camera.screen.h / 2.0,
-            ).0)
-                .abs()
-                + (y as i32
-                    - self.camera
-                        .screen_to_tile(self.camera.screen.w / 2.0, self.camera.screen.h / 2.0)
-                        .1)
-                    .abs();
+            // not rendered, which is what keeps the frame budget honest. The
+            // distance is measured from the tile the camera is looking at, so
+            // the split is a function of view rather than of frame timing.
+            let focus = (
+                (self.camera.focus.x / TILE).floor() as i32,
+                (self.camera.focus.y / TILE).floor() as i32,
+            );
+            let distance = (x as i32 - focus.0).abs() + (y as i32 - focus.1).abs();
             if distance > ala_cities::sim::LOD_RADIUS {
                 continue;
             }
@@ -824,16 +935,24 @@ impl App {
             } else {
                 agent
             };
-            self.camera
-                .world_rect(&mut self.batch, fx, fy, TILE * 0.4, TILE * 0.4, color);
+            // A small body standing on the street rather than a flat dot, so a
+            // crowded junction is readable from an angle.
+            self.world_batch.building(
+                fx + TILE * 0.2,
+                fy + TILE * 0.2,
+                TILE * 0.12,
+                TILE * 0.45,
+                color,
+                1.0,
+            );
         }
 
         // A preview of the leg the drag would build, so the action is visible
         // before it is taken rather than only afterwards.
         if let Some(from) = self.press_tile {
             if self.tool == Tool::Road {
-                let (tx, ty) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
-                if self.world.in_bounds(tx, ty) {
+                let target = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+                if let Some((tx, ty)) = target.filter(|(tx, ty)| self.world.in_bounds(*tx, *ty)) {
                     let from_tile = self.world.index(from.0 as u32, from.1 as u32);
                     let to_tile = self.world.index(tx as u32, ty as u32);
                     let legs = self.world.leg_tiles(from_tile, to_tile);
@@ -851,12 +970,13 @@ impl App {
                     };
                     for tile in legs {
                         let (x, y) = self.world.coords(tile);
-                        self.camera.world_rect(
-                            &mut self.batch,
+                        self.world_batch.ground_rect(
+                            Layer::Overlay,
                             x as f32 * TILE,
                             y as f32 * TILE,
                             TILE,
                             TILE,
+                            0.3,
                             hud::with_alpha(color, 0.5),
                         );
                     }
@@ -864,24 +984,131 @@ impl App {
             }
         }
 
-        // The tile under the cursor, so a click is never a guess.
-        let (hx, hy) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
-        if self.world.in_bounds(hx, hy) {
-            let color = hud::style(Token::TextBody).text.unwrap_or([1.0, 1.0, 1.0, 1.0]);
-            self.camera.world_rect(
-                &mut self.batch,
-                hx as f32 * TILE,
-                hy as f32 * TILE,
-                TILE,
-                TILE,
-                hud::with_alpha(color, 0.18),
-            );
+        self.draw_grid_sense(left, top, right, bottom);
+    }
+
+    /// Knowing where you are on the grid, at any angle.
+    ///
+    /// Three indicators, because they answer three different questions:
+    ///
+    /// * the **tile under the cursor**, highlighted in every mode, always —
+    ///   which tile;
+    /// * a **local grid patch** that fades with distance, drawn only while a
+    ///   build tool is active — which way the lattice runs;
+    /// * the **bearing and coordinates** in the corner of the interface, drawn
+    ///   by `draw_hud` — where in the city you are.
+    ///
+    /// A whole-map grid drawn at all times would answer none of them well once
+    /// the camera tilts, which is why it is not the design.
+    fn draw_grid_sense(&mut self, left: u32, top: u32, right: u32, bottom: u32) {
+        let ink = hud::style(Token::TextBody).text.unwrap_or([1.0, 1.0, 1.0, 1.0]);
+        let grid = hud::style(Token::Grid).text.unwrap_or([0.35, 0.35, 0.4, 0.35]);
+
+        // A local patch, faded by distance from the cursor, and only while a
+        // placement tool is in hand. Zones and roads are placed by the tile, so
+        // this is the mode that needs the lattice.
+        if self.tool != Tool::Inspect {
+            if let Some((hx, hy)) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1) {
+                let radius = 14i32;
+                let thickness = 0.35;
+                for step in -radius..=radius {
+                    let fade = 1.0 - (step.abs() as f32 / radius as f32);
+                    let alpha = fade * 0.5;
+                    if alpha <= 0.02 {
+                        continue;
+                    }
+                    let colour = hud::with_alpha(grid, alpha);
+                    let (gx, gy) = (hx + step, hy + step);
+                    // North-south line at this x, clipped to the visible tiles.
+                    let x = gx as f32 * TILE;
+                    if gx >= 0 && (gx as u32) <= right {
+                        let y0 = top.max(hy.saturating_sub(radius) as u32) as f32 * TILE;
+                        let y1 = (bottom.min((hy + radius).max(0) as u32)) as f32 * TILE;
+                        self.world_batch.ground_rect(
+                            Layer::Overlay,
+                            x,
+                            y0,
+                            thickness,
+                            (y1 - y0).max(0.0),
+                            0.12,
+                            colour,
+                        );
+                    }
+                    let y = gy as f32 * TILE;
+                    if gy >= 0 && (gy as u32) <= bottom {
+                        let x0 = left.max(hx.saturating_sub(radius) as u32) as f32 * TILE;
+                        let x1 = (right.min((hx + radius).max(0) as u32)) as f32 * TILE;
+                        self.world_batch.ground_rect(
+                            Layer::Overlay,
+                            x0,
+                            y,
+                            (x1 - x0).max(0.0),
+                            thickness,
+                            0.12,
+                            colour,
+                        );
+                    }
+                }
+            }
+        }
+
+        // The tile under the cursor: an outline, not a fill, so whatever is on
+        // the tile stays readable through it, plus a faint bed so the outline
+        // is visible over water and roads alike.
+        if let Some((hx, hy)) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1) {
+            if self.world.in_bounds(hx, hy) {
+                let (wx, wy) = (hx as f32 * TILE, hy as f32 * TILE);
+                self.world_batch.ground_rect(
+                    Layer::Overlay,
+                    wx,
+                    wy,
+                    TILE,
+                    TILE,
+                    0.18,
+                    hud::with_alpha(ink, 0.14),
+                );
+                self.world_batch.ground_border(
+                    Layer::Overlay,
+                    wx,
+                    wy,
+                    TILE,
+                    TILE,
+                    0.22,
+                    1.2,
+                    hud::with_alpha(ink, 0.95),
+                );
+                // A short axis arm on two edges, so the tile's own orientation
+                // is legible even when the lattice is not drawn.
+                self.world_batch.ground_rect(
+                    Layer::Overlay,
+                    wx - 2.0,
+                    wy,
+                    2.0,
+                    TILE,
+                    0.2,
+                    hud::with_alpha(ink, 0.5),
+                );
+                self.world_batch.ground_rect(
+                    Layer::Overlay,
+                    wx,
+                    wy - 2.0,
+                    TILE,
+                    2.0,
+                    0.2,
+                    hud::with_alpha(ink, 0.5),
+                );
+            }
         }
     }
 
     fn draw_hud(&mut self) {
         let screen = self.screen();
         let tick = self.world.clock.tick;
+        // Every inset and gap in the chrome comes from the design's 4-unit
+        // scale, so the interface re-lays out at a new UI scale instead of
+        // being stretched.
+        let ui = self.text.ui_scale();
+        let pad = |space: Space| hud::space(space, ui);
 
         // ---- governed-session chrome -------------------------------------
         hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, 30.0, Token::Panel);
@@ -892,7 +1119,7 @@ impl App {
             &screen,
             x,
             9.0,
-            SIZE_SMALL,
+            Step::Small,
             Token::TextMuted,
             &self.gov.contract,
         ) + 14.0;
@@ -902,7 +1129,7 @@ impl App {
             &screen,
             x,
             9.0,
-            SIZE_SMALL,
+            Step::Small,
             Token::TextMuted,
             &self.gov.governor_banner(),
         ) + 14.0;
@@ -912,7 +1139,7 @@ impl App {
             &screen,
             x,
             9.0,
-            SIZE_SMALL,
+            Step::Small,
             Token::Procedural,
             "identity: PROCEDURAL",
         ) + 14.0;
@@ -923,7 +1150,7 @@ impl App {
                 &screen,
                 x,
                 9.0,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 ticket,
             );
@@ -938,7 +1165,7 @@ impl App {
                 &screen,
                 screen.w / 2.0 - 150.0,
                 screen.h - 90.0,
-                SIZE_SMALL,
+                Step::Small,
                 Token::Warning,
                 "no system font found: text is not being drawn",
             );
@@ -952,42 +1179,42 @@ impl App {
             _ => "3x",
         };
         let centre = format!("{clock}   {speed}");
-        let width = self.text.measure(Face::Mono, &centre, SIZE_SMALL);
+        let width = self.text.measure_step(Face::Mono, &centre, Step::Small);
         hud::label_mono(
             &mut self.text,
             &mut self.batch,
             &screen,
             screen.w / 2.0 - width / 2.0,
             9.0,
-            SIZE_SMALL,
+            Step::Small,
             Token::TextBody,
             &centre,
         );
 
-        let mut right = screen.w - 12.0;
+        let mut right = screen.w - pad(Space::Md);
         let fps = format!("{:.0} fps", self.gpu.as_ref().map(|g| g.stats.reported_fps).unwrap_or(0.0));
-        let fps_width = self.text.measure(Face::Mono, &fps, SIZE_SMALL);
+        let fps_width = self.text.measure_step(Face::Mono, &fps, Step::Small);
         hud::label_mono(
             &mut self.text,
             &mut self.batch,
             &screen,
             right - fps_width,
             9.0,
-            SIZE_SMALL,
+            Step::Small,
             Token::TextMuted,
             &fps,
         );
-        right -= fps_width + 16.0;
+        right -= fps_width + pad(Space::Lg);
 
         let rec = "● RECORDING";
-        let rec_width = self.text.measure(Face::Body, rec, SIZE_SMALL);
+        let rec_width = self.text.measure_step(Face::Body, rec, Step::Small);
         hud::label(
             &mut self.text,
             &mut self.batch,
             &screen,
             right - rec_width,
             9.0,
-            SIZE_SMALL,
+            Step::Small,
             if self.session.recording {
                 Token::Recording
             } else {
@@ -1006,9 +1233,9 @@ impl App {
             &mut self.text,
             &mut self.batch,
             &screen,
-            panel_x + 12.0,
+            panel_x + pad(Space::Md),
             panel_y,
-            SIZE_BODY,
+            Step::Body,
             Token::TextBody,
             "Demand",
         );
@@ -1022,9 +1249,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                panel_x + 12.0,
+                panel_x + pad(Space::Md),
                 panel_y,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 name,
             );
@@ -1041,7 +1268,7 @@ impl App {
             panel_y += 18.0;
         }
         panel_y += 8.0;
-        hud::rule(&mut self.batch, &screen, panel_x + 12.0, panel_y, panel_w - 24.0, Token::TextMuted);
+        hud::rule(&mut self.batch, &screen, panel_x + pad(Space::Md), panel_y, panel_w - pad(Space::Xl), Token::TextMuted);
         panel_y += 10.0;
 
         let stats = [
@@ -1066,20 +1293,20 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                panel_x + 12.0,
+                panel_x + pad(Space::Md),
                 panel_y,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 name,
             );
-            let width = self.text.measure(Face::Mono, &value, SIZE_SMALL);
+            let width = self.text.measure_step(Face::Mono, &value, Step::Small);
             hud::label_mono(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                panel_x + panel_w - 12.0 - width,
+                panel_x + panel_w - pad(Space::Md) - width,
                 panel_y,
-                SIZE_SMALL,
+                Step::Small,
                 if name == "power" && self.world.stats.brownout {
                     Token::Brownout
                 } else {
@@ -1093,30 +1320,30 @@ impl App {
         // What to do next, derived from stored state. An empty list would be a
         // bug, not a quiet moment.
         let suggestions = self.gov.suggestions(&self.world);
-        let mut next_y = 42.0 + 226.0 + 10.0;
+        let mut next_y = 42.0 + 226.0 + pad(Space::Sm);
         let panel_height = 26.0 + suggestions.len().min(4) as f32 * 18.0;
         hud::panel(&mut self.batch, &screen, panel_x, next_y, panel_w, panel_height, Token::Panel);
         hud::label(
             &mut self.text,
             &mut self.batch,
             &screen,
-            panel_x + 12.0,
-            next_y + 8.0,
-            SIZE_BODY,
+            panel_x + pad(Space::Md),
+            next_y + pad(Space::Sm),
+            Step::Body,
             Token::TextBody,
             "What to do next",
         );
         next_y += 26.0;
         for line in suggestions.iter().take(4) {
-            let clipped = hud::truncate(&mut self.text, Face::Body, line, SIZE_SMALL, panel_w - 24.0);
+            let clipped = hud::truncate(&mut self.text, Face::Body, line, Step::Small, panel_w - pad(Space::Xl));
             let is_case = line.starts_with("CSE-");
             hud::label(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                panel_x + 12.0,
+                panel_x + pad(Space::Md),
                 next_y,
-                SIZE_SMALL,
+                Step::Small,
                 if is_case { Token::CaseOpen } else { Token::TextMuted },
                 &clipped,
             );
@@ -1126,7 +1353,7 @@ impl App {
         // ---- ledger -------------------------------------------------------
         if self.show_ledger {
             let width = 470.0;
-            let lx = screen.w - width - 12.0;
+            let lx = screen.w - width - pad(Space::Md);
             let ly = 42.0;
             let lh = screen.bottom_anchor(160.0, 12.0) - ly;
             hud::panel(&mut self.batch, &screen, lx, ly, width, lh, Token::Panel);
@@ -1135,9 +1362,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                lx + 12.0,
-                ly + 8.0,
-                SIZE_BODY,
+                lx + pad(Space::Md),
+                ly + pad(Space::Sm),
+                Step::Body,
                 Token::TextBody,
                 "Ticket ledger",
             );
@@ -1151,18 +1378,18 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                lx + 12.0,
+                lx + pad(Space::Md),
                 ly + 28.0,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 &counts,
             );
-            hud::rule(&mut self.batch, &screen, lx + 12.0, ly + 46.0, width - 24.0, Token::TextMuted);
+            hud::rule(&mut self.batch, &screen, lx + pad(Space::Md), ly + 46.0, width - pad(Space::Xl), Token::TextMuted);
 
             let mut row = ly + 54.0;
             for ticket in self.gov.ledger(22) {
                 let line = format!("{}  {}", ticket.id, ticket.objective);
-                let clipped = hud::truncate(&mut self.text, Face::Body, &line, SIZE_SMALL, width - 118.0);
+                let clipped = hud::truncate(&mut self.text, Face::Body, &line, Step::Small, width - 118.0);
                 let token = if ticket.is_closed() {
                     match ticket.terminal {
                         Some(reason) if reason.is_validated() => Token::Verified,
@@ -1174,20 +1401,20 @@ impl App {
                 } else {
                     Token::TextBody
                 };
-                hud::label(&mut self.text, &mut self.batch, &screen, lx + 12.0, row, SIZE_SMALL, token, &clipped);
+                hud::label(&mut self.text, &mut self.batch, &screen, lx + pad(Space::Md), row, Step::Small, token, &clipped);
                 let closing = ticket.closing_line();
-                let closing_width = self.text.measure(Face::Mono, &closing, SIZE_SMALL);
+                let closing_width = self.text.measure_step(Face::Mono, &closing, Step::Small);
                 // Truncated first: the text atlas is borrowed mutably to build
                 // the string, and again to draw it, which cannot overlap.
                 let clipped_closing =
-                    hud::truncate(&mut self.text, Face::Mono, &closing, SIZE_SMALL, 160.0);
+                    hud::truncate(&mut self.text, Face::Mono, &closing, Step::Small, 160.0);
                 hud::label_mono(
                     &mut self.text,
                     &mut self.batch,
                     &screen,
-                    lx + width - 12.0 - closing_width.min(width - 130.0),
+                    lx + width - pad(Space::Md) - closing_width.min(width - 130.0),
                     row,
-                    SIZE_SMALL,
+                    Step::Small,
                     Token::TextMuted,
                     &clipped_closing,
                 );
@@ -1200,23 +1427,26 @@ impl App {
 
         // ---- per-object page ----------------------------------------------
         if self.tool == Tool::Inspect {
-            let (hx, hy) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+            let (hx, hy) = self
+                .camera
+                .screen_to_tile(self.cursor.0, self.cursor.1)
+                .unwrap_or((0, 0));
             if self.world.in_bounds(hx, hy) {
                 let tile = self.world.index(hx as u32, hy as u32);
                 if let Some(index) = self.world.tile(tile).building {
                     let b = self.world.building(index);
                     let width = 240.0;
                     let height = 116.0;
-                    let px = (self.cursor.0 + 16.0).min(screen.w - width - 8.0);
-                    let py = (self.cursor.1 + 8.0).min(screen.h - height - 8.0);
+                    let px = (self.cursor.0 + pad(Space::Lg)).min(screen.w - width - 8.0);
+                    let py = (self.cursor.1 + pad(Space::Sm)).min(screen.h - height - 8.0);
                     hud::panel(&mut self.batch, &screen, px, py, width, height, Token::PanelRaised);
                     hud::label(
                         &mut self.text,
                         &mut self.batch,
                         &screen,
-                        px + 10.0,
-                        py + 8.0,
-                        SIZE_BODY,
+                        px + pad(Space::Sm),
+                        py + pad(Space::Sm),
+                        Step::Body,
                         Token::TextBody,
                         &format!("{} #{}", b.kind.name(), b.id),
                     );
@@ -1245,20 +1475,20 @@ impl App {
                             &mut self.text,
                             &mut self.batch,
                             &screen,
-                            px + 10.0,
+                            px + pad(Space::Sm),
                             fy,
-                            SIZE_SMALL,
+                            Step::Small,
                             Token::TextMuted,
                             name,
                         );
-                        let w = self.text.measure(Face::Mono, &value, SIZE_SMALL);
+                        let w = self.text.measure_step(Face::Mono, &value, Step::Small);
                         hud::label_mono(
                             &mut self.text,
                             &mut self.batch,
                             &screen,
                             px + width - 10.0 - w,
                             fy,
-                            SIZE_SMALL,
+                            Step::Small,
                             Token::TextBody,
                             &value,
                         );
@@ -1276,14 +1506,14 @@ impl App {
             hud::panel(&mut self.batch, &screen, x, y, width, 46.0, Token::Panel);
             hud::style(Token::Warning);
             hud::panel(&mut self.batch, &screen, x, y, 3.0, 46.0, Token::Warning);
-            let clipped = hud::truncate(&mut self.text, Face::Body, &refusal, SIZE_SMALL, width - 24.0);
+            let clipped = hud::truncate(&mut self.text, Face::Body, &refusal, Step::Small, width - pad(Space::Xl));
             hud::label(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 12.0,
-                y + 8.0,
-                SIZE_SMALL,
+                x + pad(Space::Md),
+                y + pad(Space::Sm),
+                Step::Small,
                 Token::Warning,
                 &clipped,
             );
@@ -1291,9 +1521,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 12.0,
-                y + 24.0,
-                SIZE_SMALL,
+                x + pad(Space::Md),
+                y + pad(Space::Xl),
+                Step::Small,
                 Token::TextMuted,
                 "this is a refusal, not an error: the city is unchanged",
             );
@@ -1302,7 +1532,8 @@ impl App {
         // ---- toast ---------------------------------------------------------
         if let Some((message, at)) = self.toast.clone() {
             if tick.saturating_sub(at) < 120 {
-                let width = self.text.measure(Face::Body, &message, SIZE_SMALL) + 24.0;
+                let width =
+                    self.text.measure_step(Face::Body, &message, Step::Small) + pad(Space::Xl);
                 let x = (screen.w - width) / 2.0;
                 let y = 40.0;
                 hud::panel(&mut self.batch, &screen, x, y, width, 24.0, Token::PanelRaised);
@@ -1310,9 +1541,9 @@ impl App {
                     &mut self.text,
                     &mut self.batch,
                     &screen,
-                    x + 12.0,
+                    x + pad(Space::Md),
                     y + 5.0,
-                    SIZE_SMALL,
+                    Step::Small,
                     Token::TextBody,
                     &message,
                 );
@@ -1321,8 +1552,10 @@ impl App {
             }
         }
 
+        self.draw_compass(&screen);
+
         // ---- toolbar --------------------------------------------------------
-        for (tool, rect) in toolbar_layout(&screen, self.tool, self.zone) {
+        for (tool, rect) in toolbar_layout(&screen, self.ui) {
             let active = tool == self.tool;
             hud::panel(
                 &mut self.batch,
@@ -1337,9 +1570,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                rect.x + 10.0,
+                rect.x + pad(Space::Sm),
                 rect.y + 7.0,
-                SIZE_BODY,
+                Step::Body,
                 if active { Token::TextOnInk } else { Token::TextBody },
                 tool.name(),
             );
@@ -1347,9 +1580,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                rect.x + 10.0,
+                rect.x + pad(Space::Sm),
                 rect.y + 25.0,
-                SIZE_SMALL,
+                Step::Small,
                 if active { Token::TextOnInk } else { Token::TextMuted },
                 tool.hint(),
             );
@@ -1382,9 +1615,9 @@ impl App {
                     &mut self.text,
                     &mut self.batch,
                     &screen,
-                    x + 10.0,
+                    x + pad(Space::Sm),
                     base - 29.0,
-                    SIZE_BODY,
+                    Step::Body,
                     if active { Token::TextBody } else { Token::TextMuted },
                     &format!("{}  ({key})", zone.name()),
                 );
@@ -1403,9 +1636,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
-                y + 16.0,
-                SIZE_DISPLAY,
+                x + pad(Space::Lg),
+                y + pad(Space::Lg),
+                Step::Display,
                 Token::TextBody,
                 "Paused",
             );
@@ -1413,9 +1646,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
+                x + pad(Space::Lg),
                 y + 44.0,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 &format!(
                     "{} · {} · {} interactions recorded · {} ticks simulated",
@@ -1432,6 +1665,7 @@ impl App {
                 "S     save the city",
                 "O     load the last save",
                 "Q     flush the capture",
+                "U     interface scale",
             ];
             let mut iy = y + 78.0;
             for item in items {
@@ -1439,9 +1673,9 @@ impl App {
                     &mut self.text,
                     &mut self.batch,
                     &screen,
-                    x + 20.0,
+                    x + pad(Space::Lg),
                     iy,
-                    SIZE_BODY,
+                    Step::Body,
                     Token::TextBody,
                     item,
                 );
@@ -1454,7 +1688,7 @@ impl App {
             hud::panel(
                 &mut self.batch,
                 &screen,
-                x + 20.0,
+                x + pad(Space::Lg),
                 field_y,
                 width - 40.0,
                 30.0,
@@ -1466,8 +1700,8 @@ impl App {
                     &mut self.batch,
                     &screen,
                     x + 30.0,
-                    field_y + 8.0,
-                    SIZE_SMALL,
+                    field_y + pad(Space::Sm),
+                    Step::Small,
                     Token::TextMuted,
                     "press F to type feedback; Enter saves it into playtest/ with this session attached",
                 );
@@ -1476,7 +1710,7 @@ impl App {
                     &mut self.text,
                     Face::Body,
                     &self.feedback,
-                    SIZE_BODY,
+                    Step::Body,
                     width - 60.0,
                 );
                 hud::label(
@@ -1485,7 +1719,7 @@ impl App {
                     &screen,
                     x + 30.0,
                     field_y + 7.0,
-                    SIZE_BODY,
+                    Step::Body,
                     if self.feedback_focus { Token::TextOnInk } else { Token::TextBody },
                     &shown,
                 );
@@ -1495,9 +1729,9 @@ impl App {
                     &mut self.text,
                     &mut self.batch,
                     &screen,
-                    x + 20.0,
+                    x + pad(Space::Lg),
                     field_y + 38.0,
-                    SIZE_SMALL,
+                    Step::Small,
                     Token::TextMuted,
                     "Enter writes the record · Esc backs out without writing",
                 );
@@ -1516,18 +1750,20 @@ impl App {
                 ("1 / 2 / 3 / 4 / 5", "road · zone · power · demolish · inspect"),
                 ("R / C / I", "zone type while the zone tool is active"),
                 ("drag", "lay a road leg, or paint a zone block"),
-                ("right-drag", "pan   ·   wheel: zoom"),
+                ("right-drag", "orbit: free rotation and tilt"),
+                ("middle-drag", "pan   ·   wheel: zoom   ·   Home: reset the view"),
                 ("space / tab", "pause   ·   cycle 1x 2x 3x"),
                 ("L / H", "ledger   ·   this panel"),
+                ("Esc then U", "interface scale 100 / 125 / 150 / 200%"),
                 ("Esc then F", "leave feedback at any time; Enter writes it to playtest/C1/"),
             ];
             hud::label(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
-                y + 16.0,
-                SIZE_DISPLAY,
+                x + pad(Space::Lg),
+                y + pad(Space::Lg),
+                Step::Display,
                 Token::TextBody,
                 "C1 — sim core",
             );
@@ -1537,9 +1773,9 @@ impl App {
                     &mut self.text,
                     &mut self.batch,
                     &screen,
-                    x + 20.0,
+                    x + pad(Space::Lg),
                     ly,
-                    SIZE_SMALL,
+                    Step::Small,
                     Token::TextMuted,
                     keys,
                 );
@@ -1549,21 +1785,21 @@ impl App {
                     &screen,
                     x + 160.0,
                     ly,
-                    SIZE_SMALL,
+                    Step::Small,
                     Token::TextBody,
                     what,
                 );
                 ly += 20.0;
             }
-            hud::rule(&mut self.batch, &screen, x + 20.0, ly, width - 40.0, Token::TextMuted);
+            hud::rule(&mut self.batch, &screen, x + pad(Space::Lg), ly, width - 40.0, Token::TextMuted);
             ly += 10.0;
             hud::label(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
+                x + pad(Space::Lg),
                 ly,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 "Everything you place files a ticket. The ticket closes only when the world",
             );
@@ -1571,9 +1807,9 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
-                ly + 16.0,
-                SIZE_SMALL,
+                x + pad(Space::Lg),
+                ly + pad(Space::Lg),
+                Step::Small,
                 Token::TextMuted,
                 "shows what it promised, or honestly as unverified when it does not.",
             );
@@ -1583,16 +1819,17 @@ impl App {
                 .map(|gpu| gpu.adapter_name.clone())
                 .unwrap_or_else(|| "no device".to_string());
             let measured = format!(
-                "body text on panels measures {:.2}:1 — measured, not asserted",
+                "{} city quads · body text on panels measures {:.2}:1 — measured, not asserted",
+                self.world_batch.count(),
                 hud::measured_body_on_panel()
             );
             hud::label_mono(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
+                x + pad(Space::Lg),
                 ly + 58.0,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 &format!("rendering on {adapter}"),
             );
@@ -1600,18 +1837,121 @@ impl App {
                 &mut self.text,
                 &mut self.batch,
                 &screen,
-                x + 20.0,
+                x + pad(Space::Lg),
                 ly + 40.0,
-                SIZE_SMALL,
+                Step::Small,
                 Token::TextMuted,
                 &measured,
             );
         }
     }
 
+    /// Where you are, and which way the world runs.
+    ///
+    /// With a free camera there is no fixed "up" on screen, so the axis
+    /// directions are projected from world space into the interface and drawn
+    /// as they actually fall. A north arrow bolted to the corner would be a
+    /// decoration; this is a reading.
+    fn draw_compass(&mut self, screen: &Screen) {
+        // The scale the text was actually laid out at this frame, rather than a
+        // second copy that could drift from it.
+        let ui = self.text.ui_scale();
+        let (ax, ay) = (screen.w - hud::space(Space::Xxl, ui) * 2.0, screen.h - hud::space(Space::Xxl, ui) * 2.0 - design::target(ui));
+        let origin = Vec3::new(self.camera.focus.x, self.camera.focus.y, 0.0);
+        let (ox, oy) = self.camera.world_to_screen(origin);
+        let _ = (ox, oy);
+
+        let arm = |direction: Vec3, colour: [f32; 4], screen: &Screen, batch: &mut Batcher| {
+            let (ex, ey) = self.camera.world_to_screen(origin + direction);
+            let (dx, dy) = (ex - ox, ey - oy);
+            let length = (dx * dx + dy * dy).sqrt();
+            if length < 1.0 {
+                return;
+            }
+            let (ux, uy) = (dx / length, dy / length);
+            let reach = hud::space(Space::Xxl, ui) * 1.6;
+            let segments = 12;
+            for step in 0..segments {
+                let t = step as f32 / segments as f32;
+                let alpha = (1.0 - t) * 0.9;
+                let px = ax + ux * reach * t;
+                let py = ay + uy * reach * t;
+                let thickness = 3.0 * ui.0;
+                // A segment is emitted as a small square, which at this length
+                // is indistinguishable from a rotated line.
+                batch.screen_rect(
+                    screen,
+                    px - thickness / 2.0,
+                    py - thickness / 2.0,
+                    thickness,
+                    thickness,
+                    hud::with_alpha(colour, alpha),
+                    Text::solid_uv(),
+                );
+            }
+        };
+
+        let north = hud::style(Token::TextBody).text.unwrap_or([1.0; 4]);
+        let east = hud::style(Token::TextMuted).text.unwrap_or([0.8, 0.8, 0.8, 1.0]);
+        arm(Vec3::new(0.0, 1.0, 0.0), north, screen, &mut self.batch);
+        arm(Vec3::new(1.0, 0.0, 0.0), east, screen, &mut self.batch);
+
+        // The reading itself: where the cursor is, which way the city runs, and
+        // the scale the interface is laid out at.
+        let tile = self
+            .camera
+            .screen_to_tile(self.cursor.0, self.cursor.1)
+            .map(|(x, y)| format!("{x}, {y}"))
+            .unwrap_or_else(|| "off the map".to_string());
+        let reading = format!(
+            "N {:>3.0}°  ·  cursor {tile}  ·  {}",
+            self.camera.bearing_degrees(),
+            ui.label()
+        );
+        let width = self.text.measure_step(Face::Mono, &reading, Step::Small);
+        hud::label_mono(
+            &mut self.text,
+            &mut self.batch,
+            screen,
+            ax - width + hud::space(Space::Xxl, ui) * 0.4,
+            ay + hud::space(Space::Xxl, ui),
+            Step::Small,
+            Token::TextMuted,
+            &reading,
+        );
+        hud::label(
+            &mut self.text,
+            &mut self.batch,
+            screen,
+            ax - hud::space(Space::Sm, ui),
+            ay + hud::space(Space::Xxl, ui) - hud::space(Space::Xl, ui) - hud::space(Space::Md, ui),
+            Step::Small,
+            Token::TextBody,
+            "N",
+        );
+        hud::label(
+            &mut self.text,
+            &mut self.batch,
+            screen,
+            ax + hud::space(Space::Md, ui),
+            ay + hud::space(Space::Md, ui),
+            Step::Small,
+            Token::TextMuted,
+            "E",
+        );
+    }
+
     fn draw(&mut self) {
         self.batch.clear();
-        self.world.focus = self.camera.screen_to_tile(self.camera.screen.w / 2.0, self.camera.screen.h / 2.0);
+        // The scale is applied once per frame, here, rather than carried
+        // through every call site that draws text.
+        self.text.set_ui_scale(self.ui);
+        // Level-of-detail is driven by where the camera is looking, so a replay
+        // with the same camera splits the same agents into the same cohorts.
+        self.world.focus = (
+            (self.camera.focus.x / TILE).floor() as i32,
+            (self.camera.focus.y / TILE).floor() as i32,
+        );
         self.draw_world();
         self.draw_hud();
 
@@ -1622,26 +1962,66 @@ impl App {
             self.atlas_dirty = false;
         }
 
+        // Once, on the first frame: what the passes were actually asked to
+        // draw. "It renders" is otherwise a claim with nothing behind it.
+        if !self.logged_first_frame {
+            self.logged_first_frame = true;
+            tracing::info!(
+                world_opaque = self.world_batch.opaque.len(),
+                world_overlay = self.world_batch.overlay.len(),
+                interface = self.batch.instances.len(),
+                yaw_degrees = self.camera.yaw.to_degrees(),
+                pitch_degrees = self.camera.pitch.to_degrees(),
+                zoom = self.camera.zoom,
+                "first frame"
+            );
+        }
+
         let clear = hud::style(Token::Desk).fill.unwrap_or([0.1, 0.1, 0.1, 1.0]);
         let now = Instant::now();
         let seconds = now.duration_since(self.last_frame).as_secs_f32();
         self.last_frame = now;
+        let camera = self.camera;
         if let Some(gpu) = self.gpu.as_mut() {
-            gpu.render(&self.batch, clear, seconds);
+            gpu.render(&self.world_batch, &self.batch, &camera, clear, seconds);
         }
+    }
+
+    /// Every rectangle the player can hit, handed to the design check so a
+    /// target that shrinks below the floor is a refusal rather than a surprise.
+    fn interactive_targets(&self) -> Vec<Target> {
+        let screen = self.screen();
+        let mut targets = Vec::new();
+        for (tool, rect) in toolbar_layout(&screen, self.ui) {
+            let _ = tool;
+            targets.push(Target {
+                name: "tool button",
+                w: rect.w,
+                h: rect.h,
+            });
+        }
+        for rect in menu_rows(&screen, self.ui) {
+            targets.push(Target {
+                name: "menu row",
+                w: rect.w,
+                h: rect.h,
+            });
+        }
+        targets
     }
 }
 
 /// Where the tool buttons live. One function, used by both the drawing code and
 /// the hit test, so a button cannot be drawn in one place and clickable in
 /// another.
-fn toolbar_layout(screen: &Screen, _active: Tool, _zone: Zone) -> Vec<(Tool, Rect)> {
-    let width = 150.0;
-    let gap = 6.0;
+fn toolbar_layout(screen: &Screen, ui: UiScale) -> Vec<(Tool, Rect)> {
+    let height = design::target(ui) + hud::space(Space::Sm, ui);
+    let width = 150.0 * ui.0;
+    let gap = hud::space(Space::Xs, ui);
     let tools = Tool::all();
     let total = tools.len() as f32 * width + (tools.len() as f32 - 1.0) * gap;
     let start = (screen.w - total) / 2.0;
-    let y = screen.bottom_anchor(56.0, 12.0);
+    let y = screen.bottom_anchor(height, hud::space(Space::Md, ui));
     tools
         .iter()
         .enumerate()
@@ -1652,18 +2032,66 @@ fn toolbar_layout(screen: &Screen, _active: Tool, _zone: Zone) -> Vec<(Tool, Rec
                     x: start + index as f32 * (width + gap),
                     y,
                     w: width,
-                    h: 56.0,
+                    h: height,
                 },
             )
         })
         .collect()
 }
 
-fn toolbar_hit(screen: &Screen, px: f32, py: f32) -> Option<Tool> {
-    toolbar_layout(screen, Tool::Road, Zone::Residential)
+fn toolbar_hit(screen: &Screen, ui: UiScale, px: f32, py: f32) -> Option<Tool> {
+    toolbar_layout(screen, ui)
         .into_iter()
         .find(|(_, rect)| hud::hit(rect.x, rect.y, rect.w, rect.h, px, py))
         .map(|(tool, _)| tool)
+}
+
+/// The rows of the pause menu, which is the only other surface with targets on
+/// it. Sized from the scale for the same reason the toolbar is.
+fn menu_rows(screen: &Screen, ui: UiScale) -> Vec<Rect> {
+    let width = 520.0 * ui.0;
+    let height = 300.0 * ui.0;
+    let x = (screen.w - width) / 2.0;
+    let y = (screen.h - height) / 2.0;
+    let row = design::target(ui);
+    (0..6)
+        .map(|index| Rect {
+            x: x + hud::space(Space::Xl, ui),
+            y: y + hud::space(Space::Xl, ui) + index as f32 * (row + hud::space(Space::Xs, ui)),
+            w: width - hud::space(Space::Xl, ui) * 2.0,
+            h: row,
+        })
+        .collect()
+}
+
+/// How tall a building stands, in world units.
+///
+/// Level gives the storeys; the kind gives the shape a city actually has — a
+/// plant is tall and thin, a shop is low and wide — and under construction a
+/// building is a stub, so scaffolding is legible as *unfinished* rather than as
+/// a smaller building.
+fn building_height(b: &ala_cities::sim::Building, tick: u64) -> f32 {
+    let kind = match b.kind {
+        BuildingKind::Home => 1.0,
+        BuildingKind::Shop => 0.9,
+        BuildingKind::Factory => 1.3,
+        BuildingKind::PowerPlant => 2.1,
+    };
+    let storeys = if tick < b.ready_tick {
+        0.45
+    } else {
+        b.level.max(1) as f32
+    };
+    storeys * kind * LEVEL_HEIGHT
+}
+
+/// Where a building's shadow lands, from the same light that shades its faces.
+fn shadow_reach(height: f32) -> (f32, f32) {
+    let light = render::LIGHT.normalize();
+    if light.z.abs() < 1e-3 {
+        return (0.0, 0.0);
+    }
+    ((-light.x / light.z) * height, (-light.y / light.z) * height)
 }
 
 impl ApplicationHandler for App {
@@ -1687,8 +2115,8 @@ impl ApplicationHandler for App {
         tracing::info!(
             scale_factor = scale,
             physical = ?window.inner_size(),
-            logical_body_px = SIZE_BODY as f64 / scale,
-            logical_small_px = SIZE_SMALL as f64 / scale,
+            logical_body_px = Step::Body.logical_px() / scale as f32,
+            logical_small_px = Step::Small.logical_px() / scale as f32,
             "interface scale"
         );
         let gpu = Gpu::new(window, &self.text);
@@ -1712,9 +2140,15 @@ impl ApplicationHandler for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.cursor = (position.x as f32, position.y as f32);
-                if self.panning {
-                    self.camera
-                        .pan(self.cursor.0 - self.last_cursor.0, self.cursor.1 - self.last_cursor.1);
+                let (dx, dy) = (
+                    self.cursor.0 - self.last_cursor.0,
+                    self.cursor.1 - self.last_cursor.1,
+                );
+                if self.orbiting {
+                    self.camera.orbit(dx, dy);
+                    self.last_cursor = self.cursor;
+                } else if self.panning {
+                    self.camera.pan(dx, dy);
                     self.last_cursor = self.cursor;
                 }
             }
@@ -1724,7 +2158,9 @@ impl ApplicationHandler for App {
                     && state == ElementState::Pressed
                     && !self.menu_open
                 {
-                    if let Some(tool) = toolbar_hit(&self.screen(), self.cursor.0, self.cursor.1) {
+                    if let Some(tool) =
+                        toolbar_hit(&self.screen(), self.ui, self.cursor.0, self.cursor.1)
+                    {
                         self.tool = tool;
                         return;
                     }
@@ -1799,8 +2235,23 @@ fn main() {
 
     // The mechanical half of the design check, logged at startup. Judgement
     // items are named as open rather than folded in with it.
-    for line in hud::audit() {
+    let targets = app.interactive_targets();
+    let ui = app.ui;
+    for line in design::audit(&targets, ui) {
         tracing::info!("design: {line}");
+    }
+
+    // And then it **fails closed**, like the style table does. A scale that is
+    // allowed to drift is the defect this check exists to prevent, and a check
+    // that only prints is a check nobody reads.
+    let defects = design::verify(&targets, ui);
+    if !defects.is_empty() {
+        eprintln!("the design check failed closed:");
+        for defect in &defects {
+            eprintln!("  - {defect}");
+        }
+        eprintln!("fix these and restart; nothing will be drawn until the scales hold.");
+        std::process::exit(1);
     }
 
     if app.gov.governor.load_state == ala_cities::gov::LoadState::FailedClosed {

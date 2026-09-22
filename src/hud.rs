@@ -11,9 +11,13 @@
 //!
 //! No raster textures are used: fills are solid and everything else is
 //! geometry, which is why there is no provenance file for this file to carry.
+//!
+//! Sizes and spacing do **not** come from here: they come from [`crate::design`],
+//! whose steps are a closed enum so a call site cannot carry its own number.
 
 use std::sync::LazyLock;
 
+use crate::design::{Space, Step, UiScale};
 use crate::render::{Batcher, Face, Screen, Text};
 
 // ---------------------------------------------------------------------------
@@ -328,9 +332,10 @@ pub fn measured_body_on_panel() -> f32 {
 // Primitives
 // ---------------------------------------------------------------------------
 
-pub const SIZE_SMALL: u32 = 12;
-pub const SIZE_BODY: u32 = 14;
-pub const SIZE_DISPLAY: u32 = 20;
+/// A padding or inset from the design's spacing scale.
+pub fn space(space: Space, ui: UiScale) -> f32 {
+    space.px(ui)
+}
 
 pub fn panel(
     batch: &mut Batcher,
@@ -370,12 +375,12 @@ pub fn label(
     screen: &Screen,
     x: f32,
     y: f32,
-    size: u32,
+    step: Step,
     token: Token,
     body: &str,
 ) -> f32 {
     let color = style(token).text.unwrap_or([1.0, 1.0, 1.0, 1.0]);
-    text.draw(Face::Body, batch, screen, x, y, size, color, body)
+    text.draw_step(Face::Body, batch, screen, x, y, step, color, body)
 }
 
 /// Numbers, identifiers and versions: monospace, so a digit can be checked by
@@ -387,12 +392,12 @@ pub fn label_mono(
     screen: &Screen,
     x: f32,
     y: f32,
-    size: u32,
+    step: Step,
     token: Token,
     body: &str,
 ) -> f32 {
     let color = style(token).text.unwrap_or([1.0, 1.0, 1.0, 1.0]);
-    text.draw(Face::Mono, batch, screen, x, y, size, color, body)
+    text.draw_step(Face::Mono, batch, screen, x, y, step, color, body)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -430,8 +435,8 @@ pub fn hit(x: f32, y: f32, w: f32, h: f32, px: f32, py: f32) -> bool {
 
 /// Clip a line to a width, with an ellipsis. Long objectives must not spill
 /// across the surface and cover a control.
-pub fn truncate(text: &mut Text, face: Face, body: &str, size: u32, max_width: f32) -> String {
-    if text.measure(face, body, size) <= max_width {
+pub fn truncate(text: &mut Text, face: Face, body: &str, step: Step, max_width: f32) -> String {
+    if text.measure_step(face, body, step) <= max_width {
         return body.to_string();
     }
     let mut out = String::new();
@@ -439,13 +444,46 @@ pub fn truncate(text: &mut Text, face: Face, body: &str, size: u32, max_width: f
         let mut candidate = out.clone();
         candidate.push(ch);
         candidate.push('…');
-        if text.measure(face, &candidate, size) > max_width {
+        if text.measure_step(face, &candidate, step) > max_width {
             break;
         }
         out.push(ch);
     }
     out.push('…');
     out
+}
+
+/// Every mechanical defect in the token table, for the design check to fail
+/// closed on. Returns all of them rather than the first: a check that reports
+/// one problem per run is one somebody stops running.
+pub fn style_defects() -> Vec<String> {
+    let mut defects = Vec::new();
+    for token in ALL_TOKENS {
+        if !STYLES.iter().any(|(t, _)| *t == token) {
+            defects.push(format!(
+                "token {token:?} has no style record; the table failed closed"
+            ));
+        }
+    }
+    for (ink_token, surface) in [
+        (Token::TextBody, Token::Panel),
+        (Token::TextBody, Token::Desk),
+        (Token::TextMuted, Token::Panel),
+        (Token::TextOnInk, Token::Ink),
+    ] {
+        let text = style(ink_token).text.unwrap_or([0.0, 0.0, 0.0, 1.0]);
+        let background = style(surface).fill.unwrap_or([0.0, 0.0, 0.0, 1.0]);
+        let ratio = contrast_ratio(text, background);
+        if ratio < 4.5 {
+            defects.push(format!(
+                "{ink_token:?} on {surface:?} measures {ratio:.2}:1, below the 4.5:1 floor"
+            ));
+        }
+    }
+    if style_by_name("DefinitelyNotAToken").is_some() {
+        defects.push("an unknown style name was accepted instead of refused".to_string());
+    }
+    defects
 }
 
 #[cfg(test)]
@@ -566,12 +604,20 @@ mod tests {
     fn truncation_never_exceeds_its_budget() {
         let mut text = Text::new();
         let long = "district 3: 412 residents have no job within reach of the roads they can walk";
-        let clipped = truncate(&mut text, Face::Body, long, SIZE_SMALL, 120.0);
+        let clipped = truncate(&mut text, Face::Body, long, Step::Small, 120.0);
         assert!(
-            text.measure(Face::Body, &clipped, SIZE_SMALL) <= 120.0 + 1.0,
+            text.measure_step(Face::Body, &clipped, Step::Small) <= 120.0 + 1.0,
             "the clipped string overran its width"
         );
         assert!(clipped.ends_with('…'));
-        assert_eq!(truncate(&mut text, Face::Body, "short", SIZE_SMALL, 400.0), "short");
+        assert_eq!(
+            truncate(&mut text, Face::Body, "short", Step::Small, 400.0),
+            "short"
+        );
+    }
+
+    #[test]
+    fn the_mechanical_defect_list_is_empty() {
+        assert_eq!(style_defects(), Vec::<String>::new());
     }
 }

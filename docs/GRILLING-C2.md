@@ -539,6 +539,74 @@ list that no build can run.
 
 ---
 
+# Built — the presentation pass, and what it was measured against
+
+Items 1, 2, 3 and 6 of the settled list are **in the build**. Item 4 (the icon
+pipeline) is the next task; item 5's info-view registry depends on the data
+C2's systems bring.
+
+## What changed, against what was measured
+
+| Measured defect | What replaced it |
+|---|---|
+| 46 of 61 text call sites at **12 px** | a closed type scale — micro 12 · small 14 · body 16 · title 20 · display 26 — with `body` at 16 px, and `draw_step` taking a `Step` so a literal cannot reach a call site |
+| six **off-scale size literals** (11, 12, 16, 24, 32, 40) | gone; a test reads the sources back and fails if the old constants reappear |
+| glyphs **unsnapped**, atlas sampled with `Linear` | positions snapped to whole pixels; atlas sampled `Nearest`. The atlas is rasterised at the size it is drawn at, so there is nothing for a filter to interpolate |
+| **no pitch, no rotation** | free orbit camera: free yaw, free tilt clamped to 20°–88°, orthographic projection, free zoom |
+| flat rectangles for buildings | extruded boxes, one height step per level, faces culled against the camera and shaded by the fixed light, with contact shadows cast from that same light |
+| a screen-rectangle tile guess | **inverse projection against the ground plane**, tested across 12 yaws × 7 pitches × 8 yaws × 4 pitches sweeps |
+| one hovered-tile hint | tile highlight in every mode + distance-faded local grid patch while placing + projected north/east arms with a bearing, cursor coordinates and the interface scale |
+| no enforced conformance | `design::verify`, which **refuses to start** on any defect and reports all of them |
+| contrast asserted in prose | measured at startup: 14.24:1 body-on-panel, 17.02:1 on desk, 8.57:1 muted, 7.02:1 on ink |
+
+## Evidence from the running build
+
+```
+design: ui scale 100% · 5 type steps · 6 spacing steps · 11 targets
+design: type micro 12 → 12 px · small 14 → 14 · body 16 → 16 · title 20 → 20 · display 26 → 26
+design: smallest target: 48 px (floor 24, comfortable 48)
+design: style table: 32 tokens, 32 records, 0 with no record
+renderer ready … depth=Depth32Float
+first frame world_opaque=26167 world_overlay=49 interface=410 yaw=0° pitch=52° zoom=0.70
+```
+
+Tests: **57 library + 28 client, all passing**, 0 clippy warnings. The sweeps
+that matter are the camera ones — `the_camera_round_trips_a_ground_point_at_any_
+angle` checks 84 yaw/pitch combinations, and `a_tile_picks_back_the_tile_it_was_
+drawn_at_at_any_angle` checks 32 — because "exact picking" is only a claim until
+it has been tried at angles nobody wrote the test for.
+
+## Three things the work turned up
+
+1. **An orthographic camera has no horizon.** A test asserted that a ray at the
+top of the screen picks nothing "into the sky". It failed: under orthographic
+projection every screen point meets the ground plane, so the honest behaviour is
+that the top of the screen is *far away*, not empty. The test was rewritten to
+check that instead, and a second test now verifies the bearing claim against the
+projection rather than trusting it.
+2. **A leftover process locks the build.** `kill $PID` in Git Bash does not end
+a Windows process; a stale `ala-cities.exe` was still holding the binary, which
+is why one build failed with `os error 5`. `taskkill //F //IM` is the version
+that actually stops it — and a run that is killed rather than closed still keeps
+its record, because the capture flushes mid-session.
+3. **The comfortable target floor has to scale too.** At 125 %, a 48 px target is
+no longer 48 logical pixels. The check caught its own test doing exactly that,
+which is the check earning its keep before it ever ran against the game.
+
+## Still open, and honestly so
+
+- **Whether it is legible to you.** Every mechanical cause of the old softness is
+gone, but that is an argument, not a reading. This is the item no build can run.
+- **The interface scale at 125/150/200 %** has been checked by test at each
+scale, not by eye at each scale.
+- **Frame timing under load** with 26 k world quads and a depth buffer is
+unmeasured at 240 Hz output.
+- **Composite contrast on a rendered frame** — token pairs are measured, pixels
+are not.
+- **Icons** — next task, per the round-9 answers.
+
+---
+
 ## Answers
 
 *Rounds 7 and 8 are settled above. Round 9 is pending, and nothing in it is

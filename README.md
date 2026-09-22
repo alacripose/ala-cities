@@ -38,6 +38,59 @@ The screens you are looking at are not decoration over an invisible state.
 The governed-session chrome — contract, ticket, governor version, identity
 status — is on screen because that is the actual authority you are acting under.
 
+## The interface
+
+The world is **instanced quads in world space with a real depth buffer**, viewed
+through a **free orbit camera** — rotation and tilt are free, the projection is
+orthographic so two tiles are the same size wherever they are on screen, and
+buildings are extruded one height step per level with contact shadows from the
+same light that shades their faces. Clicking resolves a tile by **inverse
+projection against the ground plane**, which is exact at any angle; deriving a
+tile from a screen rectangle would be a tile or two wrong the moment the camera
+tilts.
+
+Where you are on the grid is answered by three things rather than one: a
+**tile highlight** under the cursor in every mode, a **local grid patch** that
+fades with distance while a placement tool is in hand, and a **bearing and
+coordinate readout** whose north and east arms are projected from world space,
+so they say where the city runs rather than where a button was put.
+
+Type and spacing come from `src/design.rs`, whose steps are a **closed enum**:
+
+| Step | 100 % | Used for |
+|---|---|---|
+| `micro` | 12 px | micro-labels beside the thing they annotate |
+| `small` | 14 px | secondary rows |
+| `body` | 16 px | message and content text |
+| `title` | 20 px | panel headings |
+| `display` | 26 px | plaques and critical identifiers |
+
+Sizes and spacing are not passed as numbers anywhere — `draw_step` takes a
+`Step`, so a call site *cannot* carry its own size, and a test reads the sources
+back to catch anyone reintroducing the old ad-hoc constants. Spacing is the
+design doc's 4-unit scale, targets are ≥ 48 px (WCAG 2.5.8's 24 px is the hard
+floor, not the goal), and the interface scale cycles 100 / 125 / 150 / 200 %
+from the pause menu, re-laying out rather than stretching.
+
+Glyph positions are **snapped to whole pixels** and the coverage atlas is sampled
+with `Nearest`, because the first build's text was soft for exactly one reason: it
+was rasterised at one size and drawn at fractional positions through a linear
+filter.
+
+### The check fails closed
+
+`design::verify` runs at startup and **refuses to start** if it finds anything:
+type steps below their floors, spacing off the unit, a target under the floor, a
+token with no style record, or a contrast pair below 4.5:1. It reports *every*
+defect rather than the first, because a check that reports one problem per run is
+a check somebody stops running.
+
+It is also explicit about what it does **not** prove. A green run means the
+requirements are present in the source. It says nothing about whether the
+interface is legible to a person, nothing about layout at other window sizes,
+nothing about composite contrast on a rendered frame, and nothing about frame
+timing under load. Those are judgement items and they are reported as open.
+
 ## Wheel map
 
 The rule applied: **take wheels that are large and not determinism-critical;
