@@ -426,6 +426,16 @@ impl Text {
     }
 
     /// Measure at a design step rather than a raw size.
+    /// The flat-cap offset for a step: how far a glyph's ink hangs below the
+    /// baseline at this size, read from an `H`. Layout anchors lines by their
+    /// *top*, so it needs the font's own ascent rather than a guess at one.
+    pub fn ascent(&mut self, face: Face, step: Step) -> f32 {
+        let px = self.px(step);
+        self.slot(face, 'H', px)
+            .map(|slot| slot.y_offset)
+            .unwrap_or(0.0)
+    }
+
     pub fn measure_step(&mut self, face: Face, text: &str, step: Step) -> f32 {
         let px = self.px(step);
         self.measure(face, text, px)

@@ -11,6 +11,7 @@
 mod design;
 mod hud;
 mod render;
+mod ui;
 
 use std::path::PathBuf;
 use std::sync::Arc;
