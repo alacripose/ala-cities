@@ -121,6 +121,18 @@ struct App {
     feedback: String,
     feedback_focus: bool,
 
+    /// The session console (a78): a pane beside the narrowed world view that
+    /// reads the agent's ledger and the season store. Read-only by design —
+    /// the agent's tool is the only writer (Q127).
+    console_open: bool,
+    console_scroll: ui::Scroll,
+    /// The build identity, read once at startup (a76: a reading of the tree
+    /// at launch, not a live VCS poll).
+    build_info: ala_cities::buildinfo::BuildInfo,
+    /// Fault annotations against the debugger itself (a71 item 4): what the
+    /// player reported about this pane, shown back in the pane.
+    console_faults: Vec<String>,
+
     /// The ledger panel's scroll offset. The ledger keeps a private offset
     /// because it is not the tool's one action — its wheel events are routed
     /// only while it is open, so it can never steal the wheel from the camera.
@@ -149,6 +161,9 @@ impl App {
             .unwrap_or_else(|_| PathBuf::from("config/governor.json"));
         let gov = Government::open("saves", "season_2026_s1", &governor_path)?;
         let session = Session::open(STAGE, &format!("{}-dev", env!("CARGO_PKG_VERSION")))?;
+        // Read once at launch (a76): the pane shows the tree the build ran
+        // from, not a live poll of the repository.
+        let build_info = ala_cities::buildinfo::query();
         let screen = Screen { w: 1600.0, h: 900.0 };
 
         Ok(Self {
@@ -180,6 +195,10 @@ impl App {
             menu_open: false,
             feedback: String::new(),
             feedback_focus: false,
+            console_open: false,
+            console_scroll: ui::Scroll::new(),
+            build_info,
+            console_faults: Vec::new(),
             ledger_scroll: ui::Scroll::new(),
             icon_set: IconSet::default(),
             audio: None,
@@ -638,8 +657,37 @@ impl App {
             KeyCode::KeyR if self.tool == Tool::Zone => self.zone = Zone::Residential,
             KeyCode::KeyC if self.tool == Tool::Zone => self.zone = Zone::Commercial,
             KeyCode::KeyI if self.tool == Tool::Zone => self.zone = Zone::Industrial,
-            KeyCode::KeyL => self.show_ledger = !self.show_ledger,
+            KeyCode::KeyL => {
+                self.show_ledger = !self.show_ledger;
+                // One right-rail surface at a time, both directions.
+                if self.show_ledger {
+                    self.console_open = false;
+                }
+            }
             KeyCode::KeyH => self.show_help = !self.show_help,
+            // The session console: pause menu (below) or F9 directly, per a78.
+            KeyCode::F9 => {
+                self.console_open = !self.console_open;
+                if self.console_open {
+                    self.speed = 0;
+                    // Both are right-side surfaces; the pane covers the ledger
+                    // and an honest interface does not hide one surface behind
+                    // another.
+                    self.show_ledger = false;
+                }
+            }
+            KeyCode::KeyD if self.console_open => {
+                // The fault annotation path (a71 item 4): report the debugger
+                // itself. The report lands in the session capture with the
+                // full context, and the pane shows what was reported.
+                let note = format!(
+                    "console fault reported at {}: build {}",
+                    self.world.clock.label(),
+                    self.build_info.summary_line()
+                );
+                self.console_faults.push(note.clone());
+                self.capture("console_fault", None, note);
+            }
             KeyCode::KeyF if self.menu_open => self.feedback_focus = true,
             KeyCode::KeyS if self.menu_open => {
                 let path = PathBuf::from(WORLD_SAVE);
@@ -1414,6 +1462,26 @@ impl App {
             );
         }
 
+        // ---- debug console (F9) -------------------------------------------
+        // Same right-rail geometry as the ledger — the two surfaces are one
+        // family — and the same measure/re-clamp/paint discipline.
+        if self.console_open {
+            let (console_frame, console_blocks) = self.console_layout(&screen);
+            let cy = console_frame.y - pad(Space::Sm);
+            let cx = screen.w - 470.0 - pad(Space::Md);
+            let ch = screen.bottom_anchor(160.0, 12.0) - cy;
+            hud::panel(&mut self.batch, &screen, cx, cy, 470.0, ch, Token::Panel);
+            let console_measured = ui::measure(&mut self.text, ui, &console_frame, &console_blocks);
+            self.console_scroll.scroll_by(0.0, &console_measured);
+            ui::paint(
+                &console_measured,
+                &self.console_scroll,
+                &mut self.batch,
+                &screen,
+                &mut self.text,
+            );
+        }
+
         // ---- per-object page ----------------------------------------------
         if self.tool == Tool::Inspect {
             let (hx, hy) = self
@@ -1716,6 +1784,7 @@ impl App {
                 "O     load the last save",
                 "Q     flush the capture",
                 "U     interface scale",
+                "F9    session console (the agent's ledger, beside the world)",
             ] {
                 menu_blocks.push(Block::Line {
                     face: Face::Body,
@@ -1811,6 +1880,7 @@ impl App {
                 ("space / tab", "pause   ·   cycle 1x 2x 3x"),
                 ("L / H", "ledger   ·   this panel"),
                 ("Esc then U", "interface scale 100 / 125 / 150 / 200%"),
+                ("F9", "session console: the agent's ledger, beside the world"),
                 ("Esc then F", "leave feedback at any time; Enter writes it to playtest/C1/"),
             ];
             let key_col = 148.0 * ui.0;
@@ -2154,6 +2224,142 @@ impl App {
         }
         (frame, blocks)
     }
+
+    /// Scroll the console's report by a wheel delta, clamped against the
+    /// same measurement the draw pass uses — the ledger's discipline, kept.
+    fn scroll_console(&mut self, pixels: f32) {
+        if !self.console_open || pixels == 0.0 {
+            return;
+        }
+        let screen = self.screen();
+        let (frame, blocks) = self.console_layout(&screen);
+        let ui = self.text.ui_scale();
+        let measured = ui::measure(&mut self.text, ui, &frame, &blocks);
+        self.console_scroll.scroll_by(pixels, &measured);
+    }
+
+    /// The console pane's content: frame and blocks. One copy, shared by the
+    /// draw pass and the wheel handler. Read-only by construction (Q127):
+    /// every fact here comes from a record or a query, and nothing in this
+    /// panel writes anything — the agent process is the ledger's only author.
+    fn console_layout(&mut self, screen: &Screen) -> (Frame, Vec<Block>) {
+        let ui = self.text.ui_scale();
+        let pad = |space: Space| hud::space(space, ui);
+        let width = 470.0;
+        let lx = screen.w - width - pad(Space::Md);
+        let ly = pad(Space::Sm) * 2.0
+            + Step::Small.px(ui) as f32 * ui::LINE_ADVANCE_FACTOR
+            + pad(Space::Sm)
+            + pad(Space::Xs);
+        let lh = screen.bottom_anchor(160.0, 12.0) - ly;
+        let frame = Frame::new(
+            lx + pad(Space::Md),
+            ly + pad(Space::Sm),
+            width - 2.0 * pad(Space::Md),
+            lh - 2.0 * pad(Space::Sm),
+        );
+
+        /// Age of the last agent record, in the pane's words. A display
+        /// concern, kept out of the ledger store (a73's split of labour).
+        fn age_line(seconds: u64) -> String {
+            if seconds < 90 {
+                format!("{seconds}s ago")
+            } else if seconds < 3600 {
+                format!("{}m ago", seconds / 60)
+            } else {
+                format!("{}h ago", seconds / 3600)
+            }
+        }
+
+        let muted = hud::style(Token::TextMuted).text.unwrap_or([0.8; 4]);
+        let body_ink = hud::style(Token::TextBody).text.unwrap_or([1.0; 4]);
+        let row = |label: &str, value: String| Block::Row {
+            label: label.into(),
+            value,
+            step: Step::Small,
+            color: body_ink,
+            value_color: muted,
+        };
+        let small = |text: String| Block::Line {
+            face: Face::Body,
+            step: Step::Small,
+            text,
+            color: muted,
+        };
+
+        let build = &self.build_info;
+        let (open, closed) = self.gov.counts();
+        let mut blocks = vec![
+            Block::Line {
+                face: Face::Body,
+                step: Step::Body,
+                text: "Debug console".into(),
+                color: body_ink,
+            },
+            // Each fact its own row, each absence named — "unknown" is a
+            // fact too (a76), never a blank and never a guess.
+            row("Build", build.commit.clone().unwrap_or_else(|| "unknown".into())),
+            row("Branch", build.branch.clone().unwrap_or_else(|| "unknown".into())),
+            row(
+                "Tree",
+                match build.dirty_files {
+                    Some(0) => "clean".into(),
+                    Some(n) => format!("{n} uncommitted"),
+                    None => "unknown".into(),
+                },
+            ),
+            small(build.release_label()),
+            row("Tickets", format!("open {open} · terminal {closed}")),
+            Block::Rule,
+            Block::Gap(Space::Xs),
+        ];
+
+        blocks.push(Block::Line {
+            face: Face::Body,
+            step: Step::Body,
+            text: "Session faults".into(),
+            color: body_ink,
+        });
+        if self.console_faults.is_empty() {
+            blocks.push(small(
+                "none reported — KeyD reports the debugger itself".into(),
+            ));
+        } else {
+            for note in self.console_faults.iter().cloned() {
+                blocks.push(small(note));
+            }
+        }
+        blocks.push(Block::Gap(Space::Xs));
+
+        blocks.push(Block::Line {
+            face: Face::Body,
+            step: Step::Body,
+            text: "Agent ledger".into(),
+            color: body_ink,
+        });
+        let path = std::path::PathBuf::from("saves")
+            .join("season_2026_s1")
+            .join(ala_cities::agentledger::LEDGER_FILE);
+        match ala_cities::agentledger::presence(&path, ala_cities::agentledger::now_unix_ms()) {
+            ala_cities::agentledger::Presence::NoRecord => {
+                blocks.push(small("no agent activity recorded".into()));
+            }
+            ala_cities::agentledger::Presence::Last {
+                entry,
+                age_seconds,
+            } => {
+                blocks.push(row(
+                    "Agent",
+                    format!("{} · {}", entry.agent, entry.action.token()),
+                ));
+                blocks.push(small(format!("{} — {}", entry.ticket, entry.detail)));
+                // The claim and its age, together (a73): the pane reports
+                // what a record says and how long ago it said it.
+                blocks.push(small(age_line(age_seconds)));
+            }
+        }
+        (frame, blocks)
+    }
 }
 
 /// Where the tool buttons live. One function, used by both the drawing code and
@@ -2344,10 +2550,17 @@ impl ApplicationHandler for App {
                 self.on_click(state == ElementState::Pressed, button);
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                // The open ledger owns the wheel while it is visible — the
-                // only surface in the game that scrolls — and the camera
-                // never sees the event. Closed, the wheel zooms as before.
-                if self.show_ledger {
+                // The open console owns the wheel first — it is the topmost
+                // right-rail surface — then the ledger, and the camera never
+                // sees the event while either is visible. Closed, the wheel
+                // zooms as before.
+                if self.console_open {
+                    let pixels = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => y * 40.0,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                    };
+                    self.scroll_console(pixels);
+                } else if self.show_ledger {
                     let pixels = match delta {
                         MouseScrollDelta::LineDelta(_, y) => y * 40.0,
                         MouseScrollDelta::PixelDelta(pos) => pos.y as f32,

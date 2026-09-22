@@ -15,6 +15,13 @@ path = "src/main.rs"
 name = "verify"
 path = "src/bin/verify.rs"
 
+# The agent's ledger tool: the only process that writes the work ledger the
+# debugger pane reads (C7, C6 Q127). Separate by process so "only the agent's
+# ledger may set in_progress" is enforceable, not a convention.
+[[bin]]
+name = "agent-ledger"
+path = "src/bin/agent.rs"
+
 # The icon review picker: a tool, not the game. Shows six authored candidates
 # of an icon in a 3x2 grid and appends the choice that promotes one into
 # shipping. Built on the shared widget layer and the game's own Gpu (C7
