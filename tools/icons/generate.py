@@ -6,16 +6,16 @@ Run it with Blender, which is the only thing here that needs Blender:
 
 What it writes:
 
-* `assets/icons/review/<id>.<generation>.<px>.png` — the three generations of one
-  icon, which is what a person chooses between. This is the review set, not the
-  shipping set.
+* `assets/icons/review/<id>.<generation>.<px>.png` — six authored concepts of one
+  icon (one canonical plus five named alternates), which is what a person chooses
+  between. This is the review set, not the shipping set.
 * `assets/icons/review/<id>.<generation>.96.rgba` — the decision size as raw RGBA,
   which is what the picker and the game read. The runtime carries **no PNG
   decoder**: PNG is for people, RGBA is for the program, and the manifest says
   which is which.
 * `assets/icons/review.json` — the picker's input: what awaits a decision, the
-  three generations' declared transforms, their measurements, and the identity of
-  the build that made them.
+  six candidates' authored briefs, measurements, quality record, and the identity
+  of the build that made them.
 * `assets/icons/manifest.json` — provenance, materials, deviations, measurements.
 * `assets/icons/<id>.<px>.png|rgba` — the shipping assets, written **only** for an
   icon whose chosen generation is recorded in `review-decisions.jsonl`. Nothing
@@ -50,6 +50,7 @@ DECISIONS = os.path.join(OUT, "review-decisions.jsonl")
 #: is judged on what it looks like when it has room, and the smallest size is
 #: recorded beside it so a choice that dies at 24 px can be seen to.
 DECISION_PX = max(rig.SHIPPED_PX)
+RECOGNITION_PX = 32
 CONTEXT_PX = min(rig.SHIPPED_PX)
 
 # ---------------------------------------------------------------------------
@@ -80,6 +81,11 @@ CHROMATICITY_TOLERANCE_DEGREES = 12.0
 #: Ink coverage at the smallest shipped size. Below the floor the glyph has
 #: averaged away; above the ceiling it is a blob and carries no information.
 COVERAGE_FLOOR_24 = 0.06
+#: How far apart two candidates must measure to count as two readings, as a fraction
+#: of the span between the two extreme corpus anchors. Ten percent: closer than that
+#: and the "difference" is inside the ladder's own resolution, because the two
+#: anchors being compared differ by far more than the noise between them.
+LADDER_SEPARATION_FRACTION = 0.10
 COVERAGE_CEILING_24 = 0.62
 
 #: A framed view icon carries a border, and the border must not become the icon.
@@ -91,6 +97,27 @@ INTERNAL_MIN_CONTRAST = 1.5
 
 #: Below this much separation between a colour's channels, the hue check is noise.
 NEUTRAL_CHROMA_THRESHOLD = 0.06
+#: Above this metalness a material has essentially no diffuse term, so its flat
+#: swatch is not a reading of the declared colour at all: it is a reading of how
+#: much the rig happens to be reflecting. Under this project's black world with
+#: area lights, every metal family member measures the same 0.075-0.088x whatever
+#: its light/level is, which is a number about the rig and not about the icon. So
+#: the swatch/icon-source band is skipped there, with the reason recorded -- the
+#: same treatment the near-neutral hue case gets -- and the host-contrast check
+#: still does the work of saying whether the material reads against its surface.
+
+#: Surface locator identity colours describe the role of a surface, not its
+#: current state. State tokens are reserved for store-backed badges and status
+#: marks; using one as the base identity makes a static icon falsely look live.
+STATE_IDENTITY_TOKENS = {
+    "Nature", "Powered", "Warning", "Refused", "NotObtained", "CaseOpen",
+    "Agent", "Verified", "Correction", "Retired",
+}
+
+#: A surface icon must have enough authored parts to survive as a symbol rather
+#: than a single block. This is a floor, not a style target; the detail pass may
+#: add more parts but may not make the authoring set simpler.
+MIN_SURFACE_PARTS = 3
 
 
 def linear(pixel: float) -> float:
@@ -123,13 +150,25 @@ def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
     doing, and the mean and peak are recorded beside it so a reader can disagree.
     """
     covered = 0
+    clipped = 0
     luminances = []
     sum_r = sum_g = sum_b = 0.0
+    min_x = min_y = px
+    max_x = max_y = -1
     for index in range(px * px):
         alpha = pixels[index * 4 + 3] / 255.0
         if alpha < alpha_threshold:
             continue
         covered += 1
+        x, y = index % px, index // px
+        min_x, max_x = min(min_x, x), max(max_x, x)
+        min_y, max_y = min(min_y, y), max(max_y, y)
+        # Blown means blown *in the asset*: the saved byte saturated at 255 in
+        # any channel. The world is an environment now, so a bright family can
+        # clip against it, and a clipped highlight is detail that never reaches
+        # the shipped file -- a defect the luminance percentile cannot see.
+        if pixels[index * 4] == 255 or pixels[index * 4 + 1] == 255 or pixels[index * 4 + 2] == 255:
+            clipped += 1
         lr = linear(pixels[index * 4] / 255.0)
         lg = linear(pixels[index * 4 + 1] / 255.0)
         lb = linear(pixels[index * 4 + 2] / 255.0)
@@ -146,6 +185,7 @@ def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
             "peak_luminance": 0.0,
             "chromaticity_degrees": None,
             "note": "nothing opaque in the render at all",
+            "clip_fraction": 0.0,
         }
 
     luminances.sort()
@@ -156,7 +196,71 @@ def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
         "p75_luminance": round(luminances[int(0.75 * (covered - 1))], 4),
         "peak_luminance": round(luminances[-1], 4),
         "chromaticity_degrees": round(chromaticity_angle(mean), 2),
+        "clip_fraction": round(clipped / covered, 4),
+        # Fill is how much of its **own box** the mark occupies, which is what the
+        # corpus anchors measure and is scale-invariant, unlike coverage (which is
+        # against the frame). Gloss is the tail of the luminance distribution -- the
+        # fraction of the mark brighter than 1.6x its own median -- which is the
+        # only reading of "is there a highlight on this" that a single icon supports.
+        "fill": round(covered / max(1, (max_x - min_x + 1) * (max_y - min_y + 1)), 4),
+        "gloss": round(
+            float(sum(1 for l in luminances if l > 1.6 * luminances[len(luminances) // 2]))
+            / covered,
+            4,
+        ),
     }
+
+
+def topography(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
+    """Pieces and holes of the mark, counted the way the corpus was counted.
+
+    8-connected for both, because `shapes.LADDER_SAMPLING` states 8-connectivity
+    and an anchor measured with one connectivity compared against a render measured
+    with another is a comparison of two different numbers.
+
+    A *hole* is background the border cannot reach -- the gear's centre, the lens of
+    a magnifier. Counting components of the covered mask instead, which is the
+    obvious mistake, reports zero holes for a gear, because a hole is an absence and
+    never a covered component.
+    """
+    return {
+        "pieces": _components(pixels, px, alpha_threshold, want_covered=True)["total"],
+        "holes": _components(pixels, px, alpha_threshold, want_covered=False)["enclosed"],
+    }
+
+
+def _components(pixels, px: int, alpha_threshold: float, want_covered: bool) -> dict:
+    def wanted(index):
+        covered = pixels[index * 4 + 3] / 255.0 >= alpha_threshold
+        return covered if want_covered else not covered
+
+    seen = bytearray(px * px)
+    total = 0
+    enclosed = 0
+    for start in range(px * px):
+        if seen[start] or not wanted(start):
+            continue
+        total += 1
+        stack = [start]
+        touches_border = False
+        while stack:
+            index = stack.pop()
+            if seen[index] or not wanted(index):
+                continue
+            seen[index] = 1
+            x, y = index % px, index // px
+            if x == 0 or y == 0 or x == px - 1 or y == px - 1:
+                touches_border = True
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < px and 0 <= ny < px:
+                        j = ny * px + nx
+                        if not seen[j] and wanted(j):
+                            stack.append(j)
+        if not want_covered and not touches_border:
+            enclosed += 1
+    return {"total": total, "enclosed": enclosed}
 
 
 # ---------------------------------------------------------------------------
@@ -190,11 +294,11 @@ def write_raw(path: str, pixels: bytes) -> None:
         handle.write(pixels)
 
 
-def read_render(bpy, path: str) -> bytes:
+def read_render(bpy, path: str, source_px: int = rig.RENDER_PX) -> bytes:
     """Read a saved render back as stored, then put the rows the right way up."""
     raw = rig.read_png_non_color(bpy, path)
     stored = bytes(min(255, max(0, round(channel * 255.0))) for channel in raw)
-    return flip_rows(stored, rig.RENDER_PX)
+    return flip_rows(stored, source_px)
 
 
 # ---------------------------------------------------------------------------
@@ -203,13 +307,49 @@ def read_render(bpy, path: str) -> bytes:
 
 
 def build_materials(bpy, entry):
-    """One Blender material per declared role, plus the record for the manifest."""
+    """Clone editable reference materials, falling back to the source recipe."""
     materials = {}
     records = {}
     for role, parameters in entry["materials"].items():
         name = f"openpbr:{entry['id']}:{entry['generation']}:{role}"
-        materials[role] = openpbr.build_material(bpy, name, parameters)
-        records[role] = openpbr.record(parameters)
+        # The blend owns the *surface* and the matrix owns the *colour*: the
+        # editable reference material is looked up by family, not by the role the
+        # composition happened to give it, so "silhouette" and "secondary" in two
+        # icons resolve to the same editable surface when they are the same family.
+        family = parameters.get("family") or role
+        reference = rig.reference_material(family)
+        if reference is not None:
+            materials[role] = reference.copy()
+            materials[role].name = name
+            # The blend owns the surface, the matrix owns the colour. Without this
+            # the copied material keeps the blend's own base colour, which is how
+            # four icons declaring four different hues all rendered one grey.
+            if not openpbr.apply_base_color(
+                materials[role], parameters["base_color"][:3],
+                parameters["base_color"][3] if len(parameters["base_color"]) > 3 else 1.0,
+            ):
+                raise RuntimeError(
+                    f"`{family}` has no Principled Base Color socket, so the declared "
+                    f"colour for `{role}` would not reach the render"
+                )
+            effective = openpbr.from_blender_material(materials[role], parameters)
+            records[role] = openpbr.record(effective)
+            records[role]["surface_source"] = f"reference-blend ({family})"
+            records[role]["colour_source"] = f"matrix ({family} at the declared hue)"
+        else:
+            materials[role] = openpbr.build_material(bpy, name, parameters)
+            records[role] = openpbr.record(parameters)
+            # Not silent. The blend carries no `icon_ref:material:<family>`, so the
+            # surface is the declared table rather than the reference -- which is a
+            # different claim about where the pixels came from.
+            records[role]["surface_source"] = (
+                f"python-fallback; the blend has no icon_ref:material:{family}"
+            )
+            # The colour is the matrix's either way -- the fallback is a *surface*
+            # path, not a colour path -- so it is recorded here too rather than
+            # leaving the only family without a blend material looking as though its
+            # colour came from somewhere else.
+            records[role]["colour_source"] = f"matrix ({family} at the declared hue)"
     return materials, records
 
 
@@ -218,23 +358,23 @@ def material_key(parameters) -> str:
     return json.dumps(openpbr.record(parameters)["openpbr"], sort_keys=True)
 
 
-def render_to(bpy, scene, path: str) -> bytes:
+def render_to(bpy, scene, path: str, source_px: int = rig.RENDER_PX) -> bytes:
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
-    pixels = read_render(bpy, path)
+    pixels = read_render(bpy, path, source_px)
     os.remove(path)
     return pixels
 
 
-def measure_swatch(bpy, scene, material, key, cache, counter):
+def measure_swatch(bpy, scene, material, key, cache, counter, source_px=rig.RENDER_PX):
     """The material's own brightness under the same rig, measured once per material."""
     if key in cache:
         return cache[key]
     objects = shapes.swatch_geometry(bpy, material)
     path = os.path.join(REVIEW, f"_swatch.{counter[0]}.render.png")
     counter[0] += 1
-    pixels = render_to(bpy, scene, path)
-    small = rig.downsample(pixels, rig.RENDER_PX, DECISION_PX)
+    pixels = render_to(bpy, scene, path, source_px)
+    small = rig.downsample(pixels, source_px, DECISION_PX)
     cache[key] = measure(small, DECISION_PX)
     for obj in objects:
         bpy.data.objects.remove(obj, do_unlink=True)
@@ -244,10 +384,15 @@ def measure_swatch(bpy, scene, material, key, cache, counter):
 def generate(device: str, tier: str, limit=None):
     os.makedirs(REVIEW, exist_ok=True)
     scene = rig.configure(bpy, device=device)
-    decisions = read_decisions()
+    # A concept-set change reopens old targets. The append-only log remains the
+    # historical record, but only records from this set may promote an asset.
+    decisions = read_decisions(shapes.CONCEPT_SET)
     swatches = {}
     counter = [0]
-    entries = [e for e in shapes.ICONS if tier == "all" or e["kind"] == tier]
+    entries = [
+        e for e in shapes.ICONS
+        if tier in ("all", "stage-1") or e["kind"] == tier
+    ]
     if limit:
         entries = entries[:limit]
     rendered = []
@@ -255,18 +400,25 @@ def generate(device: str, tier: str, limit=None):
     for entry in entries:
         chosen = decisions.get(entry["id"], {}).get("generation")
         generations = []
+        generation_entries = {}
+        generation_pixels = {}
         for generation in shapes.generations_of(entry):
             gen_id = generation["generation"]
+            generation_entries[gen_id] = generation
             materials, material_records = build_materials(bpy, generation)
             objects = shapes.build(bpy, generation, materials)
 
             pixels = render_to(
                 bpy, scene, os.path.join(REVIEW, f"{entry['id']}.{gen_id}.render.png")
             )
+            generation_pixels[gen_id] = pixels
 
             sizes = []
-            for px in (DECISION_PX, CONTEXT_PX):
+            decision_small = None
+            for px in (DECISION_PX, RECOGNITION_PX, CONTEXT_PX):
                 small = rig.downsample(pixels, rig.RENDER_PX, px)
+                if px == DECISION_PX:
+                    decision_small = small
                 save_png(
                     bpy,
                     os.path.join(REVIEW, f"{entry['id']}.{gen_id}.{px}.png"),
@@ -280,7 +432,13 @@ def generate(device: str, tier: str, limit=None):
                 write_raw(
                     os.path.join(REVIEW, f"{entry['id']}.{gen_id}.{px}.rgba"), small
                 )
-                sizes.append({"px": px, "measurements": measure(small, px)})
+                measurements = measure(small, px)
+                if px == DECISION_PX:
+                    # Counted at the decision size only: it is the size the corpus
+                    # anchors were measured at, and topology at 24 px is a property
+                    # of the downsampler rather than of the mark.
+                    measurements.update(topography(small, px))
+                sizes.append({"px": px, "measurements": measurements})
 
             swatch_measurements = {}
             for role, parameters in generation["materials"].items():
@@ -289,26 +447,56 @@ def generate(device: str, tier: str, limit=None):
                     bpy, scene, materials[role], key, swatches, counter
                 )
 
-            promoted = None
-            if chosen == gen_id:
-                promoted = promote(bpy, entry, generation, pixels)
+            record = {
+                "generation": gen_id,
+                "generation_label": generation["generation_label"],
+                "part_count": len(generation["parts"]) + (4 if entry.get("framed") else 0),
+                "primary_role": primary_role(generation),
+                "generation_why": generation["generation_why"],
+                "brief": generation.get("brief", {}),
+                "lineage": generation.get("lineage", entry.get("lineage", [])),
+                "transform": transform_record(entry, generation),
+                "materials": material_records,
+                "swatches": swatch_measurements,
+                "sizes": sizes,
+                # C3's two additions, measured against the declared mark at the
+                # decision size rather than at 24 px, because MD1's largest raster
+                # is 96 px and neither side should have to be resampled.
+                "silhouette": silhouette_check(bpy, entry, decision_small),
+                "composition": composition_check(entry, generation),
+                "authored_under": "c3-composition",
+                "promoted": None,
+            }
+            record["checks"] = judge_generation(entry, record)
 
             for obj in objects:
                 bpy.data.objects.remove(obj, do_unlink=True)
             for material in materials.values():
                 bpy.data.materials.remove(material)
 
-            record = {
-                "generation": gen_id,
-                "generation_label": generation["generation_label"],
-                "generation_why": generation["generation_why"],
-                "transform": transform_record(entry, generation),
-                "materials": material_records,
-                "swatches": swatch_measurements,
-                "sizes": sizes,
-                "promoted": promoted,
-            }
             generations.append(record)
+
+        for generation in generations:
+            generation["selection_notes"] = candidate_gate_notes(
+                entry, generation, generations
+            )
+        chosen_record = next(
+            (generation for generation in generations if generation["generation"] == chosen),
+            None,
+        )
+        if chosen_record is not None and chosen_record["selection_notes"]:
+            chosen_record["promoted"] = {
+                "refused": True,
+                "reason": "candidate failed the hard selection gate",
+                "notes": chosen_record["selection_notes"],
+            }
+        elif chosen_record is not None:
+            chosen_record["promoted"] = promote(
+                bpy,
+                entry,
+                generation_entries[chosen],
+                generation_pixels[chosen],
+            )
 
         rendered.append(
             {
@@ -321,7 +509,14 @@ def generate(device: str, tier: str, limit=None):
                 "identity": entry["identity"],
                 "identity_as": entry["identity_as"],
                 "framed": bool(entry.get("framed")),
+                "concept_set": shapes.CONCEPT_SET,
+                "tier": entry.get("tier"),
+                "hues": entry.get("hues"),
+                "silhouette": entry.get("silhouette"),
                 "notes": entry["notes"],
+                "brief": entry["brief"],
+                "lineage": entry["lineage"],
+                "forbidden_readings": entry["forbidden_readings"],
                 "chosen_generation": chosen,
                 "generations": generations,
             }
@@ -329,17 +524,146 @@ def generate(device: str, tier: str, limit=None):
     return rendered
 
 
-def transform_record(entry, generation) -> dict:
-    """The declared transform that made this generation, not a diff of pixels."""
-    treatment = next(
-        (t for t in shapes.TREATMENTS if t["id"] == generation["generation"]), None
-    )
-    if treatment is None:
-        return {"note": "no declared treatment matched this generation"}
+# ---------------------------------------------------------------------------
+# C3's checks: the silhouette, and the three materials
+# ---------------------------------------------------------------------------
+
+#: How much of the declared mark's own coverage the render has to cover. Not 1.0:
+#: the mark is traced at 96 px and rendered through a bevelled extrusion, so a rim
+#: of antialiasing is expected to fall outside it at the edges. Below this the
+#: render is a different shape from the one it claims to be.
+SILHOUETTE_CONTAINMENT_FLOOR = 0.90
+
+#: The accent piece is allowed to leave the mark's box — that is what an accent is —
+#: so whole-icon occupancy overlap is recorded rather than gated. It would otherwise
+#: measure the tab as a failure to be the gear.
+SILHOUETTE_OVERLAP_RECORDED_NOT_GATED = True
+
+
+def alpha_occupancy(pixels, px: int, alpha_threshold: float = 0.5, grid_side: int = 12):
+    """A 12x12 coverage grid from a rendered RGBA buffer, top-down."""
+    cells = [0] * (grid_side * grid_side)
+    area = (px / grid_side) ** 2
+    for index in range(px * px):
+        if pixels[index * 4 + 3] / 255.0 < alpha_threshold:
+            continue
+        x, y = index % px, index // px
+        cell_x = min(grid_side - 1, x * grid_side // px)
+        cell_y = min(grid_side - 1, y * grid_side // px)
+        cells[cell_y * grid_side + cell_x] += 1
+    return [cell / area for cell in cells]
+
+
+def silhouette_check(bpy, entry, decision_pixels) -> dict:
+    """Does the render actually carry the silhouette the brief declares?
+
+    Containment, not equality: every cell the declared mark covers must be covered
+    by the render, and the render is allowed to add — the accent piece leaves the
+    mark's box by design. The whole-icon overlap is recorded beside it so a reader
+    can see how much was added rather than having to trust that it was the accent.
+    """
+    declared = entry.get("silhouette") or {}
+    glyph = declared.get("glyph")
+    reference = declared.get("reference")
+    if not glyph or not reference or not reference.get("exists"):
+        return {
+            "judged": False,
+            "why": f"`{entry['id']}` declares no silhouette on disk; nothing to compare",
+        }
+    mark = shapes.glyph_mask(bpy, glyph)
+    render_cells = alpha_occupancy(decision_pixels, DECISION_PX)
+    covered, missing = 0, 0
+    for index, cell in enumerate(mark["occupancy"]):
+        if cell < 0.5:
+            continue
+        if render_cells[index] >= 0.5:
+            covered += 1
+        else:
+            missing += 1
+    total = covered + missing
+    containment = round(covered / total, 4) if total else 0.0
+    agreement = 0
+    compared = 0
+    for cell, render_cell in zip(mark["occupancy"], render_cells):
+        compared += 1
+        if (cell >= 0.5) == (render_cell >= 0.5):
+            agreement += 1
     return {
-        "scale": treatment["scale"],
-        "stroke_weight": treatment["weight"],
-        "material_treatment": treatment["material"],
+        "judged": True,
+        "glyph": glyph,
+        "reference": reference,
+        "containment": containment,
+        "occupancy_agreement": round(agreement / compared, 4),
+        "mark_coverage_at_96": mark["coverage"],
+        "render_coverage_at_96": round(
+            sum(1 for i in range(DECISION_PX * DECISION_PX)
+                if decision_pixels[i * 4 + 3] / 255.0 >= 0.5) / (DECISION_PX * DECISION_PX), 4
+        ),
+        "grid": mark["occupancy_grid"],
+        "floor": SILHOUETTE_CONTAINMENT_FLOOR,
+        "occupancy_is_recorded_not_gated": SILHOUETTE_OVERLAP_RECORDED_NOT_GATED,
+    }
+
+
+def composition_check(entry, generation) -> dict:
+    """Three main materials, one silhouette, one accent — said in a script.
+
+    The roles the parts name are the *functions*; the amount of colour is what the
+    composition is. So the check counts distinct base colours across the three roles
+    rather than counting the parts, because a candidate with six parts in three
+    colours is a composition and a candidate with three parts in two is not.
+    """
+    roles = sorted({part.get("role", "ink") for part in generation.get("parts", [])})
+    materials = generation.get("materials", {}) or {}
+    missing = [role for role in shapes.COMPOSITION_ROLES if role not in roles]
+    colours = {}
+    for role in shapes.COMPOSITION_ROLES:
+        parameters = materials.get(role)
+        if not parameters:
+            continue
+        colours[role] = tuple(round(channel, 6) for channel in parameters["base_color"][:3])
+    distinct = len(set(colours.values()))
+    notes = []
+    if missing:
+        notes.append(f"the composition is missing a main part: {', '.join(missing)}")
+    if distinct != len(shapes.COMPOSITION_ROLES):
+        notes.append(
+            f"the three main materials resolve to {distinct} distinct colour(s), not "
+            f"{len(shapes.COMPOSITION_ROLES)}: two of them are the same material wearing "
+            f"two role names"
+        )
+    accidental = [role for role in roles if role not in shapes.COMPOSITION_ROLES and role != "ink"]
+    if accidental:
+        notes.append(f"undeclared roles in the composition: {', '.join(accidental)}")
+    return {"roles": roles, "missing_roles": missing, "distinct_colours": distinct,
+            "colours": {role: list(value) for role, value in colours.items()},
+            "notes": notes}
+
+
+def primary_role(generation) -> str:
+    """The role carrying the silhouette, rather than the HUD's text token.
+
+    C3 compositions name their parts by function, so the answer is the silhouette
+    role itself. The legacy priority list is kept behind it for a retired recipe,
+    and either way the caller falls back to `ink` rather than to a wrong material:
+    the material checks compare against this role's swatch, so returning the wrong
+    one would measure a material the candidate is not made of.
+    """
+    present = {part.get("role", "ink") for part in generation.get("parts", [])}
+    for role in shapes.COMPOSITION_ROLES:
+        if role in present:
+            return role
+    legacy = ("metal", "road", "paper", "glass", "polymer", "ceramic", "accent", "ink")
+    return next((role for role in legacy if role in present), "ink")
+
+
+def transform_record(entry, generation) -> dict:
+    """Record the authored candidate brief, never an invented transform."""
+    return {
+        "mode": "explicit-authored-recipe",
+        "candidate_role": generation.get("brief", {}).get("candidate_role"),
+        "semantic_cues": generation.get("brief", {}).get("semantic_cues", []),
+        "material_family": generation.get("brief", {}).get("material_family"),
     }
 
 
@@ -363,15 +687,30 @@ def promote(bpy, entry, generation, pixels) -> dict:
 
 def judge_generation(entry, generation) -> dict:
     """Every check for one generation, with every reason it is not a clean pass."""
-    notes = []
+    notes = list((generation.get("composition") or {}).get("notes", []))
+    silhouette = generation.get("silhouette") or {}
+    if silhouette and not silhouette.get("judged"):
+        notes.append(
+            silhouette.get("why", "the declared silhouette could not be compared")
+        )
+    elif silhouette.get("judged") and silhouette["containment"] < silhouette["floor"]:
+        notes.append(
+            f"the render carries {silhouette['containment']} of the declared "
+            f"`{silhouette['glyph']}` mark, below the {silhouette['floor']} containment "
+            f"floor: it is not the silhouette the brief names"
+        )
     sharp = next(s for s in generation["sizes"] if s["px"] == DECISION_PX)["measurements"]
+    recognition = next(s for s in generation["sizes"] if s["px"] == RECOGNITION_PX)["measurements"]
     small = next(s for s in generation["sizes"] if s["px"] == CONTEXT_PX)["measurements"]
-    ink = generation["materials"]["ink"]["openpbr"]["base_color"]["linear_rgb"]
+    primary = generation.get("primary_role", "ink")
+    ink = generation["materials"].get(primary, generation["materials"]["ink"])["openpbr"]["base_color"]["linear_rgb"]
     identity = generation["materials"].get("identity", {}).get("openpbr", {}).get(
         "base_color", {}
     ).get("linear_rgb")
 
     # --- is anything there, and is there too much -------------------------
+    if recognition["coverage"] < COVERAGE_FLOOR_24:
+        notes.append(f"at {RECOGNITION_PX}px the authored mark covers {recognition['coverage']:.3f}, below the recognition floor")
     if small["coverage"] <= 0.0:
         notes.append("nothing was drawn")
     if small["coverage"] < COVERAGE_FLOOR_24:
@@ -432,7 +771,7 @@ def judge_generation(entry, generation) -> dict:
             )
 
     # --- did the declared material arrive --------------------------------
-    swatch = generation["swatches"]["ink"]
+    swatch = generation["swatches"].get(primary, generation["swatches"]["ink"])
     declared = relative_luminance(ink)
     arrival = None
     if swatch["mean_luminance"] > 0.0 and declared > 0.0:
@@ -448,9 +787,16 @@ def judge_generation(entry, generation) -> dict:
                 f"swatch, outside the {low}-{high} band"
             )
         low, high = SWATCH_TO_ALBEDO_BAND
+        # This band used to be skipped for near-metal materials, because under a
+        # black world a mirror swatch measured the rig rather than the albedo: all
+        # 31 metal candidates returned the identical 0.306, later 0.075-0.088. The
+        # world now has radiance (`rig.WORLD`), which is the thing that made the
+        # skip unnecessary -- a metal swatch is a reading of the material again, at
+        # ~0.45x. So the skip is retired rather than left in place: a rule whose
+        # premise no longer holds would hide the next real metal failure.
         if not low <= arrival["swatch_to_albedo"] <= high:
             notes.append(
-                f"a flat swatch of the ink renders at {arrival['swatch_to_albedo']}x "
+                f"a flat swatch of the primary `{primary}` material renders at {arrival['swatch_to_albedo']}x "
                 f"the declared albedo's own luminance, outside the {low}-{high} band"
             )
         # The hue check only means something for a colour that *has* a hue. Near a
@@ -477,24 +823,128 @@ def judge_generation(entry, generation) -> dict:
                     f"tolerance"
                 )
 
+    # --- does it measure like the language it claims ----------------------
+    #
+    # The corpus ladder (`shapes.LANGUAGE_LADDER`) is the anchor set: fill and gloss
+    # are whole-mark properties, so a candidate can be compared to them directly.
+    #
+    # **Piece count is recorded but not judged, on purpose.** An icon under the
+    # composition rule is a mark *plus* an accent piece (and, layered, plus a second
+    # body), so its piece count is necessarily the mark's plus the composition's.
+    # Comparing it to a bare glyph's would fail every compliant candidate, and a
+    # check that cannot pass is worse than no check: it would train everyone to
+    # ignore the notes. The mark's own topology is already compared by the
+    # silhouette check, against the MD1 mask it was traced from.
+    character = None
+    emphasis_id = (generation.get("brief") or {}).get("emphasis")
+    lam = next(
+        (spec["ladder"] for spec in shapes.EMPHASES if spec["id"] == emphasis_id), None
+    )
+    if lam is not None:
+        anchor = shapes.ladder_point(lam)
+        measured = {
+            "fill": sharp["fill"],
+            "gloss": sharp["gloss"],
+            "pieces": sharp["pieces"],
+            "holes": sharp["holes"],
+        }
+        character = {
+            "emphasis": emphasis_id,
+            "ladder": lam,
+            "anchor": anchor,
+            "measured": measured,
+            "topography_judged": False,
+            "topography_why_recorded": (
+                "recorded, not judged: an icon is a mark plus an accent piece, so its "
+                "piece count is the mark's plus the composition's and cannot equal a "
+                "bare glyph's"
+            ),
+        }
+        low, high = anchor["fill_band"]
+        if not low <= measured["fill"] <= high:
+            notes.append(
+                f"measures fill {measured['fill']} at {DECISION_PX}px, outside the "
+                f"{low}-{high} the `{emphasis_id}` end of the corpus ladder spans: it "
+                f"is not the reading it claims to be"
+            )
+        if abs(measured["gloss"] - anchor["gloss"]) > anchor["gloss_tolerance"]:
+            notes.append(
+                f"measures gloss {measured['gloss']} at {DECISION_PX}px against the "
+                f"`{emphasis_id}` anchor's {anchor['gloss']} (tolerance "
+                f"{anchor['gloss_tolerance']}): the surface character is not that "
+                f"language's"
+            )
+
     return {"notes": notes, "contrasts": contrasts, "internal_contrast": internal,
-            "arrival": arrival}
+            "arrival": arrival, "character": character}
+
+
+def candidate_gate_notes(entry, generation, all_generations) -> list:
+    """The hard gate for selecting one candidate for shipping."""
+    notes = list(generation.get("checks", {}).get("notes", []))
+    if entry["kind"] == "surface":
+        if entry.get("locates") not in shapes.DECLARED_SURFACES:
+            notes.append(f"surface `{entry['locates']}` is not declared by the pilot registry")
+        if entry.get("identity") in STATE_IDENTITY_TOKENS:
+            notes.append(f"static identity `{entry['identity']}` is a live state token")
+        if generation.get("part_count", 0) < MIN_SURFACE_PARTS:
+            notes.append(f"candidate has {generation.get('part_count', 0)} authored parts, below the {MIN_SURFACE_PARTS}-part floor")
+        if len(all_generations) != 6:
+            notes.append("the candidate set must contain exactly six authored concepts")
+        brief = generation.get("brief", {})
+        for field in ("candidate_role", "semantic_cues", "material_family", "motion", "fallback", "acceptance"):
+            if not brief.get(field):
+                notes.append(f"candidate brief is missing `{field}`")
+        cues = brief.get("semantic_cues", [])
+        if not cues:
+            notes.append("candidate has no declared semantic cues")
+    return notes
+
+
+def _ladder_span() -> tuple:
+    """How far apart the two extreme anchors are, per judged property."""
+    fills = [spec["fill"] for spec in shapes.LANGUAGE_LADDER.values()]
+    glosses = [spec["gloss"] for spec in shapes.LANGUAGE_LADDER.values()]
+    return max(fills) - min(fills), max(glosses) - min(glosses)
+
+
+def _separation_notes(generations) -> list:
+    """No two candidates may be the same reading.
+
+    The floor is a fraction of the ladder's own span rather than a number chosen by
+    feel: if two candidates are closer together than that on **both** judged axes,
+    the picker is showing one icon twice and asking a human to choose between it and
+    itself -- which is the failure that opened this session.
+    """
+    fill_span, gloss_span = _ladder_span()
+    floor = (fill_span * LADDER_SEPARATION_FRACTION, gloss_span * LADDER_SEPARATION_FRACTION)
+    measured = []
+    for generation in generations:
+        character = (generation.get("checks") or {}).get("character")
+        if character:
+            measured.append((generation["generation"], character["measured"]))
+    notes = []
+    for index, (name_a, a) in enumerate(measured):
+        for name_b, b in measured[index + 1:]:
+            if abs(a["fill"] - b["fill"]) < floor[0] and abs(a["gloss"] - b["gloss"]) < floor[1]:
+                notes.append(
+                    f"`{name_a}` and `{name_b}` measure within {floor[0]:.3f} fill and "
+                    f"{floor[1]:.3f} gloss of each other: two slots, one reading"
+                )
+    return notes
 
 
 def judge_icon(record) -> dict:
-    """The icon's verdict, which is every generation's checks in one place."""
+    """The icon's verdict, which is every candidate's checks in one place."""
     notes = []
-    if record["kind"] == "surface" and record["locates"] not in shapes.DECLARED_SURFACES:
-        notes.append(
-            f"this is a surface icon that locates `{record['locates']}`, which is not a "
-            f"surface the game declares: an icon may only locate something that exists"
-        )
     for generation in record["generations"]:
-        for note in generation["checks"]["notes"]:
+        for note in generation.get("selection_notes", generation["checks"]["notes"]):
             notes.append(f"[{generation['generation']}] {note}")
+    for note in _separation_notes(record["generations"]):
+        notes.append(f"[separation] {note}")
     if record["chosen_generation"] is None:
         notes.append(
-            "no generation has been marked as the target: awaiting a decision in the "
+            "no candidate has been marked as the target: awaiting a decision in the "
             "picker, so nothing for this icon ships yet"
         )
     return {
@@ -511,8 +961,8 @@ def judge_icon(record) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def read_decisions() -> dict:
-    """The last `target: true` line per icon, from the picker's own log."""
+def read_decisions(concept_set: str) -> dict:
+    """The last target for this concept set; older targets remain historical."""
     chosen = {}
     if not os.path.exists(DECISIONS):
         return chosen
@@ -525,13 +975,13 @@ def read_decisions() -> dict:
                 record = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if record.get("target"):
+            if record.get("target") and record.get("concept_set") == concept_set:
                 chosen[record.get("icon")] = record
     return chosen
 
 
-def read_directives() -> dict:
-    """Every comment a person left, per icon, oldest first.
+def read_directives(concept_set: str | None = None) -> dict:
+    """Every comment for the current concept set, oldest first.
 
     This is the half of the review loop that shapes the *next* generation: a
     comment is recorded with or without a target, so "none of these, change this"
@@ -549,6 +999,8 @@ def read_directives() -> dict:
             try:
                 record = json.loads(line)
             except json.JSONDecodeError:
+                continue
+            if concept_set is not None and record.get("concept_set") != concept_set:
                 continue
             comment = (record.get("comment") or "").strip()
             if comment:
@@ -568,10 +1020,19 @@ def source_hashes() -> dict:
         "tools/icons/palette.py": os.path.join(HERE, "palette.py"),
         "tools/icons/rig.py": os.path.join(HERE, "rig.py"),
         "tools/icons/shapes.py": os.path.join(HERE, "shapes.py"),
+        "assets/icons/reference.blend": rig.reference_path(),
         "src/hud.rs": os.path.join(ROOT, "src", "hud.rs"),
         "src/design.rs": os.path.join(ROOT, "src", "design.rs"),
+        # C3 named the design spec as part of the standard the renders are judged
+        # against, and it was not in the set at all: a change to the spec could not
+        # have been seen, let alone reported.
+        "UNIFIED_DESIGN.md": os.path.join(ROOT, "UNIFIED_DESIGN.md"),
     }
-    return {name: palette.source_hash(path) for name, path in files.items()}
+    return {
+        name: palette.source_hash(path)
+        for name, path in files.items()
+        if os.path.exists(path)
+    }
 
 
 def build_record(tier: str) -> dict:
@@ -579,12 +1040,14 @@ def build_record(tier: str) -> dict:
         "generated_by": "tools/icons/generate.py",
         "how_to_regenerate": (
             "blender --background --factory-startup --python "
-            "tools/icons/generate.py -- --review surface"
+            "tools/icons/generate.py -- --review stage-1"
         ),
         "why_committed": (
             "cargo build must never need Blender; the renders are artifacts with "
             "provenance, and this script is how they were produced"
         ),
+        "concept_set": shapes.CONCEPT_SET,
+        "catalogue_stage": shapes.CATALOGUE_STAGE,
         "this_run": {"tier": tier, "inventory_entries": len(shapes.ICONS)},
         "tiers": {
             "surface": "locates something the game has; must name a declared surface",
@@ -617,10 +1080,16 @@ def build_record(tier: str) -> dict:
             ),
         },
         "sources": source_hashes(),
+        "reference_settings": rig.reference_info(),
+        "reference_study": shapes.REFERENCE_STUDY,
         "palette_hash": palette.palette_hash(),
         "hosts": list(palette.HOSTS),
         "non_text_contrast_floor": palette.NON_TEXT_MIN_CONTRAST,
         "sizes_px": list(rig.SHIPPED_PX),
+        "dpi": {"base_px": 96, "scale_factors": [1, 2, 4, 8, 16], "master_px": 1536,
+                 "outputs_px": [96, 192, 384, 768, 1536],
+                 "ui_scale_mapping": "density metadata is separate from logical display size",
+                 "downsample": "linear-light box average for integer factors"},
         "ladder": (
             "every shipped size divides the 192 px render by a whole number, so the "
             "downsample is a box mean rather than a resampling filter; the ladder "
@@ -641,8 +1110,49 @@ def build_record(tier: str) -> dict:
         },
         "rig": rig.rig_record(),
         "generations": shapes.TREATMENTS,
+        "candidate_model": (
+            "six total: three emphases — MD1-led, TouchWiz-led and iOS 6-led — each in "
+            "two constructions, so the family spread is a choice rather than a note"
+        ),
+        "composition": {
+            "roles": list(shapes.COMPOSITION_ROLES),
+            "tiers": shapes.TIERS,
+            "emphases": [dict(emphasis) for emphasis in shapes.EMPHASES],
+            "constructions": [dict(construction) for construction in shapes.CONSTRUCTIONS],
+            "neutral_roles_not_counted": list(shapes.NEUTRAL_ROLES),
+        },
+        "material_matrix": palette.matrix_record(),
+        "silhouette_policy": {
+            "reference": "Material Design Icons 4.0.0",
+            "style": shapes.MD1_STYLE,
+            "size_dp": shapes.MD1_SIZE_DP,
+            "scale": shapes.MD1_SCALE,
+            "side_px": shapes.MD1_SIDE_PX,
+            "why_this_size": (
+                "48dp at 2x is 96x96, which is the decision size, so the comparison "
+                "resamples neither side"
+            ),
+            "containment_floor": SILHOUETTE_CONTAINMENT_FLOOR,
+            "gate": (
+                "every cell the declared mark covers must be covered by the render; "
+                "the render may add, because the accent piece leaves the mark's box "
+                "by design"
+            ),
+            "not_gated": "whole-icon occupancy agreement is recorded, never enforced",
+        },
+        "deferred_inventory": [dict(item) for item in shapes.DEFERRED_INVENTORY],
+        "retired_pilots": {
+            icon_id: record["retired_because"] for icon_id, record in shapes.RETIRED_PILOTS.items()
+        },
+        "quality_bar": {
+            "reference_grammar": "original translation of the Galaxy TouchWiz study pack",
+            "presentation": "transparent object render; no shared frame",
+            "materials": "procedural only",
+            "pilot_gate": "settings must be visually and mechanically accepted before the catalogue is promoted",
+        },
         "vocabulary_refusals": shapes.VOCABULARY_REFUSALS,
         "checks": {
+            "high_dpi_policy": "generated only after a human target; master failure is visible but not shippable",
             "what_this_is": (
                 "each generation against the declared material (measured swatch), the "
                 "ink against every host surface it declares (WCAG 1.4.11 non-text "
@@ -660,10 +1170,55 @@ def build_record(tier: str) -> dict:
     }
 
 
+def read_previous_sources(path: str) -> dict:
+    """The inputs the last render was made from, before this run overwrites them."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return json.load(handle).get("sources", {})
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def divergence_record(previous: dict, current: dict) -> dict:
+    """Which inputs moved since the last render.
+
+    C3's answer for "what makes a rebuild happen" was a human bump of the concept
+    set. A human can only bump what they can see, so the manifest **reports** — it
+    never enforces, and the report is a statement about the last run rather than a
+    gate on this one. The design spec is in the set now, so a change to the standard
+    is visible too.
+    """
+    moved = [
+        name for name in sorted(set(previous) | set(current))
+        if previous.get(name) != current.get(name)
+    ]
+    return {
+        "what_this_is": (
+            "inputs that differ from the render this manifest replaced; reported, "
+            "never enforced"
+        ),
+        "inputs_that_moved": moved,
+        "inputs_hash_matches_previous_run": not moved,
+        "then": previous,
+        "now": current,
+    }
+
+
 def build_manifest(rendered) -> tuple:
+    path = os.path.join(OUT, "manifest.json")
+    previous_sources = read_previous_sources(path)
     record = build_record("manifest")
+    record["input_divergence"] = divergence_record(previous_sources, record["sources"])
+    record["silhouettes"] = {
+        entry["id"]: entry.get("silhouette") for entry in rendered if entry.get("silhouette")
+    }
+    # The three design languages as measured anchors, with their population, method
+    # and digests, so "this candidate is TouchWiz-led" is checkable against a number
+    # that came from the archive rather than from a label.
+    record["languages"] = shapes.ladder_record()
+    record["palette_mechanisms"] = palette.colour_mechanisms()
     icons = []
-    directives = read_directives()
+    directives = read_directives(shapes.CONCEPT_SET)
     for entry in rendered:
         # The generations are checked first, because the icon's verdict is their
         # notes in one place: a verdict assembled before the checks would be a
@@ -687,7 +1242,6 @@ def build_manifest(rendered) -> tuple:
             }
         )
     record["icons"] = icons
-    path = os.path.join(OUT, "manifest.json")
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(record, handle, indent=2, sort_keys=True)
         handle.write("\n")
@@ -695,11 +1249,11 @@ def build_manifest(rendered) -> tuple:
 
 
 def build_review(rendered) -> tuple:
-    """What the picker reads: three generations per icon, and what it may claim."""
+    """What the picker reads: six explicit concepts per icon and their briefs."""
     icons = []
     awaiting = []
     decided = {}
-    directives = read_directives()
+    directives = read_directives(shapes.CONCEPT_SET)
     for entry in rendered:
         generations = []
         for generation in entry["generations"]:
@@ -710,24 +1264,42 @@ def build_review(rendered) -> tuple:
                     "id": gen_id,
                     "label": generation["generation_label"],
                     "why": generation["generation_why"],
-                    "transform": generation["transform"],
+                "part_count": generation["part_count"],
+                "primary_role": generation.get("primary_role", "ink"),
+                "transform": generation["transform"],
+                "quality": {
+                    "reference_grammar": "Galaxy TouchWiz study grammar, original geometry",
+                    "source_artwork_copied": False,
+                    "procedural_materials": True,
+                },
                     "files": {
                         "sharp_png": f"review/{entry['id']}.{gen_id}.{DECISION_PX}.png",
                         "raw": f"review/{entry['id']}.{gen_id}.{DECISION_PX}.rgba",
+                        "recognition_png": f"review/{entry['id']}.{gen_id}.{RECOGNITION_PX}.png",
+                        "recognition_raw": f"review/{entry['id']}.{gen_id}.{RECOGNITION_PX}.rgba",
                         "context_png": f"review/{entry['id']}.{gen_id}.{CONTEXT_PX}.png",
                         "context_raw": f"review/{entry['id']}.{gen_id}.{CONTEXT_PX}.rgba",
                     },
                     "measurements": sizes,
                     "checks": judge_generation(entry, generation),
+                    "selection_notes": generation.get("selection_notes", []),
+                    "brief": generation.get("brief", {}),
                 }
             )
-        if entry["chosen_generation"] is None:
+        chosen = entry["chosen_generation"]
+        chosen_record = next(
+            (generation for generation in generations if generation["id"] == chosen),
+            None,
+        )
+        if chosen is None or not chosen_record or chosen_record["selection_notes"]:
             awaiting.append(entry["id"])
         else:
-            decided[entry["id"]] = entry["chosen_generation"]
+            decided[entry["id"]] = chosen
         icons.append(
             {
                 "id": entry["id"],
+                "concept_set": shapes.CONCEPT_SET,
+                "chosen_generation": entry["chosen_generation"],
                 "kind": entry["kind"],
                 "meaning": entry["meaning"],
                 "source": entry["source"],
@@ -735,6 +1307,9 @@ def build_review(rendered) -> tuple:
                 "sits_on": entry["sits_on"],
                 "identity": entry["identity"],
                 "identity_as": entry["identity_as"],
+                "brief": entry["brief"],
+                "lineage": entry["lineage"],
+                "forbidden_readings": entry["forbidden_readings"],
                 # What was asked for last time, in the words it was asked in. The
                 # picker shows these beside the candidates so the next generation is
                 # authored against a person's own sentences rather than a summary.
@@ -744,23 +1319,35 @@ def build_review(rendered) -> tuple:
         )
     record = {
         "what_this_is": (
-            "three generations of each icon, to be chosen between by a person; the "
-            "choice is the only thing that puts an icon into the shipping set"
+            "six explicit authored concepts of each pilot icon; a person must accept "
+            "one before anything enters the shipping set"
         ),
+        "concept_set": shapes.CONCEPT_SET,
+        "catalogue_stage": shapes.CATALOGUE_STAGE,
         "how_to_decide": (
-            "cargo run --release --bin pick — check one generation and press Enter to "
+            "cargo run --release --bin pick — check one concept and press Enter to "
             "make it the target, and type in the comment box to say what the next "
             "generation should change (a comment is recorded with or without a target)"
         ),
         "directives_log": DECISIONS,
         "decision_size_px": DECISION_PX,
+        "recognition_size_px": RECOGNITION_PX,
         "context_size_px": CONTEXT_PX,
         "raw": {
             "format": "RGBA8, unpremultiplied",
             "layout": "row-major, top-down, origin top-left",
             "side_px": DECISION_PX,
+            "recognition_side_px": RECOGNITION_PX,
+            "context_side_px": CONTEXT_PX,
         },
         "hosts": list(palette.HOSTS),
+        "reference_study": shapes.REFERENCE_STUDY,
+        "quality_bar": {
+            "reference_grammar": "original translation of the Galaxy TouchWiz study pack",
+            "presentation": "transparent object render; no shared frame",
+            "materials": "procedural only",
+            "pilot_gate": "settings first",
+        },
         # The picker paints with these, taken from the same token table the icons
         # were rendered against: a background colour retyped in the tool would be a
         # second source of truth for the surface an icon is judged on.
@@ -770,6 +1357,7 @@ def build_review(rendered) -> tuple:
         },
         "host_fills": {host: list(palette.linear(host)) for host in palette.HOSTS},
         "generations": shapes.TREATMENTS,
+        "candidate_count": 6,
         "awaiting_decision": awaiting,
         "decided": decided,
         "blender": {
@@ -790,7 +1378,7 @@ def build_review(rendered) -> tuple:
 
 def main():
     device = "GPU" if "--cpu" not in sys.argv else "CPU"
-    tier = "surface"
+    tier = "stage-1"
     if "--review" in sys.argv:
         tier = sys.argv[sys.argv.index("--review") + 1]
     limit = None
@@ -815,6 +1403,16 @@ def main():
     for icon in noted:
         for note in icon["verdict_notes"]:
             print(f"  {icon['id']}: {note}")
+
+    # Reported, never enforced: the concept set is bumped by a person, and this is
+    # the part that tells that person what moved since the last render.
+    divergence = manifest.get("input_divergence", {})
+    if divergence.get("inputs_hash_matches_previous_run"):
+        print("inputs: nothing moved since the last render")
+    elif divergence:
+        print(f"inputs that moved since the last render ({len(divergence['inputs_that_moved'])}):")
+        for name in divergence["inputs_that_moved"]:
+            print(f"  {name}")
 
     # What a person asked for, in their own words, so the next generation is
     # authored against the log rather than against memory.
