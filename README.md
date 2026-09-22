@@ -194,7 +194,7 @@ first frame world_opaque=26167 world_overlay=49 interface=410 yaw_degrees=0.0
 | `src/session.rs` | the session capture: what was clicked, where, and the build it happened in |
 | `src/main.rs` | the client: window, input, tools, HUD layout, the sim↔render loop |
 | `src/bin/verify.rs` | the oracle: reads a record, checks it against the world, exits non-zero on disagreement |
-| `src/bin/pick.rs` | the icon review picker: three generations side by side, and what to change next |
+| `src/bin/pick.rs` | the icon review picker: six authored candidates in a 2×3 grid, and what to change next |
 
 ---
 
@@ -206,12 +206,28 @@ and rendered through the Principled BSDF v2 that Blender actually implements —
 the mapping and every deviation recorded per icon, because Blender 5.3 Alpha has no
 OpenPBR node and no MaterialX operators (upstream issue #145127). `cargo build`
 never needs Blender: the renders are committed artifacts with a manifest, and
-`tools/icons/generate.py` is how they were made.
+`tools/icons/generate.py` is how they were made. Shared authoring settings live in
+`assets/icons/reference.blend`: it contains only the editable three-light rig,
+camera/world defaults, and named material roles—not icon meshes. Open it in Blender,
+adjust `icon_ref:light:key`, `fill`, or `rim`, and edit the `icon_ref:material:*`
+Principled materials. Regenerate the settings reference set with:
+
+```bash
+blender --background --factory-startup --python tools/icons/generate.py -- --review stage-1 --limit 1
+```
+
+The generator imports those lights and materials on every run, records
+`reference-blend` provenance in the manifest, and falls back to the Python defaults
+only when the blend is absent. Recreate the settings file itself with:
+
+```bash
+blender --background --factory-startup --python tools/icons/reference_blend.py
+```
 
 **Status, plainly:** the first pass shipped **13 glyphs at 3 sizes (24/32/48)**. Since
-then the ladder is **24/32/48/64/96**, every icon is rendered as **three declared
-generations** — as authored, bold, detailed — and the material check is a **measured
-differential swatch**: each material is rendered as a flat reference under the same
+then the ladder is **24/32/48/64/96**, every icon is rendered as **six declared
+candidates** — one canonical plus five named alternates — and the material check is a
+**measured differential swatch**: each material is rendered as a flat reference under the same
 rig and the icon's own render is compared against it, because a model of how a
 material *should* arrive is a claim, and a swatch is a measurement.
 
@@ -223,20 +239,20 @@ pretending the set is finished. See `docs/GRILLING-C2.md`, rounds 11–13.
 
 ### Choosing between generations
 
-Nothing ships that a person has not checked. The pipeline renders three generations
-of each icon and writes `assets/icons/review.json`; the picker reads it:
+Nothing ships that a person has not checked. The pipeline renders six authored
+candidates of each icon and writes `assets/icons/review.json`; the picker reads it:
 
 ```
 cargo run --release --bin pick
 ```
 
-For each icon it shows the three candidates at the decision size **and** at the
+For each icon it shows six candidates in a 2×3 grid at the decision size **and** at the
 smallest shipped size — a choice that dies at 24 px should be seen to die while it is
 being made — each on a surface the icon declares, painted from the same token table
 the icon was rendered against. Two controls, and both are the point:
 
-* a **checkbox per generation** — check one and press Enter (or click the plate) and
-  that generation becomes the icon's **target**, the one the pipeline promotes. It is
+* a **checkbox per candidate** — check one and press Enter (or click the plate) and
+  that candidate becomes the icon's **target**, the one the pipeline promotes. It is
 a checkbox rather than a radio button on purpose: *none of these* has to be
 reachable;
 * a **comment box for the next generation** — what is wrong, what to change, what to
@@ -288,6 +304,24 @@ every withdrawn claim recorded.
   appendix** (where a paraphrase and the original disagree, the original wins).
 * `docs/GRILLING-C2.md` — rounds 7–15: the presentation pass, the icon and material
   decisions, the debugger, and the publication decisions.
+* `docs/GRILLING-C3.md` — rounds 15–20 (Q70–Q98): the rules that shape an icon — the
+  rig, the three pillars and their roles, the seven-family palette matrix, and the
+  inventory joined to real game surfaces.
+* `docs/GRILLING-C4.md` — rounds 20b–24 (Q99–Q112): what makes six candidates six
+  readings — the world's radiance, the corpus ladder, the per-family colour
+  mechanisms, and the conformance and separation checks.
+* `docs/GRILLING-C5.md` — rounds 25–27 (Q113–Q123): the picker's measured layout
+  defect, the design-document audit, and the reconciliation of the six sources with
+  the icon's three roles.
+* `docs/GRILLING-C6.md` — rounds 28–29 (Q124–Q131): the implementation plan for the
+  icon inventory, the picker, the game and the debugger, and the shared coverage
+  atlas that is the real cause of the interface being unreadable.
+* `UNIFIED_DESIGN.md` — the system doctrine: the six sources of design conventions
+  at equal standing, aspect ownership versus role ownership (§1.0), the
+  colour-mechanism rule (§3.2.1), and the binding rules for tool surfaces (§5.7).
+* `ICON_STANDARD.md` — the specific half: the three roles, the material matrix with
+  its ceilings and mechanisms, the corpus ladder and its digests, the judged and
+  recorded checks, and the rig.
 * `playtest/<stage>/RUN.md` — how to run a stage. `playtest/<stage>/RESULT.md` —
   what it actually produced, including the things that went wrong.
 

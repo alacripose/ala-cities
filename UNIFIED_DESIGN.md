@@ -47,9 +47,11 @@ Governor Base (current authority) and Seasons (historical context) remain separa
 
 ---
 
-## 1. The four design lineages (what each may decide)
+## 1. The six sources of design conventions (what each may decide)
 
-Every surface compiled against AGENTS.md draws from these four lineages. None of them may override §0. Additional inspirational surfaces (Popit in §14, Advanced Warfare in §15) are adopted as **pattern libraries**, not extra lineages that can outrank the four.
+Every surface compiled against AGENTS.md draws from these **six sources of design conventions**, at equal standing, in one system. None of them may override §0. There is no ranking among them and no library/source distinction: **Samsung TouchWiz**, **Material Design 1**, **Apple HIG (iOS 6 era)**, **Impeccable / DESIGN.md-first**, **Popit (LittleBigPlanet)** and **Advanced Warfare** all supply conventions that a surface is built from, and §1.0 states what each one decides.
+
+Popit and Advanced Warfare are **not** subordinate pattern libraries. They are two of the six, and for this product they also define the **target**: the contextual tool surface (§14) and the legibility-under-load surface (§15) are what the interface is aiming at, not accessories to it.
 
 | Lineage | Adopted | Explicitly NOT adopted |
 |---|---|---|
@@ -57,6 +59,26 @@ Every surface compiled against AGENTS.md draws from these four lineages. None of
 | **Material Design 1** | Material-as-metaphor (paper, seams, elevation steps); 8dp spacing scale; ≥48dp touch targets where the viewport allows; intentional bold content hierarchy | Material 2/3 elevation theatre; filled tonal buttons as default; FAB as required pattern |
 | **Apple HIG (iOS 6 era + enduring principles)** | **Purpose** (one clear job), **Agency** (the human acts; the agent does not auto-act), **Responsibility** (no credential capture; identity shown as PROCEDURAL), **Clarity**, **Forgiveness**, aesthetic integrity, consistency, direct manipulation, feedback, metaphors, user control; SpringBoard and Messages patterns detailed in §12–§13 | Glassmorphism as the sole product skin; system-blue-as-identity; “verified” badge without evidence; motion for decoration |
 | **Impeccable / DESIGN.md-first** | Token-first design; OKLCH; physical materials with provenance; one easing curve; anti-slop bans; real textures over pure generative fill | Gold-leaf-on-everything; generative texture as sole source without a human-selected physical reference |
+| **Popit (LittleBigPlanet)** | Contextual tool surfaces opened **on a thing**; one tool at a time; category bags; the tool's actions live in the surface that shows its subject; direct manipulation of the subject; decorations and stickers as annotation/lens only | A game cursor on a desktop surface; hearting as a review mechanism; wobble/jiggle as the only edit affordance; any bag that grants power |
+| **Advanced Warfare (Sledgehammer)** | Legibility and status hierarchy **under load**: what stays readable when things are going wrong; escalation priority; ping/status highlighting; the diegetic/contextual HUD; the briefing reveal; the virtual test range; industrial material language as *read at speed* | Industrial material language as a **choice of materials** (that is TouchWiz's to decide); plausible-future chrome that implies authority; decorative flash or seizure-adjacent motion; loadout surfaces that commit silently |
+
+### 1.0 What each source owns
+
+Ownership is a division of labour, not a rank. Two kinds of ownership exist and they must not be confused:
+
+- **Aspect ownership** — which part of a *surface* a source decides.
+- **Role ownership** — which part of a single *artefact* a source decides. The clearest case is the icon: **MD1 owns the silhouette**, **TouchWiz owns the surface and the colour intent**, **iOS 6 owns the accenting record piece**. Those three are roles inside one icon, and they hold simultaneously; they are not three competing designs.
+
+| Source | Owns (aspect) | May not decide |
+|---|---|---|
+| **Impeccable** | How things are made: tokens, materials with provenance, easing, anti-slop | Product semantics; anything implying authority |
+| **Material Design 1** | The metrics: grid, 8dp/4-unit scale, targets, hierarchy, and the icon's **silhouette** | Icon cloning; elevation as decoration; FAB-as-required |
+| **Apple HIG (iOS 6 era)** | Clarity and behaviour: purpose, agency, forgiveness, feedback, direct manipulation, and the icon's **accent piece** | False trust; system-blue-as-identity; motion for decoration |
+| **Samsung TouchWiz** | Material language and loaded contents — the icon's **surface and colour intent** — plus industrial/natural material as *a choice of material* | Brand replication; icon cloning; density that starves content |
+| **Popit** | The contextual tool surface: tools opened on a subject, one at a time, actions inside the surface that shows the subject | Cursor discipline on non-game surfaces; hearting as review; bags that grant power |
+| **Advanced Warfare** | **Legibility and status hierarchy under load** — what remains readable when things are going wrong — with loadout / point-budget / test-range surfaces as a **bounded second claim** | Industrial material *choice* (TouchWiz's); plausibility as authority; silent commitment |
+
+The Advanced Warfare slot is deliberate and nothing else claims it: iOS 6 owns clarity in the **calm** case, and "what is unreadable under stress" is a different job from "what is clear at rest".
 
 ### 1.1 iOS 6 principles, stated so they can be checked
 
@@ -140,6 +162,22 @@ Illustrative roles (adapt per product; do not invent authority colours):
 | Bubble (system) | System or agent turn (distinct hue; still non-authoritative) |
 | Exo / technical accent | Near-future technical highlight (amber/orange or cyan on cool neutrals); signals active measured state or critical read, never a grant of authority |
 | Diegetic panel | Info rendered as if on equipment or environment (ammo-on-weapon, holographic objective); still copies store status only |
+
+#### 3.2.1 Colour is physical (the mechanism rule)
+
+A material's colour comes from a named mechanism, and each mechanism has a **ceiling**: the most chroma it can carry before it has stopped being that material. Exceeding a ceiling is not asking for a stronger colour, it is asking for a different material — a *blue metal body* is not a blue metal, it is a pigment coating on metal, and the coating is a different material with its own name.
+
+| Family | Mechanism | Ceiling (OKLCH chroma) |
+|---|---|---|
+| metal | anodised film — an oxide layer on the substrate | 0.060 |
+| glass | body-tinted — colour held in the glass itself | 0.100 |
+| ceramic | fired glaze over the body | 0.050 |
+| polymer | pigmented resin, colour compounded in | 0.050 |
+| paper | dyed stock, pigment in the sheet | 0.060 |
+| road | aggregate — asphalt and stone, near-neutral because that is what it is | 0.040 |
+| enamel | painted colour — a pigmented coating, the family paint belongs to | 0.190 |
+
+Two consequences are binding. A declared colour that required clamping to reach sRGB gamut was **never the colour declared**, so the reduction is recorded rather than absorbed. And a hue is **warranted** before it is used: where the product already declares a hue for a surface, the icon restates that meaning; where it does not, the choice is recorded *as an author choice* rather than borrowing a measurement's authority.
 
 **Contrast:** Body text on scrim meets WCAG 2.2 **1.4.3 Contrast (Minimum)** AA (≥ 4.5:1 normal text, ≥ 3:1 large text). Non-text UI components meet **1.4.11 Non-text Contrast** AA. Composite contrast on texture+scrim is **measured**, not asserted.
 
@@ -231,6 +269,18 @@ When a surface offers object-level editing (layout, layer, attachment, property 
 - While a tool session is open, underlying live behaviour may be frozen or outlined; closing the tool resumes prior behaviour without inventing new state.
 - Every editable object may expose a **tweak / info page** that lists only fields the store and contract already admit; unknown fields are refused, not invented.
 - Mode scope is enforced: tools available in a create-style contract are absent or disabled under a play/read-only contract. Absence is preferred over a disabled control that looks like a grant.
+
+---
+
+### 5.7 Tool surfaces (review and authoring tools)
+
+A tool surface is not a game surface, and it is governed by Popit's **structural** half rather than its game-facing half (§1.0). What binds:
+
+- **The subject is the surface.** A tool opened on six candidate icons shows six candidate icons; everything that competes with the subject for pixels is text about subjects that are not being acted on, and belongs in the tool's detail region.
+- **One subject at a time.** The detail region describes the *selected* subject — its brief, its notes, and its **measured numbers against the declared anchor** — because for a review tool "why is this refused" is the content, and the numbers are the reason.
+- **The tool's one action lives in the surface.** The comment field is the action; it is a fixed footer, always visible, never below the fold and never overlapped.
+- **Layout computes its height before it draws.** A tool surface may not reserve space with a constant and then place content with a different one; the two numbers must be the same number. Where content exceeds the viewport the surface **scrolls**, at every UI scale — and at the design scale on the design viewport it should happen not to need to.
+- **Text is measured, not assumed.** Wrapped text reports its own line count and height before placement; a scale whose values live at the call sites is a convention, and a convention is what produced a tool whose comment field sat on top of its own second row.
 
 ---
 
@@ -666,7 +716,16 @@ From AW’s multiplayer UI styleguide and briefing-style motion graphics:
 - Corrections to this file are **append-only** with explicit correction objects (old value, new value, reason, authority), consistent with AGENTS.md.  
 - New platform-specific tokens or class maps may be added as product appendices; they may not weaken §0–§2.  
 - Open questions in AGENTS.md remain open; this document does not resolve them.  
-- Popit, SpringBoard, Messages, and Advanced Warfare patterns added here are **design patterns under existing doctrine**, not new binding rules numbered in AGENTS.md §17. Any elevation to binding rule status requires the normal Governor / contract process.
+- Popit, SpringBoard, Messages, and Advanced Warfare patterns added here are design conventions documented in this file. Patterns that must bind product behaviour are binding rules only once numbered through the normal Governor / contract process; the conventions themselves stand alongside TouchWiz, MD1, HIG and Impeccable as sources a surface is built from.
+
+### 16.1 Correction objects
+
+| # | Old value | New value | Reason | Authority |
+|---|---|---|---|---|
+| C1 | §1 was titled "The four design lineages" and stated that Popit (§14) and Advanced Warfare (§15) are "pattern libraries, **not** extra lineages that can outrank the four" | §1 is "the six sources of design conventions, at equal standing"; Popit and Advanced Warfare are two of the six, and for this product also define the **target** | Popit and Advanced Warfare are what this product is aiming at, so subordinating them contradicted the product's own intent. The document's own §17 crosswalk already treated both as peers, so §1 disagreed with the file it lives in | Product owner instruction, recorded in the C4 session (a117, a121): include Popit and Advanced Warfare conventions in the same system as iOS 6, TouchWiz, MD1 and Apple HIG, without ranking them |
+| C2 | This file contained no colour-mechanism doctrine: `chroma` appeared zero times | §3.2.1 states the mechanism and ceiling per material family, and the warrant rule for hue | A material's colour had no stated physical basis, so nothing prevented a saturated metal or an unexplained hue. Derived by measurement in the C4 session (a109, a110) | Product owner answers a109/a110, recorded in `docs/GRILLING-C4.md` |
+| C3 | This file contained no section governing tool surfaces: `picker` and `review tool` appeared zero times | §5.7 states the binding rules for review and authoring tools | The icon review picker is compiled against AGENTS.md and was governed by no part of this doctrine, which is why its layout used three constants that never agreed and its comment field was drawn over its own second row | Same instruction; the defect is measured in the C4 session, round 25 |
+| C4 | §1.0 did not exist; ownership of aspects was implicit in the README's "five pillars" and was not stated here | §1.0 states aspect ownership and role ownership separately | The repository held three different partitions (this file's four lineages, the README's five pillars, and the icon's three roles) with nothing reconciling them | Same instruction; reconciled in round 27 (a116) |
 
 ---
 
@@ -690,4 +749,4 @@ From AW’s multiplayer UI styleguide and briefing-style motion graphics:
 
 **End of UNIFIED_DESIGN.md**
 
-This document is the single design entry point for any application compiled against AGENTS.md. Product-specific DESIGN.md files (e.g. civilian-chat) specialise tokens, class maps, and viewports; they do not override the constraints in §0–§2 or the WCAG AA floor. SpringBoard, Messages, Popit, and Advanced Warfare sections supply concrete interaction and art-direction patterns; they remain subordinate to AGENTS.md precedence and to the non-authority of appearance.
+This document is the single design entry point for any application compiled against AGENTS.md. Product-specific DESIGN.md files (e.g. civilian-chat) specialise tokens, class maps, and viewports; they do not override the constraints in §0–§2 or the WCAG AA floor. SpringBoard, Messages, Popit, and Advanced Warfare sections supply concrete interaction and art-direction conventions, standing alongside TouchWiz, MD1, HIG and Impeccable rather than beneath them. Every one of the six remains subject to AGENTS.md precedence and to the non-authority of appearance (§0) — that is the only subordination in this document.
