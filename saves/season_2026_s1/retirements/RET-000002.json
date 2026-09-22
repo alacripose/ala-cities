@@ -1,29 +1,29 @@
 {
-  "id": "RET-000001",
-  "ticket": "BLD-000001",
+  "id": "RET-000002",
+  "ticket": "BLD-000002",
   "contract": "CTR-CITY-0001",
   "terminal_state": "retired",
   "retirement_reason": "completed_and_validated",
-  "objective": "lay 23 tiles of road",
-  "completion_claim": "the world shows 23 tiles are road",
+  "objective": "zone 63 tiles residential",
+  "completion_claim": "the world shows 63 tiles carry the zone set",
   "grounding": {
     "inputs_verified": true,
     "note": "the governor version stamped on this ticket is v3"
   },
   "verification": {
     "acceptance_criteria": [
-      "all 23 tiles are road"
+      "all 63 tiles carry the zone set"
     ],
     "checks_run": [
-      "23 tiles are road"
+      "63 tiles carry the zone set"
     ],
     "passed": true,
     "regressions_detected": false
   },
   "evidence": [
-    "EVD-000001"
+    "EVD-000002"
   ],
   "governor_version": 3,
-  "retired_at_tick": 56,
+  "retired_at_tick": 124,
   "retired_by": "operator"
 }

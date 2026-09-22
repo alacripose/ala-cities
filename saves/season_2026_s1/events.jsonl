@@ -1,2 +1,4 @@
-{"detail":"BLD-000001 — lay 19 tiles of road","kind":"ticket.filed","sim_seconds":3.25,"tick":65}
-{"detail":"BLD-000001 — completed_and_validated","kind":"ticket.retired","sim_seconds":3.4,"tick":68}
+{"detail":"BLD-000001 — lay 23 tiles of road","kind":"ticket.filed","sim_seconds":2.55,"tick":51}
+{"detail":"BLD-000001 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.8,"tick":56}
+{"detail":"BLD-000002 — zone 63 tiles residential","kind":"ticket.filed","sim_seconds":6.1,"tick":122}
+{"detail":"BLD-000002 — completed_and_validated","kind":"ticket.retired","sim_seconds":6.2,"tick":124}

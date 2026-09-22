@@ -576,6 +576,20 @@ angle` checks 84 yaw/pitch combinations, and `a_tile_picks_back_the_tile_it_was_
 drawn_at_at_any_angle` checks 32 — because "exact picking" is only a claim until
 it has been tried at angles nobody wrote the test for.
 
+The gate was then **made to fail on purpose** — a 20×20 target added to the
+list — and the build refused to start:
+
+```
+the design check failed closed:
+  - target `temporary probe` is 20×20 px, below the WCAG 2.5.8 floor of 24
+fix these and restart; nothing will be drawn until the scales hold.
+exit=1
+```
+
+That is the difference between a check and a decoration, and it is why the probe
+was run rather than assumed: a gate that has never been seen to close is a
+comment.
+
 ## Three things the work turned up
 
 1. **An orthographic camera has no horizon.** A test asserted that a ray at the

@@ -65,12 +65,15 @@ Type and spacing come from `src/design.rs`, whose steps are a **closed enum**:
 | `title` | 20 px | panel headings |
 | `display` | 26 px | plaques and critical identifiers |
 
-Sizes and spacing are not passed as numbers anywhere — `draw_step` takes a
-`Step`, so a call site *cannot* carry its own size, and a test reads the sources
-back to catch anyone reintroducing the old ad-hoc constants. Spacing is the
-design doc's 4-unit scale, targets are ≥ 48 px (WCAG 2.5.8's 24 px is the hard
-floor, not the goal), and the interface scale cycles 100 / 125 / 150 / 200 %
-from the pause menu, re-laying out rather than stretching.
+Sizes are not passed as numbers anywhere — `draw_step` takes a `Step`, so a call
+site *cannot* carry its own size, and a test reads the sources back to catch
+anyone reintroducing the old ad-hoc constants. Panel insets, gaps, row advances
+and control heights come from the 4-unit spacing scale and the target size;
+control *widths* and the few pixel nudges that optically centre a label inside a
+control are geometry, and they scale with the interface rather than pretending to
+be spacing. Targets are ≥ 48 px (WCAG 2.5.8's 24 px is the hard floor, not the
+goal), and the interface scale cycles 100 / 125 / 150 / 200 % from the pause menu,
+re-laying out rather than stretching.
 
 Glyph positions are **snapped to whole pixels** and the coverage atlas is sampled
 with `Nearest`, because the first build's text was soft for exactly one reason: it

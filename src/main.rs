@@ -1109,6 +1109,11 @@ impl App {
         // being stretched.
         let ui = self.text.ui_scale();
         let pad = |space: Space| hud::space(space, ui);
+        // One line of text, and one comfortable target. Row advances and panel
+        // insets are built from these rather than from their own numbers, so
+        // the interface re-lays out at a new scale instead of drifting off it.
+        let text_line = pad(Space::Md) + pad(Space::Sm);
+        let target_px = design::target(ui);
 
         // ---- governed-session chrome -------------------------------------
         hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, 30.0, Token::Panel);
@@ -1226,9 +1231,9 @@ impl App {
         // ---- left column: demand, state, what to do next ------------------
         let panel_x = 12.0;
         let mut panel_y = 42.0;
-        let panel_w = 250.0;
+        let panel_w = 250.0 * ui.0;
         hud::panel(&mut self.batch, &screen, panel_x, panel_y, panel_w, 226.0, Token::Panel);
-        panel_y += 10.0;
+        panel_y += pad(Space::Sm);
         hud::label(
             &mut self.text,
             &mut self.batch,
@@ -1239,7 +1244,7 @@ impl App {
             Token::TextBody,
             "Demand",
         );
-        panel_y += 22.0;
+        panel_y += text_line;
         for (token, name, value) in [
             (Token::ZoneResidential, "residential", self.world.demand.residential),
             (Token::ZoneCommercial, "commercial", self.world.demand.commercial),
@@ -1265,11 +1270,11 @@ impl App {
                 token,
                 value,
             );
-            panel_y += 18.0;
+            panel_y += text_line;
         }
-        panel_y += 8.0;
+        panel_y += pad(Space::Sm);
         hud::rule(&mut self.batch, &screen, panel_x + pad(Space::Md), panel_y, panel_w - pad(Space::Xl), Token::TextMuted);
-        panel_y += 10.0;
+        panel_y += pad(Space::Sm);
 
         let stats = [
             ("credits", format!("{}", self.world.economy.credits)),
@@ -1314,7 +1319,7 @@ impl App {
                 },
                 &value,
             );
-            panel_y += 16.0;
+            panel_y += pad(Space::Lg);
         }
 
         // What to do next, derived from stored state. An empty list would be a
@@ -1333,7 +1338,7 @@ impl App {
             Token::TextBody,
             "What to do next",
         );
-        next_y += 26.0;
+        next_y += text_line + pad(Space::Xs);
         for line in suggestions.iter().take(4) {
             let clipped = hud::truncate(&mut self.text, Face::Body, line, Step::Small, panel_w - pad(Space::Xl));
             let is_case = line.starts_with("CSE-");
@@ -1347,7 +1352,7 @@ impl App {
                 if is_case { Token::CaseOpen } else { Token::TextMuted },
                 &clipped,
             );
-            next_y += 18.0;
+            next_y += text_line;
         }
 
         // ---- ledger -------------------------------------------------------
@@ -1379,14 +1384,14 @@ impl App {
                 &mut self.batch,
                 &screen,
                 lx + pad(Space::Md),
-                ly + 28.0,
+                ly + text_line + pad(Space::Sm),
                 Step::Small,
                 Token::TextMuted,
                 &counts,
             );
             hud::rule(&mut self.batch, &screen, lx + pad(Space::Md), ly + 46.0, width - pad(Space::Xl), Token::TextMuted);
 
-            let mut row = ly + 54.0;
+            let mut row = ly + text_line * 2.0 + pad(Space::Md);
             for ticket in self.gov.ledger(22) {
                 let line = format!("{}  {}", ticket.id, ticket.objective);
                 let clipped = hud::truncate(&mut self.text, Face::Body, &line, Step::Small, width - 118.0);
@@ -1418,7 +1423,7 @@ impl App {
                     Token::TextMuted,
                     &clipped_closing,
                 );
-                row += 16.0;
+                row += pad(Space::Lg);
                 if row > ly + lh - 20.0 {
                     break;
                 }
@@ -1469,7 +1474,7 @@ impl App {
                             },
                         ),
                     ];
-                    let mut fy = py + 30.0;
+                    let mut fy = py + text_line + pad(Space::Sm);
                     for (name, value) in fields {
                         hud::label(
                             &mut self.text,
@@ -1492,7 +1497,7 @@ impl App {
                             Token::TextBody,
                             &value,
                         );
-                        fy += 14.0;
+                        fy += pad(Space::Md);
                     }
                 }
             }
@@ -1566,12 +1571,17 @@ impl App {
                 rect.h,
                 if active { Token::Ink } else { Token::PanelRaised },
             );
+            // Text is centred against the control's own target height rather
+            // than against a number chosen when the button was 56 px tall.
+            let label_y = rect.y
+                + (rect.h - Step::Body.px(ui) as f32) / 2.0
+                - Step::Body.px(ui) as f32 * 0.5;
             hud::label(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
                 rect.x + pad(Space::Sm),
-                rect.y + 7.0,
+                label_y,
                 Step::Body,
                 if active { Token::TextOnInk } else { Token::TextBody },
                 tool.name(),
@@ -1581,7 +1591,7 @@ impl App {
                 &mut self.batch,
                 &screen,
                 rect.x + pad(Space::Sm),
-                rect.y + 25.0,
+                label_y + Step::Body.px(ui) as f32 + pad(Space::Xs),
                 Step::Small,
                 if active { Token::TextOnInk } else { Token::TextMuted },
                 tool.hint(),
@@ -1591,7 +1601,11 @@ impl App {
         // The zone sub-selector appears only under the tool that uses it, which
         // is mode scope rather than a control that is always there but disabled.
         if self.tool == Tool::Zone {
-            let base = screen.bottom_anchor(56.0, 12.0);
+            let base = screen.bottom_anchor(
+                target_px + pad(Space::Sm),
+                pad(Space::Md),
+            );
+            let button_w = 142.0 * ui.0;
             for (index, (zone, key)) in [
                 (Zone::Residential, "R"),
                 (Zone::Commercial, "C"),
@@ -1600,15 +1614,17 @@ impl App {
             .into_iter()
             .enumerate()
             {
-                let x = 12.0 + index as f32 * 150.0;
+                let x = pad(Space::Md) + index as f32 * button_w;
                 let active = zone == self.zone;
+                // A zone row is a target too, so it is built from the target
+                // height rather than from whatever looked right once.
                 hud::panel(
                     &mut self.batch,
                     &screen,
                     x,
-                    base - 34.0,
-                    142.0,
-                    30.0,
+                    base - target_px - pad(Space::Xs),
+                    button_w - pad(Space::Sm),
+                    target_px,
                     if active { Token::PanelRaised } else { Token::Panel },
                 );
                 hud::label(
@@ -1616,7 +1632,7 @@ impl App {
                     &mut self.batch,
                     &screen,
                     x + pad(Space::Sm),
-                    base - 29.0,
+                    base - target_px + pad(Space::Xs),
                     Step::Body,
                     if active { Token::TextBody } else { Token::TextMuted },
                     &format!("{}  ({key})", zone.name()),
@@ -1626,8 +1642,8 @@ impl App {
 
         // ---- pause menu -----------------------------------------------------
         if self.menu_open {
-            let width = 620.0;
-            let height = 300.0;
+            let width = 620.0 * ui.0;
+            let height = 300.0 * ui.0;
             let x = (screen.w - width) / 2.0;
             let y = (screen.h - height) / 2.0;
             hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, screen.h, Token::Desk);
@@ -1647,7 +1663,7 @@ impl App {
                 &mut self.batch,
                 &screen,
                 x + pad(Space::Lg),
-                y + 44.0,
+                y + text_line * 2.0 + pad(Space::Xs),
                 Step::Small,
                 Token::TextMuted,
                 &format!(
@@ -1667,7 +1683,7 @@ impl App {
                 "Q     flush the capture",
                 "U     interface scale",
             ];
-            let mut iy = y + 78.0;
+            let mut iy = y + text_line * 4.0;
             for item in items {
                 hud::label(
                     &mut self.text,
@@ -1679,12 +1695,12 @@ impl App {
                     Token::TextBody,
                     item,
                 );
-                iy += 22.0;
+                iy += text_line;
             }
 
             // Feedback is its own tier, always available, and its record says
             // what it is: one playtest, at tentative confidence.
-            let field_y = y + 200.0;
+            let field_y = y + text_line * 10.0;
             hud::panel(
                 &mut self.batch,
                 &screen,
@@ -1730,7 +1746,7 @@ impl App {
                     &mut self.batch,
                     &screen,
                     x + pad(Space::Lg),
-                    field_y + 38.0,
+                    field_y + text_line * 2.0,
                     Step::Small,
                     Token::TextMuted,
                     "Enter writes the record · Esc backs out without writing",
@@ -1740,8 +1756,8 @@ impl App {
 
         // ---- help / the stage's own test script -----------------------------
         if self.show_help {
-            let width = 700.0;
-            let height = 300.0;
+            let width = 700.0 * ui.0;
+            let height = 300.0 * ui.0;
             let x = (screen.w - width) / 2.0;
             let y = (screen.h - height) / 2.0;
             hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
@@ -1767,7 +1783,7 @@ impl App {
                 Token::TextBody,
                 "C1 — sim core",
             );
-            let mut ly = y + 48.0;
+            let mut ly = y + text_line * 2.0 + pad(Space::Sm);
             for (keys, what) in lines {
                 hud::label_mono(
                     &mut self.text,
@@ -1789,10 +1805,10 @@ impl App {
                     Token::TextBody,
                     what,
                 );
-                ly += 20.0;
+                ly += text_line;
             }
             hud::rule(&mut self.batch, &screen, x + pad(Space::Lg), ly, width - 40.0, Token::TextMuted);
-            ly += 10.0;
+            ly += pad(Space::Sm);
             hud::label(
                 &mut self.text,
                 &mut self.batch,
@@ -1828,7 +1844,7 @@ impl App {
                 &mut self.batch,
                 &screen,
                 x + pad(Space::Lg),
-                ly + 58.0,
+                ly + text_line * 3.0 - pad(Space::Xs),
                 Step::Small,
                 Token::TextMuted,
                 &format!("rendering on {adapter}"),
@@ -1838,7 +1854,7 @@ impl App {
                 &mut self.batch,
                 &screen,
                 x + pad(Space::Lg),
-                ly + 40.0,
+                ly + text_line * 2.0,
                 Step::Small,
                 Token::TextMuted,
                 &measured,
