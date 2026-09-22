@@ -13,22 +13,32 @@ would foreshorten the parts nearest the camera and make the smallest shipped siz
 import hashlib
 import math
 
-# 4x the largest shipped size. 192 -> 48 is a box average of 16 pixels; 192 -> 32
-# averages 36; 192 -> 24 averages 64. All exact integer factors, so the
-# downsample is a plain mean and no filter has to be invented or trusted.
+# Twice the largest shipped size, and every shipped size divides it by a whole
+# number: 192 -> 96 averages 4 pixels, 192 -> 64 averages 9, 192 -> 48 averages 16,
+# 192 -> 32 averages 36, 192 -> 24 averages 64. Exact integer factors, so the
+# downsample is a plain box mean and no filter has to be invented or trusted — and
+# the interface scale (100/125/150/200 %) is why the ladder reaches 96 at all: a
+# 48 px icon drawn in a 96 px tile would be upscaled, which is exactly the softness
+# this pipeline exists to avoid.
 RENDER_PX = 192
-SHIPPED_PX = (48, 32, 24)
+SHIPPED_PX = (96, 64, 48, 32, 24)
 SAMPLES = 256
 ORTHO_SCALE = 2.25
 
 #: The three lights. Azimuth is degrees around the vertical, elevation degrees
 #: above the camera's horizon, both measured from the icon's own centre.
+#:
+#: The energies were raised by 2.5 after the first full run of the checks: a flat
+#: swatch of a material rendered at only **0.20x** its own albedo under this rig, so
+#: every icon came out dim and the ink that has to reach 3:1 on a panel could not.
+#: The rig is fixed rather than tuned, which is exactly why the number is measured
+#: and recorded here instead of being nudged until the icons looked nice.
 RIG = {
     "key": {
         "azimuth": 38.0,
         "elevation": 42.0,
         "distance": 6.0,
-        "energy": 320.0,
+        "energy": 800.0,
         "size": 3.0,
         "color": (1.0, 0.97, 0.93),
         "role": "the light the shading model is checked against",
@@ -37,7 +47,7 @@ RIG = {
         "azimuth": -62.0,
         "elevation": 14.0,
         "distance": 6.0,
-        "energy": 110.0,
+        "energy": 275.0,
         "size": 4.5,
         "color": (0.86, 0.91, 1.0),
         "role": "lifts the shadow side without flattening the form",
@@ -46,7 +56,7 @@ RIG = {
         "azimuth": 165.0,
         "elevation": 58.0,
         "distance": 6.0,
-        "energy": 170.0,
+        "energy": 425.0,
         "size": 2.0,
         "color": (1.0, 1.0, 1.0),
         "role": "separates the silhouette from the surface behind it",
@@ -171,7 +181,8 @@ def rig_record() -> dict:
         "shipped_px": list(SHIPPED_PX),
         "downsample": (
             "box average in linear light over exact integer factors "
-            "(192->48 averages 16 px, 192->32 averages 36, 192->24 averages 64)"
+            "(192->96 averages 4 px, 192->64 averages 9, 192->48 averages 16, "
+            "192->32 averages 36, 192->24 averages 64)"
         ),
     }
 

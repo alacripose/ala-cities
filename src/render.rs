@@ -101,6 +101,15 @@ pub struct Text {
     /// R8 coverage. The first two texels are solid white, so a "solid" draw is
     /// the same sampling path as a glyph with no special case.
     pub data: Vec<u8>,
+    /// How many times the atlas content has changed — bumped whenever a glyph is
+    /// rasterised for the first time, and when the UI scale moves the point size.
+    ///
+    /// This exists because the alternative is a flag somebody has to remember to
+    /// set: the first build uploaded the atlas once at startup and then sampled
+    /// empty texels for every glyph rasterised afterwards, which is what "the text
+    /// looks wrong" turned out to be. Uploads are driven by this counter, so
+    /// forgetting is not possible.
+    pub revision: u64,
     pen_x: u32,
     pen_y: u32,
     row_height: u32,
@@ -165,6 +174,9 @@ impl Text {
             missing_font: fonts[0].is_none(),
             fonts,
             data,
+            // Revision 1, not 0: the empty atlas with its solid-white texels is
+            // itself content the GPU does not have yet.
+            revision: 1,
             pen_x: 4,
             pen_y: 0,
             row_height: 0,
@@ -176,11 +188,28 @@ impl Text {
 
     /// Set the UI scale used by every subsequent draw and measurement.
     pub fn set_ui_scale(&mut self, ui: UiScale) {
-        self.ui = ui;
+        if self.ui != ui {
+            self.ui = ui;
+            // Every step now rasterises at a different point size, so the atlas is
+            // about to gain glyphs the GPU has never seen. Said here rather than
+            // left to the size miss alone, because "the atlas changed" is true the
+            // moment the scale does.
+            self.revision += 1;
+        }
     }
 
     pub fn ui_scale(&self) -> UiScale {
         self.ui
+    }
+
+    /// How many glyph slots the atlas holds, and how far down it has packed.
+    ///
+    /// Reported rather than assumed: a full atlas refuses to draw new glyphs, and
+    /// the symptom of that is *missing text*, which reads as a font bug and is not
+    /// one. The number is on screen in the first-frame report for exactly that
+    /// reason.
+    pub fn occupancy(&self) -> (usize, u32) {
+        (self.cache.len(), self.pen_y)
     }
 
     /// Device pixels for a step at the current UI scale.
@@ -283,6 +312,7 @@ impl Text {
         }
         let slot = self.rasterise(face, ch, size)?;
         self.cache.insert(key, slot);
+        self.revision += 1;
         Some(slot)
     }
 
@@ -937,7 +967,9 @@ pub struct Gpu {
     pub present_modes: Vec<wgpu::PresentMode>,
     pub adapter_name: String,
     pub stats: FrameStats,
-    pub atlas_uploaded: u64,
+    /// The atlas revision currently on the GPU. Uploads are driven by comparing
+    /// this against `Text::revision`, not by a flag anyone has to remember.
+    pub atlas_revision: u64,
     /// The last camera the frame was drawn with, for the picking check the
     /// client runs at startup.
     pub last_camera: Option<Camera>,
@@ -1461,7 +1493,7 @@ impl Gpu {
             present_modes,
             adapter_name: info.name,
             stats: FrameStats::default(),
-            atlas_uploaded: 0,
+            atlas_revision: u64::MAX,
             last_camera: None,
         }
     }
@@ -1485,9 +1517,18 @@ impl Gpu {
         }
     }
 
-    /// Upload the coverage atlas. Called only when new glyphs have been
-    /// rasterised, not every frame: re-uploading a megabyte per frame would
-    /// make the frame budget a lie.
+    /// Bring the GPU's copy of the coverage atlas up to date, and report whether
+    /// anything was sent. Skips the transfer when the atlas has not changed, so the
+    /// frame budget does not pay a megabyte a frame for nothing.
+    pub fn sync_atlas(&mut self, text: &Text) -> bool {
+        if text.revision == self.atlas_revision {
+            return false;
+        }
+        self.upload_atlas(text);
+        true
+    }
+
+    /// Upload the coverage atlas unconditionally.
     pub fn upload_atlas(&mut self, text: &Text) {
         self.queue.write_texture(
             wgpu::TexelCopyTextureInfo {
@@ -1508,7 +1549,7 @@ impl Gpu {
                 depth_or_array_layers: 1,
             },
         );
-        self.atlas_uploaded += 1;
+        self.atlas_revision = text.revision;
     }
 
     fn ensure_instance_capacity(&mut self, needed: usize) {
@@ -1947,5 +1988,47 @@ mod tests {
         let uv = Text::solid_uv();
         assert!(uv[0] > 0.0 && uv[0] < 1.0);
         assert_eq!(uv[0], uv[2], "a solid draw samples one texel");
+    }
+
+    /// The bug this pins, in one sentence: a glyph rasterised *after* the one
+    /// upload is a glyph the GPU cannot draw, so an upload driven by anything but
+    /// the atlas's own content loses text. `revision` is that content, and these are
+    /// the three ways it has to move or not move.
+    #[test]
+    fn the_atlas_revision_follows_the_atlas_and_nothing_else() {
+        let mut text = Text::new();
+        if text.missing_font {
+            // No system font on this machine: the property is about rasterisation,
+            // so there is nothing to assert and saying so beats a silent pass.
+            eprintln!("no system font available; the atlas revision is not exercised");
+            return;
+        }
+        let mut batch = Batcher::default();
+        let screen = Screen { w: 800.0, h: 600.0 };
+
+        // A new glyph moves it. This is the case that shipped broken: the upload had
+        // already happened at startup, and this draw alone would have been lost.
+        let start = text.revision;
+        text.draw_step(Face::Body, &mut batch, &screen, 0.0, 0.0, Step::Body, [1.0; 4], "W");
+        let after_first = text.revision;
+        assert!(after_first > start, "a glyph drawn for the first time changes the atlas");
+
+        // The same glyph again does not: a steady frame must not re-upload a
+        // megabyte for text that is already there.
+        text.draw_step(Face::Body, &mut batch, &screen, 0.0, 40.0, Step::Body, [1.0; 4], "W");
+        assert_eq!(text.revision, after_first, "a cached glyph is not new content");
+
+        // Measuring rasterises too, so a frame that measures before it draws must
+        // not be able to lose the upload.
+        text.measure_step(Face::Body, "revision", Step::Title);
+        assert!(text.revision > after_first, "measuring new glyphs changes the atlas");
+
+        // Moving the UI scale re-rasterises every step at a new size.
+        let before_scale = text.revision;
+        text.set_ui_scale(UiScale(1.25));
+        assert!(text.revision > before_scale, "a new UI scale changes the atlas");
+        let steady = text.revision;
+        text.set_ui_scale(UiScale(1.25));
+        assert_eq!(text.revision, steady, "setting the same scale again changes nothing");
     }
 }

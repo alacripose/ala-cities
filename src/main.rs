@@ -89,7 +89,7 @@ struct App {
     /// The city's own quads: world space, depth-tested.
     world_batch: WorldBatch,
     camera: Camera,
-    atlas_dirty: bool,
+
     /// The interface scale, cycled from the pause menu.
     ui: UiScale,
     /// Whether the first frame's geometry has been reported yet.
@@ -142,7 +142,7 @@ impl App {
             batch: Batcher::default(),
             world_batch: WorldBatch::default(),
             camera: Camera::new(screen, MAP, MAP),
-            atlas_dirty: true,
+
             ui: UiScale::default(),
             logged_first_frame: false,
             world,
@@ -593,7 +593,6 @@ impl App {
             // bare key, because a stray press should not re-lay-out everything.
             KeyCode::KeyU if self.menu_open => {
                 self.ui = self.ui.next();
-                self.atlas_dirty = true;
                 self.toast = Some((
                     format!("interface scale {}", self.ui.label()),
                     self.world.clock.tick,
@@ -1971,17 +1970,20 @@ impl App {
         self.draw_world();
         self.draw_hud();
 
-        if self.atlas_dirty {
-            if let Some(gpu) = self.gpu.as_mut() {
-                gpu.upload_atlas(&self.text);
-            }
-            self.atlas_dirty = false;
+        // The atlas upload is driven by the atlas itself: `Text::revision` counts
+        // every glyph rasterised, and the one glyph a frame draws for the first
+        // time is exactly the one a flag set at startup would have missed. That
+        // bug shipped in the last build — new labels, new digits and toasts drew as
+        // empty or borrowed texels — so the flag is gone rather than corrected.
+        if let Some(gpu) = self.gpu.as_mut() {
+            gpu.sync_atlas(&self.text);
         }
 
         // Once, on the first frame: what the passes were actually asked to
         // draw. "It renders" is otherwise a claim with nothing behind it.
         if !self.logged_first_frame {
             self.logged_first_frame = true;
+            let (slots, packed_to) = self.text.occupancy();
             tracing::info!(
                 world_opaque = self.world_batch.opaque.len(),
                 world_overlay = self.world_batch.overlay.len(),
@@ -1989,6 +1991,9 @@ impl App {
                 yaw_degrees = self.camera.yaw.to_degrees(),
                 pitch_degrees = self.camera.pitch.to_degrees(),
                 zoom = self.camera.zoom,
+                glyph_slots = slots,
+                atlas_packed_to_row = packed_to,
+                atlas_refused = self.text.refused,
                 "first frame"
             );
         }
@@ -2139,7 +2144,6 @@ impl ApplicationHandler for App {
         self.camera.screen = gpu.screen();
         self.camera.zoom = (gpu.screen().h / (MAP as f32 * TILE) * 2.4).max(0.2);
         self.gpu = Some(gpu);
-        self.atlas_dirty = true;
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {

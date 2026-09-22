@@ -12,3 +12,5 @@
 {"detail":"`build_road` refused: a leg of 91 tiles exceeds the 64-tile limit this profile permits; known operations: build_road, zone, place_service, demolish, set_tax, take_loan, look, inspect","kind":"plan.refused","sim_seconds":3.25,"tick":65}
 {"detail":"BLD-000005 — lay 50 tiles of road","kind":"ticket.filed","sim_seconds":3.65,"tick":73}
 {"detail":"BLD-000005 — completed_and_validated","kind":"ticket.retired","sim_seconds":3.8,"tick":76}
+{"detail":"BLD-000006 — lay 10 tiles of road","kind":"ticket.filed","sim_seconds":1.65,"tick":33}
+{"detail":"BLD-000006 — completed_and_validated","kind":"ticket.retired","sim_seconds":1.8,"tick":36}

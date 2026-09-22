@@ -15,6 +15,13 @@ path = "src/main.rs"
 name = "verify"
 path = "src/bin/verify.rs"
 
+# The icon review picker: a tool, not the game. It shows the three rendered
+# generations of an icon side by side and appends the choice that promotes one of
+# them into the shipping set.
+[[bin]]
+name = "pick"
+path = "src/bin/pick.rs"
+
 [dependencies]
 # Rendering and windowing: large, non-determinism-critical, taken as wheels.
 wgpu = "29.0.4"

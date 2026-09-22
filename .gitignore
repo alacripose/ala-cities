@@ -16,6 +16,11 @@
 *.dmp
 *.log
 
+# Python bytecode. The icon pipeline is run, not compiled, and a .pyc in a public
+# repository is a build artifact from one machine at one moment.
+__pycache__/
+*.pyc
+
 # Editor / OS noise
 .vscode/
 .idea/

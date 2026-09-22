@@ -45,6 +45,8 @@ def oklch(lightness: float, chroma: float, hue_degrees: float):
 
 TOKENS = {
     # name: (l, c, h) exactly as the style table builds them
+    "Desk": (0.17, 0.012, 260.0),
+    "Panel": (0.25, 0.014, 260.0),
     "Ink": (0.45, 0.130, 250.0),
     "Nature": (0.70, 0.150, 150.0),
     "Warning": (0.74, 0.160, 70.0),
@@ -80,6 +82,47 @@ def rgba(token: str, alpha: float = 1.0):
     """A token as the four floats the renderer takes."""
     linear_rgb = linear(token)
     return (linear_rgb[0], linear_rgb[1], linear_rgb[2], alpha)
+
+
+# ---------------------------------------------------------------------------
+# Hosts, and the contrast a non-text component owes
+# ---------------------------------------------------------------------------
+
+#: The surfaces an icon is allowed to sit on, as the tokens that fill them. An icon
+#: must declare which of these it lands on, and the pipeline measures it against
+#: each one: a glyph that passes every other check and is invisible on the panel it
+#: was put on has still failed.
+#:
+#: Only surfaces that exist today are listed. `Ground` and `Water` are deliberately
+#: absent: the world palette is not in `hud.rs` yet, so their values would have to
+#: be invented here, and an invented value is exactly what this file exists to
+#: avoid.
+HOSTS = ("Desk", "Panel", "PanelRaised")
+
+#: WCAG 2.2 1.4.11 Non-text Contrast, AA: a UI component needs 3:1 against what it
+#: sits on. Body text's 4.5:1 floor is measured separately, in `src/hud.rs`.
+NON_TEXT_MIN_CONTRAST = 3.0
+
+
+def relative_luminance(linear_rgb) -> float:
+    """WCAG relative luminance of a **linear** RGB triple."""
+    return 0.2126 * linear_rgb[0] + 0.7152 * linear_rgb[1] + 0.0722 * linear_rgb[2]
+
+
+def contrast_ratio(a: float, b: float) -> float:
+    """WCAG contrast between two relative luminances."""
+    lighter, darker = max(a, b), min(a, b)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def host_luminance(token: str) -> float:
+    """The relative luminance of a host surface's own fill."""
+    if token not in HOSTS:
+        raise KeyError(
+            f"`{token}` is not a declared host; an icon may only sit on a surface "
+            f"this file can measure it against ({', '.join(HOSTS)})"
+        )
+    return relative_luminance(linear(token))
 
 
 def palette_hash() -> str:

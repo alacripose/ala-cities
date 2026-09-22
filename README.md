@@ -194,6 +194,7 @@ first frame world_opaque=26167 world_overlay=49 interface=410 yaw_degrees=0.0
 | `src/session.rs` | the session capture: what was clicked, where, and the build it happened in |
 | `src/main.rs` | the client: window, input, tools, HUD layout, the sim↔render loop |
 | `src/bin/verify.rs` | the oracle: reads a record, checks it against the world, exits non-zero on disagreement |
+| `src/bin/pick.rs` | the icon review picker: three generations side by side, and what to change next |
 
 ---
 
@@ -207,13 +208,49 @@ OpenPBR node and no MaterialX operators (upstream issue #145127). `cargo build`
 never needs Blender: the renders are committed artifacts with a manifest, and
 `tools/icons/generate.py` is how they were made.
 
-**Status, plainly:** the first pass shipped **13 glyphs at 3 sizes (24/32/48)**. The
-settled ladder is **24/32/48/64/96**, the inventory is to be generated from the
-game's own registry rather than a hand list, motion is settled as *store-driven*
-(a gear turns only while the sim is actually working that record), and the material
-check is being replaced by a measured reference swatch. Until that work lands the
-generator **refuses to run** and says why, rather than writing a manifest it cannot
-stand behind. See `docs/GRILLING-C2.md`, rounds 11–13.
+**Status, plainly:** the first pass shipped **13 glyphs at 3 sizes (24/32/48)**. Since
+then the ladder is **24/32/48/64/96**, every icon is rendered as **three declared
+generations** — as authored, bold, detailed — and the material check is a **measured
+differential swatch**: each material is rendered as a flat reference under the same
+rig and the icon's own render is compared against it, because a model of how a
+material *should* arrive is a claim, and a swatch is a measurement.
+
+What is still open, and visible rather than quiet: the inventory is a hand list and
+should come from the game's own registry; motion is settled as *store-driven* (a gear
+turns only while the sim is actually working that record) and not yet implemented;
+and **no icon has a target yet** — the pipeline says so per icon rather than
+pretending the set is finished. See `docs/GRILLING-C2.md`, rounds 11–13.
+
+### Choosing between generations
+
+Nothing ships that a person has not checked. The pipeline renders three generations
+of each icon and writes `assets/icons/review.json`; the picker reads it:
+
+```
+cargo run --release --bin pick
+```
+
+For each icon it shows the three candidates at the decision size **and** at the
+smallest shipped size — a choice that dies at 24 px should be seen to die while it is
+being made — each on a surface the icon declares, painted from the same token table
+the icon was rendered against. Two controls, and both are the point:
+
+* a **checkbox per generation** — check one and press Enter (or click the plate) and
+  that generation becomes the icon's **target**, the one the pipeline promotes. It is
+a checkbox rather than a radio button on purpose: *none of these* has to be
+reachable;
+* a **comment box for the next generation** — what is wrong, what to change, what to
+try. A comment is recorded whether or not anything is checked, so "none of these, make
+the teeth longer" is a usable answer instead of a dead end.
+
+Every decision is appended to `assets/icons/review-decisions.jsonl`: one line per
+record, carrying the checkbox state, the comment, the measured facts of the candidate
+and the build that made it — plain JSON, one record per line, nothing rewritten in
+place. Deciding again **supersedes without erasing** — the last
+`target: true` per icon wins, and every comment ever left is read back by
+`generate.py` as a **directive** the next generation is authored against. The picker
+prints them, the manifest carries them, and the pipeline prints what is still
+outstanding, so a promise cannot be lost by being forgotten in a terminal scroll.
 
 ---
 

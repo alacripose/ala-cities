@@ -1,0 +1,2394 @@
+{
+  "awaiting_decision": [
+    "tool-road",
+    "tool-zone",
+    "tool-power",
+    "tool-demolish",
+    "tool-inspect",
+    "ledger",
+    "ticket",
+    "district",
+    "power",
+    "view-power",
+    "view-zoning",
+    "view-traffic",
+    "view-ledger"
+  ],
+  "blender": {
+    "build_hash": "5eaad57cfabe",
+    "version": "5.3.0 Alpha"
+  },
+  "context_size_px": 24,
+  "decided": {},
+  "decision_size_px": 96,
+  "directives_log": "C:\\Users\\ala\\ala-cities\\assets\\icons\\review-decisions.jsonl",
+  "fills": {
+    "Desk": [
+      0.003800456131371149,
+      0.004998773539354602,
+      0.007355778429087962
+    ],
+    "Ink": [
+      0.0,
+      0.0951393231420755,
+      0.32106658490031487
+    ],
+    "Nature": [
+      0.07243465381490266,
+      0.478001399626369,
+      0.14489588313439722
+    ],
+    "Panel": [
+      0.012791147850521514,
+      0.015867390361293962,
+      0.021674218912632617
+    ],
+    "PanelRaised": [
+      0.024797066736441824,
+      0.03023058096589578,
+      0.0403612145350743
+    ],
+    "TextBody": [
+      0.8693263610410514,
+      0.8864781252129934,
+      0.91455700232934
+    ],
+    "Warning": [
+      0.8197481898074105,
+      0.3036857430854132,
+      0.0005345645517959019
+    ]
+  },
+  "generations": [
+    {
+      "id": "a-authored",
+      "label": "as authored",
+      "material": "plain",
+      "scale": 1.0,
+      "weight": 1.0,
+      "why": "the geometry as written, proportions tuned for the largest size"
+    },
+    {
+      "id": "b-bold",
+      "label": "bold",
+      "material": "plain",
+      "scale": 1.06,
+      "weight": 1.35,
+      "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+    },
+    {
+      "id": "c-detailed",
+      "label": "detailed",
+      "material": "treated",
+      "scale": 0.96,
+      "weight": 0.82,
+      "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+    }
+  ],
+  "host_fills": {
+    "Desk": [
+      0.003800456131371149,
+      0.004998773539354602,
+      0.007355778429087962
+    ],
+    "Panel": [
+      0.012791147850521514,
+      0.015867390361293962,
+      0.021674218912632617
+    ],
+    "PanelRaised": [
+      0.024797066736441824,
+      0.03023058096589578,
+      0.0403612145350743
+    ]
+  },
+  "hosts": [
+    "Desk",
+    "Panel",
+    "PanelRaised"
+  ],
+  "how_to_decide": "cargo run --release --bin pick \u2014 check one generation and press Enter to make it the target, and type in the comment box to say what the next generation should change (a comment is recorded with or without a target)",
+  "icons": [
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.017,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 9.68
+              },
+              "PanelRaised": {
+                "identity": 1.56,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.96
+              }
+            },
+            "internal_contrast": 7.532525039046974,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-road.a-authored.24.png",
+            "context_raw": "review/tool-road.a-authored.24.rgba",
+            "raw": "review/tool-road.a-authored.96.rgba",
+            "sharp_png": "review/tool-road.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.73,
+              "coverage": 0.3472,
+              "mean_luminance": 0.4951,
+              "p75_luminance": 0.5785,
+              "peak_luminance": 0.6664
+            },
+            "96": {
+              "chromaticity_degrees": 44.74,
+              "coverage": 0.3559,
+              "mean_luminance": 0.4967,
+              "p75_luminance": 0.585,
+              "peak_luminance": 0.6734
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.022,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 9.68
+              },
+              "PanelRaised": {
+                "identity": 1.56,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.96
+              }
+            },
+            "internal_contrast": 7.532525039046974,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-road.b-bold.24.png",
+            "context_raw": "review/tool-road.b-bold.24.rgba",
+            "raw": "review/tool-road.b-bold.96.rgba",
+            "sharp_png": "review/tool-road.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.75,
+              "coverage": 0.5347,
+              "mean_luminance": 0.4983,
+              "p75_luminance": 0.585,
+              "peak_luminance": 0.6877
+            },
+            "96": {
+              "chromaticity_degrees": 44.75,
+              "coverage": 0.5347,
+              "mean_luminance": 0.4989,
+              "p75_luminance": 0.585,
+              "peak_luminance": 0.7021
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.003,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 9.48
+              },
+              "PanelRaised": {
+                "identity": 1.56,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.8
+              }
+            },
+            "internal_contrast": 7.532525039046974,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-road.c-detailed.24.png",
+            "context_raw": "review/tool-road.c-detailed.24.rgba",
+            "raw": "review/tool-road.c-detailed.96.rgba",
+            "sharp_png": "review/tool-road.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.74,
+              "coverage": 0.2778,
+              "mean_luminance": 0.4879,
+              "p75_luminance": 0.572,
+              "peak_luminance": 0.6524
+            },
+            "96": {
+              "chromaticity_degrees": 44.74,
+              "coverage": 0.2708,
+              "mean_luminance": 0.4872,
+              "p75_luminance": 0.5725,
+              "peak_luminance": 0.6664
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "tool-road",
+      "identity": "Road",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "Tool::Road",
+      "meaning": "the road tool",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: Tool::Road"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.02,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.5,
+                "ink": 9.55
+              },
+              "PanelRaised": {
+                "identity": 2.88,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.86
+              }
+            },
+            "internal_contrast": 4.072481346392045,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-zone.a-authored.24.png",
+            "context_raw": "review/tool-zone.a-authored.24.rgba",
+            "raw": "review/tool-zone.a-authored.96.rgba",
+            "sharp_png": "review/tool-zone.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.29,
+              "coverage": 0.4878,
+              "mean_luminance": 0.4333,
+              "p75_luminance": 0.5592,
+              "peak_luminance": 0.6386
+            },
+            "96": {
+              "chromaticity_degrees": 45.31,
+              "coverage": 0.3967,
+              "mean_luminance": 0.4979,
+              "p75_luminance": 0.5771,
+              "peak_luminance": 0.6594
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.963,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.5,
+                "ink": 9.58
+              },
+              "PanelRaised": {
+                "identity": 2.88,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.88
+              }
+            },
+            "internal_contrast": 4.072481346392045,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-zone.b-bold.24.png",
+            "context_raw": "review/tool-zone.b-bold.24.rgba",
+            "raw": "review/tool-zone.b-bold.96.rgba",
+            "sharp_png": "review/tool-zone.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.35,
+              "coverage": 0.599,
+              "mean_luminance": 0.451,
+              "p75_luminance": 0.5643,
+              "peak_luminance": 0.6659
+            },
+            "96": {
+              "chromaticity_degrees": 45.36,
+              "coverage": 0.574,
+              "mean_luminance": 0.4702,
+              "p75_luminance": 0.5785,
+              "peak_luminance": 0.7006
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.008,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.5,
+                "ink": 9.48
+              },
+              "PanelRaised": {
+                "identity": 2.88,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.79
+              }
+            },
+            "internal_contrast": 4.072481346392045,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-zone.c-detailed.24.png",
+            "context_raw": "review/tool-zone.c-detailed.24.rgba",
+            "raw": "review/tool-zone.c-detailed.96.rgba",
+            "sharp_png": "review/tool-zone.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.09,
+              "coverage": 0.2917,
+              "mean_luminance": 0.4715,
+              "p75_luminance": 0.5661,
+              "peak_luminance": 0.6317
+            },
+            "96": {
+              "chromaticity_degrees": 45.07,
+              "coverage": 0.3082,
+              "mean_luminance": 0.4895,
+              "p75_luminance": 0.572,
+              "peak_luminance": 0.6386
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "tool-zone",
+      "identity": "ZoneResidential",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "Tool::Zone",
+      "meaning": "the zoning tool",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: Tool::Zone"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.032,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 9.68
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 7.96
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-power.a-authored.24.png",
+            "context_raw": "review/tool-power.a-authored.24.rgba",
+            "raw": "review/tool-power.a-authored.96.rgba",
+            "sharp_png": "review/tool-power.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 46.28,
+              "coverage": 0.1181,
+              "mean_luminance": 0.4396,
+              "p75_luminance": 0.5592,
+              "peak_luminance": 0.6322
+            },
+            "96": {
+              "chromaticity_degrees": 46.19,
+              "coverage": 0.1011,
+              "mean_luminance": 0.5038,
+              "p75_luminance": 0.585,
+              "peak_luminance": 0.7605
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.045,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 9.77
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 8.04
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-power.b-bold.24.png",
+            "context_raw": "review/tool-power.b-bold.24.rgba",
+            "raw": "review/tool-power.b-bold.96.rgba",
+            "sharp_png": "review/tool-power.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 46.17,
+              "coverage": 0.1424,
+              "mean_luminance": 0.4587,
+              "p75_luminance": 0.5656,
+              "peak_luminance": 0.6669
+            },
+            "96": {
+              "chromaticity_degrees": 45.99,
+              "coverage": 0.1393,
+              "mean_luminance": 0.5101,
+              "p75_luminance": 0.5915,
+              "peak_luminance": 0.7835
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.002,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 9.58
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 7.88
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-power.c-detailed.24.png",
+            "context_raw": "review/tool-power.c-detailed.24.rgba",
+            "raw": "review/tool-power.c-detailed.96.rgba",
+            "sharp_png": "review/tool-power.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.67,
+              "coverage": 0.1111,
+              "mean_luminance": 0.3631,
+              "p75_luminance": 0.4748,
+              "peak_luminance": 0.6391
+            },
+            "96": {
+              "chromaticity_degrees": 45.58,
+              "coverage": 0.0777,
+              "mean_luminance": 0.4866,
+              "p75_luminance": 0.579,
+              "peak_luminance": 0.7099
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "tool-power",
+      "identity": "Powered",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "Tool::Power",
+      "meaning": "the power tool",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: Tool::Power"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity_drift_degrees": 1.42,
+              "declared_albedo_luminance": 0.3915,
+              "icon_to_swatch": 1.117,
+              "swatch_to_albedo": 0.551
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 4.03,
+                "ink": 5.0
+              },
+              "PanelRaised": {
+                "identity": 3.31,
+                "ink": 4.11
+              }
+            },
+            "internal_contrast": 1.6698417478322636,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-demolish.a-authored.24.png",
+            "context_raw": "review/tool-demolish.a-authored.24.rgba",
+            "raw": "review/tool-demolish.a-authored.96.rgba",
+            "sharp_png": "review/tool-demolish.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 18.85,
+              "coverage": 0.283,
+              "mean_luminance": 0.2286,
+              "p75_luminance": 0.2728,
+              "peak_luminance": 0.3014
+            },
+            "96": {
+              "chromaticity_degrees": 18.91,
+              "coverage": 0.2655,
+              "mean_luminance": 0.2411,
+              "p75_luminance": 0.2781,
+              "peak_luminance": 0.3143
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity_drift_degrees": 1.11,
+              "declared_albedo_luminance": 0.3915,
+              "icon_to_swatch": 1.131,
+              "swatch_to_albedo": 0.551
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 4.03,
+                "ink": 5.0
+              },
+              "PanelRaised": {
+                "identity": 3.31,
+                "ink": 4.11
+              }
+            },
+            "internal_contrast": 1.6698417478322636,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-demolish.b-bold.24.png",
+            "context_raw": "review/tool-demolish.b-bold.24.rgba",
+            "raw": "review/tool-demolish.b-bold.96.rgba",
+            "sharp_png": "review/tool-demolish.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 19.21,
+              "coverage": 0.401,
+              "mean_luminance": 0.237,
+              "p75_luminance": 0.2767,
+              "peak_luminance": 0.3029
+            },
+            "96": {
+              "chromaticity_degrees": 19.22,
+              "coverage": 0.389,
+              "mean_luminance": 0.2441,
+              "p75_luminance": 0.2782,
+              "peak_luminance": 0.3115
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity_drift_degrees": 1.11,
+              "declared_albedo_luminance": 0.3915,
+              "icon_to_swatch": 1.066,
+              "swatch_to_albedo": 0.531
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 4.03,
+                "ink": 4.93
+              },
+              "PanelRaised": {
+                "identity": 3.31,
+                "ink": 4.06
+              }
+            },
+            "internal_contrast": 1.6698417478322636,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-demolish.c-detailed.24.png",
+            "context_raw": "review/tool-demolish.c-detailed.24.rgba",
+            "raw": "review/tool-demolish.c-detailed.96.rgba",
+            "sharp_png": "review/tool-demolish.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 19.17,
+              "coverage": 0.2309,
+              "mean_luminance": 0.2004,
+              "p75_luminance": 0.266,
+              "peak_luminance": 0.2928
+            },
+            "96": {
+              "chromaticity_degrees": 19.22,
+              "coverage": 0.2065,
+              "mean_luminance": 0.2218,
+              "p75_luminance": 0.2738,
+              "peak_luminance": 0.2984
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "tool-demolish",
+      "identity": "Warning",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "Tool::Demolish",
+      "meaning": "the demolition tool",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: Tool::Demolish"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.971,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.3,
+                "ink": 10.82
+              },
+              "PanelRaised": {
+                "identity": 2.71,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.9
+              }
+            },
+            "internal_contrast": 4.318644048450797,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-inspect.a-authored.24.png",
+            "context_raw": "review/tool-inspect.a-authored.24.rgba",
+            "raw": "review/tool-inspect.a-authored.96.rgba",
+            "sharp_png": "review/tool-inspect.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.88,
+              "coverage": 0.2847,
+              "mean_luminance": 0.4291,
+              "p75_luminance": 0.6052,
+              "peak_luminance": 0.9647
+            },
+            "96": {
+              "chromaticity_degrees": 44.88,
+              "coverage": 0.2548,
+              "mean_luminance": 0.4738,
+              "p75_luminance": 0.6599,
+              "peak_luminance": 1.0
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.97,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.3,
+                "ink": 10.92
+              },
+              "PanelRaised": {
+                "identity": 2.71,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.98
+              }
+            },
+            "internal_contrast": 4.318644048450797,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-inspect.b-bold.24.png",
+            "context_raw": "review/tool-inspect.b-bold.24.rgba",
+            "raw": "review/tool-inspect.b-bold.96.rgba",
+            "sharp_png": "review/tool-inspect.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.89,
+              "coverage": 0.4288,
+              "mean_luminance": 0.4327,
+              "p75_luminance": 0.6249,
+              "peak_luminance": 0.9911
+            },
+            "96": {
+              "chromaticity_degrees": 44.88,
+              "coverage": 0.3852,
+              "mean_luminance": 0.4734,
+              "p75_luminance": 0.6664,
+              "peak_luminance": 1.0
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.965,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.3,
+                "ink": 10.71
+              },
+              "PanelRaised": {
+                "identity": 2.71,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.81
+              }
+            },
+            "internal_contrast": 4.318644048450797,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/tool-inspect.c-detailed.24.png",
+            "context_raw": "review/tool-inspect.c-detailed.24.rgba",
+            "raw": "review/tool-inspect.c-detailed.96.rgba",
+            "sharp_png": "review/tool-inspect.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.86,
+              "coverage": 0.2274,
+              "mean_luminance": 0.4124,
+              "p75_luminance": 0.5466,
+              "peak_luminance": 0.9553
+            },
+            "96": {
+              "chromaticity_degrees": 44.88,
+              "coverage": 0.1957,
+              "mean_luminance": 0.4687,
+              "p75_luminance": 0.6529,
+              "peak_luminance": 1.0
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "tool-inspect",
+      "identity": "NotObtained",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "Tool::Inspect",
+      "meaning": "the inspect lens",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: Tool::Inspect"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.047,
+              "swatch_to_albedo": 0.4
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 9.19
+              },
+              "PanelRaised": {
+                "identity": 1.55,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.55
+              }
+            },
+            "internal_contrast": 7.550658953869813,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/ledger.a-authored.24.png",
+            "context_raw": "review/ledger.a-authored.24.rgba",
+            "raw": "review/ledger.a-authored.96.rgba",
+            "sharp_png": "review/ledger.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.6,
+              "coverage": 0.4531,
+              "mean_luminance": 0.3458,
+              "p75_luminance": 0.5145,
+              "peak_luminance": 0.6455
+            },
+            "96": {
+              "chromaticity_degrees": 44.59,
+              "coverage": 0.4104,
+              "mean_luminance": 0.3705,
+              "p75_luminance": 0.5529,
+              "peak_luminance": 0.6594
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.931,
+              "swatch_to_albedo": 0.4
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 9.09
+              },
+              "PanelRaised": {
+                "identity": 1.55,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.48
+              }
+            },
+            "internal_contrast": 7.550658953869813,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/ledger.b-bold.24.png",
+            "context_raw": "review/ledger.b-bold.24.rgba",
+            "raw": "review/ledger.b-bold.96.rgba",
+            "sharp_png": "review/ledger.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.57,
+              "coverage": 0.5938,
+              "mean_luminance": 0.3088,
+              "p75_luminance": 0.4743,
+              "peak_luminance": 0.6539
+            },
+            "96": {
+              "chromaticity_degrees": 44.56,
+              "coverage": 0.5569,
+              "mean_luminance": 0.3296,
+              "p75_luminance": 0.5466,
+              "peak_luminance": 0.6734
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.019,
+              "swatch_to_albedo": 0.402
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 9.19
+              },
+              "PanelRaised": {
+                "identity": 1.55,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.55
+              }
+            },
+            "internal_contrast": 7.550658953869813,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/ledger.c-detailed.24.png",
+            "context_raw": "review/ledger.c-detailed.24.rgba",
+            "raw": "review/ledger.c-detailed.96.rgba",
+            "sharp_png": "review/ledger.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.6,
+              "coverage": 0.3663,
+              "mean_luminance": 0.3305,
+              "p75_luminance": 0.4847,
+              "peak_luminance": 0.6317
+            },
+            "96": {
+              "chromaticity_degrees": 44.6,
+              "coverage": 0.3161,
+              "mean_luminance": 0.362,
+              "p75_luminance": 0.5529,
+              "peak_luminance": 0.6455
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "ledger",
+      "identity": "Plaque",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "the ledger panel",
+      "meaning": "the ticket board",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: the ledger panel"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.409,
+              "swatch_to_albedo": 0.4
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.73,
+                "ink": 9.17
+              },
+              "PanelRaised": {
+                "identity": 5.53,
+                "ink": 7.54
+              }
+            },
+            "internal_contrast": 2.1173967648660463,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/ticket.a-authored.24.png",
+            "context_raw": "review/ticket.a-authored.24.rgba",
+            "raw": "review/ticket.a-authored.96.rgba",
+            "sharp_png": "review/ticket.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 43.11,
+              "coverage": 0.3229,
+              "mean_luminance": 0.4857,
+              "p75_luminance": 0.5466,
+              "peak_luminance": 0.6329
+            },
+            "96": {
+              "chromaticity_degrees": 43.06,
+              "coverage": 0.318,
+              "mean_luminance": 0.4988,
+              "p75_luminance": 0.5516,
+              "peak_luminance": 0.6794
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.416,
+              "swatch_to_albedo": 0.4
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.73,
+                "ink": 9.29
+              },
+              "PanelRaised": {
+                "identity": 5.53,
+                "ink": 7.64
+              }
+            },
+            "internal_contrast": 2.1173967648660463,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/ticket.b-bold.24.png",
+            "context_raw": "review/ticket.b-bold.24.rgba",
+            "raw": "review/ticket.b-bold.96.rgba",
+            "sharp_png": "review/ticket.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 42.94,
+              "coverage": 0.4688,
+              "mean_luminance": 0.4945,
+              "p75_luminance": 0.5529,
+              "peak_luminance": 0.6317
+            },
+            "96": {
+              "chromaticity_degrees": 43.04,
+              "coverage": 0.4748,
+              "mean_luminance": 0.5011,
+              "p75_luminance": 0.5597,
+              "peak_luminance": 0.6908
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 1.364,
+              "swatch_to_albedo": 0.402
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.73,
+                "ink": 9.0
+              },
+              "PanelRaised": {
+                "identity": 5.53,
+                "ink": 7.4
+              }
+            },
+            "internal_contrast": 2.1173967648660463,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/ticket.c-detailed.24.png",
+            "context_raw": "review/ticket.c-detailed.24.rgba",
+            "raw": "review/ticket.c-detailed.96.rgba",
+            "sharp_png": "review/ticket.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 43.77,
+              "coverage": 0.25,
+              "mean_luminance": 0.4761,
+              "p75_luminance": 0.5395,
+              "peak_luminance": 0.6091
+            },
+            "96": {
+              "chromaticity_degrees": 43.82,
+              "coverage": 0.249,
+              "mean_luminance": 0.4848,
+              "p75_luminance": 0.5404,
+              "peak_luminance": 0.6454
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "ticket",
+      "identity": "CaseOpen",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "a ticket in the ledger",
+      "meaning": "one ticket",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: a ticket in the ledger"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.954,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.3,
+                "ink": 9.0
+              },
+              "PanelRaised": {
+                "identity": 2.72,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.4
+              }
+            },
+            "internal_contrast": 4.311044183207845,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/district.a-authored.24.png",
+            "context_raw": "review/district.a-authored.24.rgba",
+            "raw": "review/district.a-authored.96.rgba",
+            "sharp_png": "review/district.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.3,
+              "coverage": 0.3247,
+              "mean_luminance": 0.4089,
+              "p75_luminance": 0.491,
+              "peak_luminance": 0.6455
+            },
+            "96": {
+              "chromaticity_degrees": 45.24,
+              "coverage": 0.3121,
+              "mean_luminance": 0.4659,
+              "p75_luminance": 0.5408,
+              "peak_luminance": 0.6805
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.928,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.3,
+                "ink": 9.17
+              },
+              "PanelRaised": {
+                "identity": 2.72,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.54
+              }
+            },
+            "internal_contrast": 4.311044183207845,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/district.b-bold.24.png",
+            "context_raw": "review/district.b-bold.24.rgba",
+            "raw": "review/district.b-bold.96.rgba",
+            "sharp_png": "review/district.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.3,
+              "coverage": 0.4601,
+              "mean_luminance": 0.4188,
+              "p75_luminance": 0.5219,
+              "peak_luminance": 0.6594
+            },
+            "96": {
+              "chromaticity_degrees": 45.31,
+              "coverage": 0.4097,
+              "mean_luminance": 0.453,
+              "p75_luminance": 0.5516,
+              "peak_luminance": 0.6664
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.939,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.3,
+                "ink": 8.89
+              },
+              "PanelRaised": {
+                "identity": 2.72,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.31
+              }
+            },
+            "internal_contrast": 4.311044183207845,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/district.c-detailed.24.png",
+            "context_raw": "review/district.c-detailed.24.rgba",
+            "raw": "review/district.c-detailed.96.rgba",
+            "sharp_png": "review/district.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.05,
+              "coverage": 0.3021,
+              "mean_luminance": 0.3625,
+              "p75_luminance": 0.4686,
+              "peak_luminance": 0.6386
+            },
+            "96": {
+              "chromaticity_degrees": 45.07,
+              "coverage": 0.233,
+              "mean_luminance": 0.4559,
+              "p75_luminance": 0.5333,
+              "peak_luminance": 0.6524
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "district",
+      "identity": "ZoneCommercial",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "a named district",
+      "meaning": "a district",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: a named district"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.968,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 9.68
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 7.96
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/power.a-authored.24.png",
+            "context_raw": "review/power.a-authored.24.rgba",
+            "raw": "review/power.a-authored.96.rgba",
+            "sharp_png": "review/power.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 46.13,
+              "coverage": 0.2326,
+              "mean_luminance": 0.4406,
+              "p75_luminance": 0.5656,
+              "peak_luminance": 0.6455
+            },
+            "96": {
+              "chromaticity_degrees": 46.27,
+              "coverage": 0.2156,
+              "mean_luminance": 0.4724,
+              "p75_luminance": 0.585,
+              "peak_luminance": 0.6594
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.952,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 9.68
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 7.96
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/power.b-bold.24.png",
+            "context_raw": "review/power.b-bold.24.rgba",
+            "raw": "review/power.b-bold.96.rgba",
+            "sharp_png": "review/power.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 46.12,
+              "coverage": 0.3385,
+              "mean_luminance": 0.4302,
+              "p75_luminance": 0.5661,
+              "peak_luminance": 0.6455
+            },
+            "96": {
+              "chromaticity_degrees": 46.07,
+              "coverage": 0.311,
+              "mean_luminance": 0.4648,
+              "p75_luminance": 0.585,
+              "peak_luminance": 0.6664
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.942,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 9.58
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 7.88
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/power.c-detailed.24.png",
+            "context_raw": "review/power.c-detailed.24.rgba",
+            "raw": "review/power.c-detailed.96.rgba",
+            "sharp_png": "review/power.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 45.57,
+              "coverage": 0.1979,
+              "mean_luminance": 0.4061,
+              "p75_luminance": 0.5471,
+              "peak_luminance": 0.6317
+            },
+            "96": {
+              "chromaticity_degrees": 45.64,
+              "coverage": 0.1693,
+              "mean_luminance": 0.4574,
+              "p75_luminance": 0.5785,
+              "peak_luminance": 0.6594
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "power",
+      "identity": "Nature",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "the electricity network",
+      "meaning": "the power service",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: the electricity network"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.642,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 8.26
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 6.8
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-power.a-authored.24.png",
+            "context_raw": "review/view-power.a-authored.24.rgba",
+            "raw": "review/view-power.a-authored.96.rgba",
+            "sharp_png": "review/view-power.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 63.11,
+              "coverage": 0.3663,
+              "mean_luminance": 0.2155,
+              "p75_luminance": 0.2033,
+              "peak_luminance": 0.5915
+            },
+            "96": {
+              "chromaticity_degrees": 60.83,
+              "coverage": 0.2126,
+              "mean_luminance": 0.3133,
+              "p75_luminance": 0.4923,
+              "peak_luminance": 0.6249
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.679,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 8.53
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 7.01
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-power.b-bold.24.png",
+            "context_raw": "review/view-power.b-bold.24.rgba",
+            "raw": "review/view-power.b-bold.96.rgba",
+            "sharp_png": "review/view-power.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 60.24,
+              "coverage": 0.401,
+              "mean_luminance": 0.2349,
+              "p75_luminance": 0.2884,
+              "peak_luminance": 0.5981
+            },
+            "96": {
+              "chromaticity_degrees": 57.82,
+              "coverage": 0.2479,
+              "mean_luminance": 0.3317,
+              "p75_luminance": 0.5097,
+              "peak_luminance": 0.6594
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.45,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 6.36,
+                "ink": 7.65
+              },
+              "PanelRaised": {
+                "identity": 5.23,
+                "ink": 6.29
+              }
+            },
+            "internal_contrast": 2.2379633057395973,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-power.c-detailed.24.png",
+            "context_raw": "review/view-power.c-detailed.24.rgba",
+            "raw": "review/view-power.c-detailed.96.rgba",
+            "sharp_png": "review/view-power.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 59.06,
+              "coverage": 0.3559,
+              "mean_luminance": 0.1402,
+              "p75_luminance": 0.0962,
+              "peak_luminance": 0.585
+            },
+            "96": {
+              "chromaticity_degrees": 57.35,
+              "coverage": 0.1977,
+              "mean_luminance": 0.2188,
+              "p75_luminance": 0.452,
+              "peak_luminance": 0.6317
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "view-power",
+      "identity": "Nature",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "view `power`",
+      "meaning": "the power info view",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: view `power`"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.641,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.5,
+                "ink": 9.0
+              },
+              "PanelRaised": {
+                "identity": 2.88,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.4
+              }
+            },
+            "internal_contrast": 4.072481346392045,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-zoning.a-authored.24.png",
+            "context_raw": "review/view-zoning.a-authored.24.rgba",
+            "raw": "review/view-zoning.a-authored.96.rgba",
+            "sharp_png": "review/view-zoning.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 52.24,
+              "coverage": 0.4497,
+              "mean_luminance": 0.2159,
+              "p75_luminance": 0.4186,
+              "peak_luminance": 0.5915
+            },
+            "96": {
+              "chromaticity_degrees": 51.06,
+              "coverage": 0.2834,
+              "mean_luminance": 0.313,
+              "p75_luminance": 0.5408,
+              "peak_luminance": 0.6129
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.669,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.5,
+                "ink": 9.07
+              },
+              "PanelRaised": {
+                "identity": 2.88,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.46
+              }
+            },
+            "internal_contrast": 4.072481346392045,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-zoning.b-bold.24.png",
+            "context_raw": "review/view-zoning.b-bold.24.rgba",
+            "raw": "review/view-zoning.b-bold.96.rgba",
+            "sharp_png": "review/view-zoning.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 51.05,
+              "coverage": 0.4913,
+              "mean_luminance": 0.2396,
+              "p75_luminance": 0.4617,
+              "peak_luminance": 0.6048
+            },
+            "96": {
+              "chromaticity_degrees": 49.9,
+              "coverage": 0.3423,
+              "mean_luminance": 0.3268,
+              "p75_luminance": 0.5453,
+              "peak_luminance": 0.6182
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.52,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 3.5,
+                "ink": 8.79
+              },
+              "PanelRaised": {
+                "identity": 2.88,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.23
+              }
+            },
+            "internal_contrast": 4.072481346392045,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-zoning.c-detailed.24.png",
+            "context_raw": "review/view-zoning.c-detailed.24.rgba",
+            "raw": "review/view-zoning.c-detailed.96.rgba",
+            "sharp_png": "review/view-zoning.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 50.28,
+              "coverage": 0.408,
+              "mean_luminance": 0.1616,
+              "p75_luminance": 0.3015,
+              "peak_luminance": 0.585
+            },
+            "96": {
+              "chromaticity_degrees": 49.21,
+              "coverage": 0.2499,
+              "mean_luminance": 0.2528,
+              "p75_luminance": 0.5267,
+              "peak_luminance": 0.5981
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "view-zoning",
+      "identity": "ZoneResidential",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "view `zoning`",
+      "meaning": "the zoning and demand view",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: view `zoning`"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.451,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.81
+              },
+              "PanelRaised": {
+                "identity": 1.56,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.24
+              }
+            },
+            "internal_contrast": 7.532525039046974,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-traffic.a-authored.24.png",
+            "context_raw": "review/view-traffic.a-authored.24.rgba",
+            "raw": "review/view-traffic.a-authored.96.rgba",
+            "sharp_png": "review/view-traffic.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.83,
+              "coverage": 0.4167,
+              "mean_luminance": 0.1478,
+              "p75_luminance": 0.1876,
+              "peak_luminance": 0.585
+            },
+            "96": {
+              "chromaticity_degrees": 44.83,
+              "coverage": 0.2518,
+              "mean_luminance": 0.2203,
+              "p75_luminance": 0.528,
+              "peak_luminance": 0.5981
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.526,
+              "swatch_to_albedo": 0.552
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.91
+              },
+              "PanelRaised": {
+                "identity": 1.56,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.33
+              }
+            },
+            "internal_contrast": 7.532525039046974,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-traffic.b-bold.24.png",
+            "context_raw": "review/view-traffic.b-bold.24.rgba",
+            "raw": "review/view-traffic.b-bold.96.rgba",
+            "sharp_png": "review/view-traffic.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.81,
+              "coverage": 0.4583,
+              "mean_luminance": 0.1839,
+              "p75_luminance": 0.4576,
+              "peak_luminance": 0.585
+            },
+            "96": {
+              "chromaticity_degrees": 44.81,
+              "coverage": 0.3108,
+              "mean_luminance": 0.2568,
+              "p75_luminance": 0.5346,
+              "peak_luminance": 0.6048
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.345,
+              "swatch_to_albedo": 0.549
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 7.71
+              },
+              "PanelRaised": {
+                "identity": 1.56,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 6.34
+              }
+            },
+            "internal_contrast": 7.532525039046974,
+            "notes": [
+              "the icon renders at 0.345x its own material swatch, outside the 0.4-1.8 band"
+            ]
+          },
+          "files": {
+            "context_png": "review/view-traffic.c-detailed.24.png",
+            "context_raw": "review/view-traffic.c-detailed.24.rgba",
+            "raw": "review/view-traffic.c-detailed.96.rgba",
+            "sharp_png": "review/view-traffic.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.81,
+              "coverage": 0.3854,
+              "mean_luminance": 0.1094,
+              "p75_luminance": 0.1852,
+              "peak_luminance": 0.572
+            },
+            "96": {
+              "chromaticity_degrees": 44.82,
+              "coverage": 0.2227,
+              "mean_luminance": 0.1675,
+              "p75_luminance": 0.456,
+              "peak_luminance": 0.5915
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "view-traffic",
+      "identity": "Road",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "view `traffic`",
+      "meaning": "the traffic info view",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: view `traffic`"
+    },
+    {
+      "directives": [],
+      "generations": [
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.563,
+              "swatch_to_albedo": 0.4
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.35
+              },
+              "PanelRaised": {
+                "identity": 1.55,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 6.87
+              }
+            },
+            "internal_contrast": 7.550658953869813,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-ledger.a-authored.24.png",
+            "context_raw": "review/view-ledger.a-authored.24.rgba",
+            "raw": "review/view-ledger.a-authored.96.rgba",
+            "sharp_png": "review/view-ledger.a-authored.96.png"
+          },
+          "id": "a-authored",
+          "label": "as authored",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.16,
+              "coverage": 0.4444,
+              "mean_luminance": 0.1312,
+              "p75_luminance": 0.2756,
+              "peak_luminance": 0.5915
+            },
+            "96": {
+              "chromaticity_degrees": 44.22,
+              "coverage": 0.286,
+              "mean_luminance": 0.1994,
+              "p75_luminance": 0.4982,
+              "peak_luminance": 0.6114
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.0,
+            "stroke_weight": 1.0
+          },
+          "why": "the geometry as written, proportions tuned for the largest size"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.556,
+              "swatch_to_albedo": 0.4
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.08
+              },
+              "PanelRaised": {
+                "identity": 1.55,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 6.65
+              }
+            },
+            "internal_contrast": 7.550658953869813,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-ledger.b-bold.24.png",
+            "context_raw": "review/view-ledger.b-bold.24.rgba",
+            "raw": "review/view-ledger.b-bold.96.rgba",
+            "sharp_png": "review/view-ledger.b-bold.96.png"
+          },
+          "id": "b-bold",
+          "label": "bold",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.16,
+              "coverage": 0.4983,
+              "mean_luminance": 0.1385,
+              "p75_luminance": 0.2971,
+              "peak_luminance": 0.6048
+            },
+            "96": {
+              "chromaticity_degrees": 44.25,
+              "coverage": 0.3367,
+              "mean_luminance": 0.1968,
+              "p75_luminance": 0.4806,
+              "peak_luminance": 0.6182
+            }
+          },
+          "transform": {
+            "material_treatment": "plain",
+            "scale": 1.06,
+            "stroke_weight": 1.35
+          },
+          "why": "heavier strokes and a slightly larger glyph: the silhouette the smallest size can still read"
+        },
+        {
+          "checks": {
+            "arrival": {
+              "chromaticity": "not judged: the declared colour is near-neutral (chroma 0.045 below the 0.06 threshold), where the red/green angle is noise rather than a reading",
+              "declared_albedo_luminance": 0.8849,
+              "icon_to_swatch": 0.495,
+              "swatch_to_albedo": 0.402
+            },
+            "contrasts": {
+              "Panel": {
+                "identity": 1.89,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 8.15
+              },
+              "PanelRaised": {
+                "identity": 1.55,
+                "identity_why_recorded": "recorded, not judged: this colour is drawn on the icon's own ink and never against the host",
+                "ink": 6.7
+              }
+            },
+            "internal_contrast": 7.550658953869813,
+            "notes": []
+          },
+          "files": {
+            "context_png": "review/view-ledger.c-detailed.24.png",
+            "context_raw": "review/view-ledger.c-detailed.24.rgba",
+            "raw": "review/view-ledger.c-detailed.96.rgba",
+            "sharp_png": "review/view-ledger.c-detailed.96.png"
+          },
+          "id": "c-detailed",
+          "label": "detailed",
+          "measurements": {
+            "24": {
+              "chromaticity_degrees": 44.03,
+              "coverage": 0.4149,
+              "mean_luminance": 0.1084,
+              "p75_luminance": 0.2275,
+              "peak_luminance": 0.585
+            },
+            "96": {
+              "chromaticity_degrees": 44.14,
+              "coverage": 0.2581,
+              "mean_luminance": 0.1758,
+              "p75_luminance": 0.4847,
+              "peak_luminance": 0.61
+            }
+          },
+          "transform": {
+            "material_treatment": "treated",
+            "scale": 0.96,
+            "stroke_weight": 0.82
+          },
+          "why": "finer strokes with a material treatment on the identity parts: more surface at 96 px, less at 24"
+        }
+      ],
+      "id": "view-ledger",
+      "identity": "Plaque",
+      "identity_as": "detail-on-ink",
+      "kind": "surface",
+      "locates": "view `ledger`",
+      "meaning": "the ledger view",
+      "sits_on": [
+        "Panel",
+        "PanelRaised"
+      ],
+      "source": "game surface: view `ledger`"
+    }
+  ],
+  "palette_hash": "b0fc2e778d2e77c7",
+  "raw": {
+    "format": "RGBA8, unpremultiplied",
+    "layout": "row-major, top-down, origin top-left",
+    "side_px": 96
+  },
+  "what_this_is": "three generations of each icon, to be chosen between by a person; the choice is the only thing that puts an icon into the shipping set"
+}
