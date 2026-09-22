@@ -1,26 +1,35 @@
-//! The shared widget layer's first landing: **measurement and layout only**.
+//! The shared widget layer: **measured layout, painted through the one
+//! pipeline**.
 //!
-//! C7 a128(a) scoped this layer to text measurement and layout, with every
-//! pixel still drawn by the existing pipeline; widgets and theme resolution
-//! arrive when a second kind of consumer needs them. What makes it a layer
-//! rather than a helper is the rule it enforces — **layout computes its height
-//! before anything draws** (`UNIFIED_DESIGN.md` §5.7), so a panel can never be
-//! caught reserving one number and advancing another. C5's picker failed on
-//! exactly that: 494 px reserved, 712 px advanced, and a comment box drawn
-//! over the row below it.
+//! What makes it a layer rather than a helper is the rule it enforces —
+//! **layout computes its height before anything draws** (`UNIFIED_DESIGN.md`
+//! §5.7), so a panel can never be caught reserving one number and advancing
+//! another. C5's picker failed on exactly that: 494 px reserved, 712 px
+//! advanced, and a comment box drawn over the row below it.
 //!
-//! The layout is explicit about scale: every call takes the real `UiScale`.
-//! Reading `UiScale::default()` inside a calculation whose other terms used
-//! the real scale was C5's latent defect, and this layer is shaped so the
-//! mistake cannot be made again by construction.
+//! The layout is explicit about scale and about place: every call takes the
+//! real `UiScale`, and every call takes a [`Frame`] — the content box in
+//! screen space — instead of assuming content starts at some layer-chosen
+//! inset. Reading `UiScale::default()` inside a calculation whose other terms
+//! used the real scale was C5's latent defect; assuming a single canonical
+//! content origin would have been the same mistake in space. This layer is
+//! shaped so neither can be made again by construction.
 //!
 //! Content beyond the viewport scrolls, at every scale (a119). The footer is
 //! pinned: never below the fold, never overlapped, which is what §5.7
-//! requires of a tool's one action.
+//! requires of a tool's one action. Paint draws only blocks that are *fully*
+//! visible: this renderer has no scissor, so a discrete row (a ledger line, a
+//! menu item) either fits or waits for the scroll that reveals it — cut
+//! glyphs over whatever sits below the region are not an option.
+//!
+//! Colours arrive as values, never as tokens: the theme lives in
+//! [`crate::hud`], and this layer stays theme-agnostic so a surface can use
+//! it before the token table knows its name.
 
-// The picker rebuild is this module's first consumer and lands immediately
-// after it; until that commit everything here is deliberately unused by the
-// running binaries, and the dead-code lint says so rather than hiding it.
+// The picker and the HUD are this module's consumers; game integration comes
+// next and may still want a primitive a consumer has not yet exercised, so
+// the dead-code lint stays explicitly acknowledged rather than silently
+// tripping later.
 #![allow(dead_code)]
 
 use crate::design::{Space, Step, UiScale};
@@ -30,14 +39,31 @@ use crate::render::{Batcher, Face, Screen, Text};
 /// Chosen once, here, rather than improvised per surface.
 pub const LINE_ADVANCE_FACTOR: f32 = 1.35;
 
-/// The horizontal inset of content from the window edge, per side.
-pub fn content_inset(ui: UiScale) -> f32 {
-    Space::Md.px(ui)
+/// Where a two-sided row's bar (if it has one) begins, as a fraction of the
+/// content width. One number, here, instead of a literal per panel.
+const BAR_START: f32 = 0.38;
+
+/// A content box in screen space: where content sits and how much room it
+/// has. `x`/`w` are the *content* edges — already inset; paint never insets
+/// again. `viewport` is the height visible for flowing content (scrolling
+/// clamps against it); `y` is where viewport-space 0 lands on screen.
+#[derive(Clone, Copy, Debug)]
+pub struct Frame {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub viewport: f32,
 }
 
-/// The width flowing content is measured and wrapped at.
-pub fn content_width(screen: &Screen, ui: UiScale) -> f32 {
-    (screen.w - 2.0 * content_inset(ui)).max(0.0)
+impl Frame {
+    pub fn new(x: f32, y: f32, w: f32, viewport: f32) -> Self {
+        Self {
+            x,
+            y,
+            w,
+            viewport,
+        }
+    }
 }
 
 /// One block of content, in flow order. A block declares what it is; the
@@ -45,12 +71,44 @@ pub fn content_width(screen: &Screen, ui: UiScale) -> f32 {
 #[derive(Clone, Debug)]
 pub enum Block {
     /// A single paragraph of text at a named type step. No literal sizes
-    /// here: that is what the type-scale gate is for.
+    /// here: that is what the type-scale gate is for. Wraps when too wide.
     Line {
         face: Face,
         step: Step,
         text: String,
         color: [f32; 4],
+    },
+    /// A two-sided row: a body-face label on the left, a monospace value on
+    /// the right edge. The workhorse of a state panel. One line tall — the
+    /// caller truncates label and value when building the block, because
+    /// ellipsis is a content decision, not a layout one.
+    Row {
+        label: String,
+        value: String,
+        step: Step,
+        color: [f32; 4],
+        value_color: [f32; 4],
+    },
+    /// A labelled fraction bar: label on the left, a track running to the
+    /// right edge, filled to `fraction`. Demand gauges and progress.
+    Bar {
+        label: String,
+        step: Step,
+        label_color: [f32; 4],
+        color: [f32; 4],
+        fraction: f32,
+    },
+    /// A keyed row: a monospace key at the left edge, prose at a declared
+    /// column. The help surface's shape. `key_col` is the caller's column
+    /// width in device pixels — declared once at the call site, like any
+    /// other column the surface owns.
+    Keyed {
+        key: String,
+        text: String,
+        step: Step,
+        key_color: [f32; 4],
+        text_color: [f32; 4],
+        key_col: f32,
     },
     /// A horizontal rule spanning the content width.
     Rule,
@@ -72,6 +130,8 @@ impl Block {
 
 /// The measured geometry of a list of blocks, before anything draws.
 pub struct Measured {
+    /// The frame this was measured in: paint lands content exactly here.
+    pub frame: Frame,
     /// The blocks, in order.
     pub blocks: Vec<Block>,
     /// Each block's top edge in *content space*, where 0 is the top of the
@@ -123,17 +183,11 @@ impl Measured {
     }
 }
 
-/// Measure a list of blocks against a content width and a viewport height,
-/// using the font's own metrics for every height. Wraps each `Line` that
-/// needs it — a wrapped line is several baselines, and the measurer counts
-/// them *before* drawing, which is the whole point of the layer.
-pub fn measure(
-    text: &mut Text,
-    ui: UiScale,
-    width: f32,
-    viewport: f32,
-    blocks: &[Block],
-) -> Measured {
+/// Measure a list of blocks in a frame, using the font's own metrics for
+/// every height. Wraps each `Line` that needs it — a wrapped line is several
+/// baselines, and the measurer counts them *before* drawing, which is the
+/// whole point of the layer.
+pub fn measure(text: &mut Text, ui: UiScale, frame: &Frame, blocks: &[Block]) -> Measured {
     let mut tops = Vec::with_capacity(blocks.len());
     let mut heights = Vec::with_capacity(blocks.len());
     let mut y = 0.0f32;
@@ -143,8 +197,11 @@ pub fn measure(
         let height = match block {
             Block::Line { face, step, text: line, .. } => {
                 let step_px = step.px(ui) as f32;
-                let lines = wrap(text, *face, *step, line, width).len().max(1);
+                let lines = wrap(text, *face, *step, line, frame.w).len().max(1);
                 lines as f32 * step_px * LINE_ADVANCE_FACTOR
+            }
+            Block::Row { step, .. } | Block::Bar { step, .. } | Block::Keyed { step, .. } => {
+                step.px(ui) as f32 * LINE_ADVANCE_FACTOR
             }
             Block::Rule => Space::Xs.px(ui),
             Block::Gap(space) => space.px(ui),
@@ -163,12 +220,13 @@ pub fn measure(
     }
 
     Measured {
+        frame: *frame,
         blocks: blocks.to_vec(),
         tops,
         heights,
         content_height: y,
-        width,
-        viewport,
+        width: frame.w,
+        viewport: frame.viewport,
         footer_height,
     }
 }
@@ -267,9 +325,15 @@ impl Default for Scroll {
     }
 }
 
-/// Paint flowing content and the pinned footer. `Fixed` regions are *not*
-/// painted: callers read `Measured::region` and draw their own pixels,
-/// because this landing owns layout, not widgets.
+/// Paint flowing content and the pinned footer, into the frame that was
+/// measured. `Fixed` regions are *not* painted: callers read
+/// `Measured::region` and draw their own pixels, because this layer owns
+/// layout, not widgets.
+///
+/// Only fully visible blocks are drawn: this pipeline has no scissor test,
+/// so a discrete block that straddles the viewport's bottom edge waits for
+/// the scroll that reveals it whole instead of leaking cut glyphs over
+/// whatever sits below the region.
 ///
 /// Every position is snapped to whole device pixels before it reaches the
 /// batcher, keeping the atlas sampling honest at every scale. Lines are
@@ -284,7 +348,7 @@ pub fn paint(
     text: &mut Text,
 ) {
     let ui = text.ui_scale();
-    let inset = content_inset(ui);
+    let frame = measured.frame;
 
     // The footer first, in its own declared colour: content may then draw
     // over nothing, because the scroll mapping never hands out a line below
@@ -294,10 +358,10 @@ pub fn paint(
     {
         batcher.screen_rect(
             screen,
-            0.0,
-            measured.footer_top(),
-            screen.w,
-            screen.h - measured.footer_top(),
+            frame.x,
+            frame.y + measured.footer_top(),
+            frame.w,
+            measured.footer_height,
             *color,
             Text::solid_uv(),
         );
@@ -311,7 +375,8 @@ pub fn paint(
             continue;
         };
         let height = measured.heights[index];
-        if top + height <= 0.0 {
+        // Fully visible or not at all: no scissor means no straddlers.
+        if top + height <= 0.0 || top + height > measured.viewport + 0.5 {
             continue;
         }
         match block {
@@ -332,19 +397,116 @@ pub fn paint(
                         *face,
                         batcher,
                         screen,
-                        snap(inset),
-                        snap(line_top - cap_offset),
+                        snap(frame.x),
+                        snap(frame.y + line_top - cap_offset),
                         *step,
                         *color,
                         &part,
                     );
                 }
             }
+            Block::Row { label, value, step, color, value_color } => {
+                let step_px = step.px(ui) as f32;
+                let line_h = step_px * LINE_ADVANCE_FACTOR;
+                let cap_offset = text.ascent(Face::Body, *step);
+                let baseline = snap(frame.y + top - cap_offset);
+                text.draw_step(
+                    Face::Body,
+                    batcher,
+                    screen,
+                    snap(frame.x),
+                    baseline,
+                    *step,
+                    *color,
+                    label,
+                );
+                // Right-aligned against the frame's right edge, measured with
+                // the same font it will be drawn with.
+                let value_w = text.measure_step(Face::Mono, value, *step);
+                text.draw_step(
+                    Face::Mono,
+                    batcher,
+                    screen,
+                    snap(frame.x + frame.w - value_w),
+                    baseline,
+                    *step,
+                    *value_color,
+                    value,
+                );
+                let _ = line_h;
+            }
+            Block::Bar { label, step, label_color, color, fraction } => {
+                let step_px = step.px(ui) as f32;
+                let line_h = step_px * LINE_ADVANCE_FACTOR;
+                let cap_offset = text.ascent(Face::Body, *step);
+                text.draw_step(
+                    Face::Body,
+                    batcher,
+                    screen,
+                    snap(frame.x),
+                    snap(frame.y + top - cap_offset),
+                    *step,
+                    *label_color,
+                    label,
+                );
+                // Track from the row's bar origin to the right edge, centred
+                // on the text line; the track is the colour at low alpha.
+                let track_h = Space::Xs.px(ui);
+                let track_y = frame.y + top + (line_h - track_h) * 0.5;
+                let track_x = frame.x + frame.w * BAR_START;
+                let track_w = frame.w * (1.0 - BAR_START);
+                let track = [color[0], color[1], color[2], color[3] * 0.18];
+                batcher.screen_rect(
+                    screen,
+                    snap(track_x),
+                    snap(track_y),
+                    snap(track_w),
+                    snap(track_h),
+                    track,
+                    Text::solid_uv(),
+                );
+                let filled = (track_w * fraction.clamp(0.0, 1.0)).max(0.0);
+                if filled > 0.5 {
+                    batcher.screen_rect(
+                        screen,
+                        snap(track_x),
+                        snap(track_y),
+                        snap(filled),
+                        snap(track_h),
+                        *color,
+                        Text::solid_uv(),
+                    );
+                }
+            }
+            Block::Keyed { key, text: prose, step, key_color, text_color, key_col } => {
+                let cap_offset = text.ascent(Face::Body, *step);
+                let baseline = snap(frame.y + top - cap_offset);
+                text.draw_step(
+                    Face::Mono,
+                    batcher,
+                    screen,
+                    snap(frame.x),
+                    baseline,
+                    *step,
+                    *key_color,
+                    key,
+                );
+                text.draw_step(
+                    Face::Body,
+                    batcher,
+                    screen,
+                    snap(frame.x + key_col),
+                    baseline,
+                    *step,
+                    *text_color,
+                    prose,
+                );
+            }
             Block::Rule => {
                 batcher.screen_rect(
                     screen,
-                    snap(inset),
-                    snap(top),
+                    snap(frame.x),
+                    snap(frame.y + top),
                     measured.width,
                     1.0,
                     RULE_COLOR,
@@ -371,6 +533,10 @@ mod tests {
         UiScale(1.0)
     }
 
+    fn frame(w: f32, viewport: f32) -> Frame {
+        Frame::new(0.0, 0.0, w, viewport)
+    }
+
     fn blocks() -> Vec<Block> {
         vec![
             Block::Line {
@@ -393,7 +559,7 @@ mod tests {
         }
         text.set_ui_scale(ui());
         let mut batch = Batcher::default();
-        let measured = measure(&mut text, ui(), 600.0, 900.0, &blocks());
+        let measured = measure(&mut text, ui(), &frame(600.0, 900.0), &blocks());
         // One title line + one small gap + a 600 px region, in that order.
         let title = Step::Title.px(ui()) as f32 * LINE_ADVANCE_FACTOR;
         let gap = Space::Sm.px(ui());
@@ -425,7 +591,7 @@ mod tests {
             text: long.into(),
             color: [1.0; 4],
         };
-        let measured = measure(&mut text, ui(), 300.0, 900.0, &[block]);
+        let measured = measure(&mut text, ui(), &frame(300.0, 900.0), &[block]);
         let body = Step::Body.px(ui()) as f32 * LINE_ADVANCE_FACTOR;
         let lines = wrap(&mut text, Face::Body, Step::Body, long, 300.0).len() as f32;
         assert!(lines > 1.0, "the test needs a line that actually wraps");
@@ -442,7 +608,7 @@ mod tests {
         text.set_ui_scale(ui());
         let mut b = blocks();
         b.push(Block::Footer { height: 64.0, color: [0.2; 4] });
-        let measured = measure(&mut text, ui(), 600.0, 400.0, &b);
+        let measured = measure(&mut text, ui(), &frame(600.0, 400.0), &b);
         // Footer pinned to the bottom of the viewport, whatever the content does.
         assert!((measured.footer_top() - (400.0 - 64.0)).abs() < f32::EPSILON);
         // Scrolled to the end, the last flowing block stops at the footer's top.
@@ -484,7 +650,7 @@ mod tests {
         text.set_ui_scale(ui());
         let mut b = blocks();
         b.push(Block::Footer { height: 64.0, color: [0.2; 4] });
-        let measured = measure(&mut text, ui(), 600.0, 400.0, &b);
+        let measured = measure(&mut text, ui(), &frame(600.0, 400.0), &b);
         assert!(measured.needs_scroll());
 
         let mut scroll = Scroll::new();
@@ -511,9 +677,133 @@ mod tests {
         }
         let ui = UiScale(2.0);
         text.set_ui_scale(ui);
-        let measured = measure(&mut text, ui, 600.0, 900.0, &blocks());
+        let measured = measure(&mut text, ui, &frame(600.0, 900.0), &blocks());
         let title = Step::Title.px(ui) as f32 * LINE_ADVANCE_FACTOR;
         let gap = Space::Sm.px(ui);
         assert!((measured.content_height - (title + gap + 600.0)).abs() < 0.5);
+    }
+
+    #[test]
+    fn a_row_measures_one_line_and_paints_its_value_at_the_right_edge() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the row check is not exercised");
+            return;
+        }
+        text.set_ui_scale(ui());
+        let block = Block::Row {
+            label: "population".into(),
+            value: "4120".into(),
+            step: Step::Small,
+            color: [1.0; 4],
+            value_color: [1.0; 4],
+        };
+        let measured = measure(&mut text, ui(), &frame(300.0, 900.0), &[block]);
+        let small = Step::Small.px(ui()) as f32 * LINE_ADVANCE_FACTOR;
+        assert!((measured.content_height - small).abs() < 0.5);
+
+        let mut batch = Batcher::default();
+        paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
+        // The value's rightmost quad lands at the frame's right edge (half a
+        // pixel of snap tolerance; the pen's trailing advance is not ink), and
+        // the label starts at the left edge.
+        let rightmost = batch
+            .instances
+            .iter()
+            .map(|i| (i.pos[0] + i.size[0] + 1.0) / 2.0 * screen().w)
+            .fold(f32::MIN, f32::max);
+        assert!(
+            (rightmost - 300.0).abs() <= 1.0,
+            "the row's value ended at x={rightmost}, not at the frame's right edge 300"
+        );
+    }
+
+    #[test]
+    fn a_bar_fills_from_its_origin_by_its_fraction() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the bar check is not exercised");
+            return;
+        }
+        text.set_ui_scale(ui());
+        let block = Block::Bar {
+            label: "residential".into(),
+            step: Step::Small,
+            label_color: [1.0; 4],
+            color: [0.2, 0.8, 0.3, 1.0],
+            fraction: 0.5,
+        };
+        let measured = measure(&mut text, ui(), &frame(300.0, 900.0), &[block]);
+        let mut batch = Batcher::default();
+        paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
+        // Quads come in no particular order; look for the fill: a quad whose
+        // right edge lands at half the track (origin 0.38 * 300, width 0.62
+        // * 300, filled 0.5 -> right edge at 0.38 + 0.31 = 0.69 of 300).
+        let expected_right = 300.0 * (BAR_START + (1.0 - BAR_START) * 0.5);
+        let hit = batch.instances.iter().any(|i| {
+            let right = (i.pos[0] + i.size[0] + 1.0) / 2.0 * screen().w;
+            (right - expected_right).abs() <= 1.5
+        });
+        assert!(hit, "no quad's right edge sat at the bar's fill edge {expected_right}");
+    }
+
+    #[test]
+    fn paint_lands_content_in_the_frame_it_was_measured_in() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the frame check is not exercised");
+            return;
+        }
+        text.set_ui_scale(ui());
+        let block = Block::Line {
+            face: Face::Body,
+            step: Step::Small,
+            text: "panel line".into(),
+            color: [1.0; 4],
+        };
+        let frame = Frame::new(50.0, 40.0, 300.0, 900.0);
+        let measured = measure(&mut text, ui(), &frame, &[block]);
+        let mut batch = Batcher::default();
+        paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
+        assert!(batch.instances.len() > 0, "nothing painted");
+        for instance in &batch.instances {
+            let sx = (instance.pos[0] + 1.0) / 2.0 * screen().w;
+            let sy = (1.0 - instance.pos[1]) / 2.0 * screen().h;
+            // The measurer anchors lines at the *cap* line: tall lowercase
+            // glyphs (l, t, f) legitimately overshoot it by a couple of
+            // pixels — that is the font's own truth, not a layout defect.
+            assert!(sx >= 47.0, "a quad drew left of the frame at x={sx}");
+            assert!(sy >= 33.0, "a quad drew far above the frame at y={sy}");
+        }
+    }
+
+    #[test]
+    fn a_block_straddling_the_viewport_bottom_waits_instead_of_leaking() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the visibility check is not exercised");
+            return;
+        }
+        text.set_ui_scale(ui());
+        let blocks = [
+            Block::Line { face: Face::Body, step: Step::Small, text: "top".into(), color: [1.0; 4] },
+            Block::Line { face: Face::Body, step: Step::Small, text: "straddler".into(), color: [1.0; 4] },
+        ];
+        // Viewport clearly between one and two lines: the second block
+        // straddles the bottom edge and must wait rather than leak.
+        let small = Step::Small.px(ui()) as f32 * LINE_ADVANCE_FACTOR;
+        let measured = measure(&mut text, ui(), &frame(300.0, small * 1.3), &blocks);
+        let mut batch = Batcher::default();
+        paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
+        // Only the first line drew; nothing leaked past the viewport edge.
+        assert!(batch.instances.len() > 0, "the visible line did not draw");
+        for instance in &batch.instances {
+            let sy = (1.0 - instance.pos[1]) / 2.0 * screen().h;
+            assert!(
+                sy + small <= measured.viewport + 0.5,
+                "a straddling block leaked: quad at y={sy} with viewport {}",
+                measured.viewport
+            );
+        }
     }
 }

@@ -427,26 +427,17 @@ impl Picker {
             );
         }
 
-        // The detail region: a scrollable stack of measured facts. Painted
-        // into a band whose origin is shifted below the strip by offsetting
-        // the screen — the shared layer maps content space to that band's
-        // viewport space, and keeps every line above the footer it knows.
-        let detail_top = strip_h;
+        // The detail region: a scrollable stack of measured facts, measured
+        // and painted in a frame whose origin sits below the strip — the
+        // shared layer maps content space to that frame's screen position
+        // itself, and keeps every line above the footer it knows.
         let detail_h = self.detail_viewport(screen);
         let width = screen.w - 2.0 * inset;
         let blocks = self.detail_blocks(&icon, width);
-        let mut measured = ui::measure(&mut self.text, ui, width, detail_h, &blocks);
-        measured.viewport = detail_h;
+        let frame = ui::Frame::new(inset, strip_h, width, detail_h);
+        let measured = ui::measure(&mut self.text, ui, &frame, &blocks);
         let scroll = Scroll::with_offset(self.detail_offset);
-        let band = Screen { w: screen.w, h: detail_h };
-        // Clip space is relative, so drawing the band at a y-offset is done by
-        // translating the batch after the fact — the layer promised viewport
-        // coordinates, the strip owns everything above them.
-        let before = batch.instances.len();
-        ui::paint(&measured, &scroll, batch, &band, &mut self.text);
-        for instance in &mut batch.instances[before..] {
-            instance.pos[1] -= 2.0 * detail_top / screen.h;
-        }
+        ui::paint(&measured, &scroll, batch, screen, &mut self.text);
 
         // The comment footer: fixed, never overlapped, never below the fold.
         let footer_top = screen.h - self.footer_height();
@@ -643,8 +634,8 @@ impl Picker {
         let width = screen.w - 2.0 * inset;
         let detail_h = self.detail_viewport(screen);
         let blocks = self.detail_blocks(&icon, width);
-        let mut measured = ui::measure(&mut self.text, self.ui, width, detail_h, &blocks);
-        measured.viewport = detail_h;
+        let frame = ui::Frame::new(inset, self.strip_height(), width, detail_h);
+        let measured = ui::measure(&mut self.text, self.ui, &frame, &blocks);
         self.detail_offset = (self.detail_offset + delta).clamp(0.0, measured.max_scroll());
     }
 

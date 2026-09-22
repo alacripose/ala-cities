@@ -30,8 +30,7 @@ use ala_cities::render::{
     self, Batcher, Camera, Face, Gpu, ImageBatcher, Layer, Screen, Text, WorldBatch,
     LEVEL_HEIGHT, TILE,
 };
-#[allow(unused_imports)]
-use ala_cities::ui;
+use ala_cities::ui::{self, Block, Frame};
 
 const STAGE: &str = "C1";
 const MAP: u32 = 256;
@@ -120,6 +119,11 @@ struct App {
     feedback: String,
     feedback_focus: bool,
 
+    /// The ledger panel's scroll offset. The ledger keeps a private offset
+    /// because it is not the tool's one action — its wheel events are routed
+    /// only while it is open, so it can never steal the wheel from the camera.
+    ledger_scroll: ui::Scroll,
+
     /// The most recent refusal, shown as its own tier rather than as an error.
     refusal: Option<String>,
     /// The most recent governed action, so the session chrome can name it.
@@ -167,6 +171,7 @@ impl App {
             menu_open: false,
             feedback: String::new(),
             feedback_focus: false,
+            ledger_scroll: ui::Scroll::new(),
             refusal: None,
             last_ticket: None,
             last_verdict: None,
@@ -1114,49 +1119,60 @@ impl App {
         // One line of text, and one comfortable target. Row advances and panel
         // insets are built from these rather than from their own numbers, so
         // the interface re-lays out at a new scale instead of drifting off it.
-        let text_line = pad(Space::Md) + pad(Space::Sm);
+        let small_line = Step::Small.px(ui) as f32 * ui::LINE_ADVANCE_FACTOR;
         let target_px = design::target(ui);
 
         // ---- governed-session chrome -------------------------------------
-        hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, 30.0, Token::Panel);
-        let mut x = 12.0;
+        // One bar tall in the small step's own metrics — never a literal 30
+        // that clips its text at 200% scale. The run of labels is already
+        // measured flow (each width is measured before the next x lands);
+        // what the literals got wrong was the bar's height and baseline, and
+        // both now come from the font.
+        let bar_line = small_line;
+        let bar_h = pad(Space::Sm) * 2.0 + bar_line;
+        // `draw`'s y is an ascent line — ink begins about one ascent below it
+        // — so the bar's text y is simply the top pad; the font does the rest.
+        let bar_text_y = pad(Space::Sm);
+
+        hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, bar_h, Token::Panel);
+        let mut x = pad(Space::Md);
         x += hud::label_mono(
             &mut self.text,
             &mut self.batch,
             &screen,
             x,
-            9.0,
+            bar_text_y,
             Step::Small,
             Token::TextMuted,
             &self.gov.contract,
-        ) + 14.0;
+        ) + pad(Space::Lg);
         x += hud::label_mono(
             &mut self.text,
             &mut self.batch,
             &screen,
             x,
-            9.0,
+            bar_text_y,
             Step::Small,
             Token::TextMuted,
             &self.gov.governor_banner(),
-        ) + 14.0;
+        ) + pad(Space::Lg);
         x += hud::label(
             &mut self.text,
             &mut self.batch,
             &screen,
             x,
-            9.0,
+            bar_text_y,
             Step::Small,
             Token::Procedural,
             "identity: PROCEDURAL",
-        ) + 14.0;
+        ) + pad(Space::Lg);
         if let Some(ticket) = &self.last_ticket {
             hud::label_mono(
                 &mut self.text,
                 &mut self.batch,
                 &screen,
                 x,
-                9.0,
+                bar_text_y,
                 Step::Small,
                 Token::TextMuted,
                 ticket,
@@ -1192,7 +1208,7 @@ impl App {
             &mut self.batch,
             &screen,
             screen.w / 2.0 - width / 2.0,
-            9.0,
+            bar_text_y,
             Step::Small,
             Token::TextBody,
             &centre,
@@ -1206,7 +1222,7 @@ impl App {
             &mut self.batch,
             &screen,
             right - fps_width,
-            9.0,
+            bar_text_y,
             Step::Small,
             Token::TextMuted,
             &fps,
@@ -1220,7 +1236,7 @@ impl App {
             &mut self.batch,
             &screen,
             right - rec_width,
-            9.0,
+            bar_text_y,
             Step::Small,
             if self.session.recording {
                 Token::Recording
@@ -1231,205 +1247,147 @@ impl App {
         );
 
         // ---- left column: demand, state, what to do next ------------------
-        let panel_x = 12.0;
-        let mut panel_y = 42.0;
+        // The panel's height **is** the measurement: the blocks are built,
+        // measured, and only then does a panel get drawn around them. The
+        // old code reserved a literal 226.0 and advanced its own cursor —
+        // two truths that happened to agree at 100% scale and silently
+        // clipped the last stat row at every other scale.
+        let panel_x = pad(Space::Md);
+        let panel_y = bar_h + pad(Space::Sm) + pad(Space::Xs);
         let panel_w = 250.0 * ui.0;
-        hud::panel(&mut self.batch, &screen, panel_x, panel_y, panel_w, 226.0, Token::Panel);
-        panel_y += pad(Space::Sm);
-        hud::label(
-            &mut self.text,
-            &mut self.batch,
-            &screen,
-            panel_x + pad(Space::Md),
-            panel_y,
-            Step::Body,
-            Token::TextBody,
-            "Demand",
-        );
-        panel_y += text_line;
+        let muted = hud::style(Token::TextMuted).text.unwrap_or([0.8; 4]);
+        let body_ink = hud::style(Token::TextBody).text.unwrap_or([1.0; 4]);
+
+        let mut demand_blocks = vec![Block::Line {
+            face: Face::Body,
+            step: Step::Body,
+            text: "Demand".into(),
+            color: body_ink,
+        }];
         for (token, name, value) in [
             (Token::ZoneResidential, "residential", self.world.demand.residential),
             (Token::ZoneCommercial, "commercial", self.world.demand.commercial),
             (Token::ZoneIndustrial, "industrial", self.world.demand.industrial),
         ] {
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                panel_x + pad(Space::Md),
-                panel_y,
-                Step::Small,
-                Token::TextMuted,
-                name,
-            );
-            hud::bar(
-                &mut self.batch,
-                &screen,
-                panel_x + 96.0,
-                panel_y + 2.0,
-                142.0,
-                9.0,
-                token,
-                value,
-            );
-            panel_y += text_line;
+            demand_blocks.push(Block::Bar {
+                label: name.into(),
+                step: Step::Small,
+                label_color: muted,
+                color: hud::style(token).fill.unwrap_or([0.5; 4]),
+                fraction: value,
+            });
         }
-        panel_y += pad(Space::Sm);
-        hud::rule(&mut self.batch, &screen, panel_x + pad(Space::Md), panel_y, panel_w - pad(Space::Xl), Token::TextMuted);
-        panel_y += pad(Space::Sm);
-
-        let stats = [
-            ("credits", format!("{}", self.world.economy.credits)),
-            ("population", format!("{}", self.world.stats.population)),
-            ("jobs", format!("{}", self.world.stats.jobs)),
-            ("out of work", format!("{}", self.world.stats.unemployed)),
-            ("road tiles", format!("{}", self.world.stats.road_tiles)),
+        demand_blocks.push(Block::Gap(Space::Sm));
+        demand_blocks.push(Block::Rule);
+        demand_blocks.push(Block::Gap(Space::Sm));
+        let brownout = self.world.stats.brownout;
+        for (name, value, is_power) in [
+            ("credits", format!("{}", self.world.economy.credits), false),
+            ("population", format!("{}", self.world.stats.population), false),
+            ("jobs", format!("{}", self.world.stats.jobs), false),
+            ("out of work", format!("{}", self.world.stats.unemployed), false),
+            ("road tiles", format!("{}", self.world.stats.road_tiles), false),
             (
                 "power",
-                if self.world.stats.brownout {
+                if brownout {
                     "BROWNOUT".to_string()
                 } else {
                     format!("{} plants", self.world.stats.power_plants)
                 },
+                brownout,
             ),
-            ("retired", format!("{}", self.world.stats.retired_buildings)),
-            ("no route", format!("{}", self.world.stats.commute_failures)),
-        ];
-        for (name, value) in stats {
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                panel_x + pad(Space::Md),
-                panel_y,
-                Step::Small,
-                Token::TextMuted,
-                name,
-            );
-            let width = self.text.measure_step(Face::Mono, &value, Step::Small);
-            hud::label_mono(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                panel_x + panel_w - pad(Space::Md) - width,
-                panel_y,
-                Step::Small,
-                if name == "power" && self.world.stats.brownout {
-                    Token::Brownout
+            ("retired", format!("{}", self.world.stats.retired_buildings), false),
+            ("no route", format!("{}", self.world.stats.commute_failures), false),
+        ] {
+            demand_blocks.push(Block::Row {
+                label: name.into(),
+                value,
+                step: Step::Small,
+                color: muted,
+                value_color: if is_power && brownout {
+                    hud::style(Token::Brownout).text.unwrap_or([1.0; 4])
                 } else {
-                    Token::TextBody
+                    body_ink
                 },
-                &value,
-            );
-            panel_y += pad(Space::Lg);
+            });
         }
+        let demand_inner_w = panel_w - 2.0 * pad(Space::Md);
+        let demand_frame = Frame::new(
+            panel_x + pad(Space::Md),
+            panel_y + pad(Space::Sm),
+            demand_inner_w,
+            screen.h,
+        );
+        let demand_measured = ui::measure(&mut self.text, ui, &demand_frame, &demand_blocks);
+        let demand_h = demand_measured.content_height + 2.0 * pad(Space::Sm);
+        hud::panel(&mut self.batch, &screen, panel_x, panel_y, panel_w, demand_h, Token::Panel);
+        let demand_scroll = ui::Scroll::new();
+        ui::paint(&demand_measured, &demand_scroll, &mut self.batch, &screen, &mut self.text);
 
         // What to do next, derived from stored state. An empty list would be a
-        // bug, not a quiet moment.
+        // bug, not a quiet moment. Measured like the demand panel: the height
+        // comes from the blocks, and the panel sits on the demand panel's
+        // *measured* bottom edge rather than on a remembered coordinate.
         let suggestions = self.gov.suggestions(&self.world);
-        let mut next_y = 42.0 + 226.0 + pad(Space::Sm);
-        let panel_height = 26.0 + suggestions.len().min(4) as f32 * 18.0;
-        hud::panel(&mut self.batch, &screen, panel_x, next_y, panel_w, panel_height, Token::Panel);
-        hud::label(
-            &mut self.text,
+        let mut next_blocks = vec![Block::Line {
+            face: Face::Body,
+            step: Step::Body,
+            text: "What to do next".into(),
+            color: body_ink,
+        }];
+        for line in suggestions.iter().take(4) {
+            let is_case = line.starts_with("CSE-");
+            let clipped =
+                hud::truncate(&mut self.text, Face::Body, line, Step::Small, panel_w - 2.0 * pad(Space::Md));
+            next_blocks.push(Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: clipped,
+                color: if is_case {
+                    hud::style(Token::CaseOpen).text.unwrap_or([1.0; 4])
+                } else {
+                    muted
+                },
+            });
+        }
+        let next_frame = Frame::new(
+            panel_x + pad(Space::Md),
+            panel_y + demand_h + pad(Space::Sm) + pad(Space::Sm),
+            demand_inner_w,
+            screen.h,
+        );
+        let next_measured = ui::measure(&mut self.text, ui, &next_frame, &next_blocks);
+        let next_h = next_measured.content_height + 2.0 * pad(Space::Sm);
+        hud::panel(
             &mut self.batch,
             &screen,
-            panel_x + pad(Space::Md),
-            next_y + pad(Space::Sm),
-            Step::Body,
-            Token::TextBody,
-            "What to do next",
+            panel_x,
+            next_frame.y - pad(Space::Sm),
+            panel_w,
+            next_h,
+            Token::Panel,
         );
-        next_y += text_line + pad(Space::Xs);
-        for line in suggestions.iter().take(4) {
-            let clipped = hud::truncate(&mut self.text, Face::Body, line, Step::Small, panel_w - pad(Space::Xl));
-            let is_case = line.starts_with("CSE-");
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                panel_x + pad(Space::Md),
-                next_y,
-                Step::Small,
-                if is_case { Token::CaseOpen } else { Token::TextMuted },
-                &clipped,
-            );
-            next_y += text_line;
-        }
+        let next_scroll = ui::Scroll::new();
+        ui::paint(&next_measured, &next_scroll, &mut self.batch, &screen, &mut self.text);
 
         // ---- ledger -------------------------------------------------------
         if self.show_ledger {
-            let width = 470.0;
-            let lx = screen.w - width - pad(Space::Md);
-            let ly = 42.0;
+            let (ledger_frame, ledger_blocks) = self.ledger_layout(&screen);
+            let ly = ledger_frame.y - pad(Space::Sm);
+            let lx = screen.w - 470.0 - pad(Space::Md);
             let lh = screen.bottom_anchor(160.0, 12.0) - ly;
-            hud::panel(&mut self.batch, &screen, lx, ly, width, lh, Token::Panel);
-            let (open, closed) = self.gov.counts();
-            hud::label(
-                &mut self.text,
+            hud::panel(&mut self.batch, &screen, lx, ly, 470.0, lh, Token::Panel);
+            let ledger_measured = ui::measure(&mut self.text, ui, &ledger_frame, &ledger_blocks);
+            // Re-clamp the held offset against this frame's measurement
+            // (closing tickets only shorten the list), then paint.
+            self.ledger_scroll.scroll_by(0.0, &ledger_measured);
+            ui::paint(
+                &ledger_measured,
+                &self.ledger_scroll,
                 &mut self.batch,
                 &screen,
-                lx + pad(Space::Md),
-                ly + pad(Space::Sm),
-                Step::Body,
-                Token::TextBody,
-                "Ticket ledger",
-            );
-            let counts = format!(
-                "open {open}   terminal {closed}   evidence {}   corrections {}   refusals {}",
-                self.gov.evidence.len(),
-                self.gov.corrections.len(),
-                self.gov.denials
-            );
-            hud::label_mono(
                 &mut self.text,
-                &mut self.batch,
-                &screen,
-                lx + pad(Space::Md),
-                ly + text_line + pad(Space::Sm),
-                Step::Small,
-                Token::TextMuted,
-                &counts,
             );
-            hud::rule(&mut self.batch, &screen, lx + pad(Space::Md), ly + 46.0, width - pad(Space::Xl), Token::TextMuted);
-
-            let mut row = ly + text_line * 2.0 + pad(Space::Md);
-            for ticket in self.gov.ledger(22) {
-                let line = format!("{}  {}", ticket.id, ticket.objective);
-                let clipped = hud::truncate(&mut self.text, Face::Body, &line, Step::Small, width - 118.0);
-                let token = if ticket.is_closed() {
-                    match ticket.terminal {
-                        Some(reason) if reason.is_validated() => Token::Verified,
-                        Some(ala_cities::gov::RetirementReason::CompletedButUnverified) => Token::Warning,
-                        Some(ala_cities::gov::RetirementReason::CompletedWithKnownRegression) => Token::Refused,
-                        Some(ala_cities::gov::RetirementReason::BlockedAndClosed) => Token::CaseOpen,
-                        _ => Token::NotObtained,
-                    }
-                } else {
-                    Token::TextBody
-                };
-                hud::label(&mut self.text, &mut self.batch, &screen, lx + pad(Space::Md), row, Step::Small, token, &clipped);
-                let closing = ticket.closing_line();
-                let closing_width = self.text.measure_step(Face::Mono, &closing, Step::Small);
-                // Truncated first: the text atlas is borrowed mutably to build
-                // the string, and again to draw it, which cannot overlap.
-                let clipped_closing =
-                    hud::truncate(&mut self.text, Face::Mono, &closing, Step::Small, 160.0);
-                hud::label_mono(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    lx + width - pad(Space::Md) - closing_width.min(width - 130.0),
-                    row,
-                    Step::Small,
-                    Token::TextMuted,
-                    &clipped_closing,
-                );
-                row += pad(Space::Lg);
-                if row > ly + lh - 20.0 {
-                    break;
-                }
-            }
         }
 
         // ---- per-object page ----------------------------------------------
@@ -1443,23 +1401,16 @@ impl App {
                 if let Some(index) = self.world.tile(tile).building {
                     let b = self.world.building(index);
                     let width = 240.0;
-                    let height = 116.0;
                     let px = (self.cursor.0 + pad(Space::Lg)).min(screen.w - width - 8.0);
-                    let py = (self.cursor.1 + pad(Space::Sm)).min(screen.h - height - 8.0);
-                    hud::panel(&mut self.batch, &screen, px, py, width, height, Token::PanelRaised);
-                    hud::label(
-                        &mut self.text,
-                        &mut self.batch,
-                        &screen,
-                        px + pad(Space::Sm),
-                        py + pad(Space::Sm),
-                        Step::Body,
-                        Token::TextBody,
-                        &format!("{} #{}", b.kind.name(), b.id),
-                    );
+                    let mut inspect_blocks = vec![Block::Line {
+                        face: Face::Body,
+                        step: Step::Body,
+                        text: format!("{} #{}", b.kind.name(), b.id),
+                        color: body_ink,
+                    }];
                     // Only fields the store already admits. Nothing is invented
                     // for the panel to have something to show.
-                    let fields = [
+                    for (name, value) in [
                         ("tile", format!("{tile}")),
                         ("level", format!("{}", b.level)),
                         ("powered", if b.powered { "yes".into() } else { "no".into() }),
@@ -1475,85 +1426,94 @@ impl App {
                                 "in use".to_string()
                             },
                         ),
-                    ];
-                    let mut fy = py + text_line + pad(Space::Sm);
-                    for (name, value) in fields {
-                        hud::label(
-                            &mut self.text,
-                            &mut self.batch,
-                            &screen,
-                            px + pad(Space::Sm),
-                            fy,
-                            Step::Small,
-                            Token::TextMuted,
-                            name,
-                        );
-                        let w = self.text.measure_step(Face::Mono, &value, Step::Small);
-                        hud::label_mono(
-                            &mut self.text,
-                            &mut self.batch,
-                            &screen,
-                            px + width - 10.0 - w,
-                            fy,
-                            Step::Small,
-                            Token::TextBody,
-                            &value,
-                        );
-                        fy += pad(Space::Md);
+                    ] {
+                        inspect_blocks.push(Block::Row {
+                            label: name.into(),
+                            value,
+                            step: Step::Small,
+                            color: muted,
+                            value_color: body_ink,
+                        });
                     }
+                    // Heights depend on the frame's width, not its origin, so
+                    // measure once, clamp the popup's y against the *measured*
+                    // height, then point the frame at the final position.
+                    let frame = Frame::new(
+                        px + pad(Space::Sm),
+                        0.0,
+                        width - 2.0 * pad(Space::Sm),
+                        screen.h,
+                    );
+                    let mut measured = ui::measure(&mut self.text, ui, &frame, &inspect_blocks);
+                    let height = measured.content_height + 2.0 * pad(Space::Sm);
+                    let py = (self.cursor.1 + pad(Space::Sm)).min(screen.h - height - 8.0);
+                    hud::panel(&mut self.batch, &screen, px, py, width, height, Token::PanelRaised);
+                    measured.frame.y = py + pad(Space::Sm);
+                    let scroll = ui::Scroll::new();
+                    ui::paint(&measured, &scroll, &mut self.batch, &screen, &mut self.text);
                 }
             }
-        }
-
-        // ---- refusal banner ------------------------------------------------
+        }        // ---- refusal banner ------------------------------------------------
+        // Measured: two wrapped lines and an accent bar that follows the
+        // content's height, instead of a 46 px box that clips a long refusal
+        // at 200% scale.
         if let Some(refusal) = self.refusal.clone() {
             let width = (screen.w - 80.0).min(900.0);
             let x = (screen.w - width) / 2.0;
-            let y = screen.bottom_anchor(150.0, 12.0);
-            hud::panel(&mut self.batch, &screen, x, y, width, 46.0, Token::Panel);
-            hud::style(Token::Warning);
-            hud::panel(&mut self.batch, &screen, x, y, 3.0, 46.0, Token::Warning);
-            let clipped = hud::truncate(&mut self.text, Face::Body, &refusal, Step::Small, width - pad(Space::Xl));
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Md),
-                y + pad(Space::Sm),
-                Step::Small,
-                Token::Warning,
-                &clipped,
-            );
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Md),
-                y + pad(Space::Xl),
-                Step::Small,
-                Token::TextMuted,
-                "this is a refusal, not an error: the city is unchanged",
-            );
+            let inner_w = width - 3.0 - 2.0 * pad(Space::Md);
+            let clipped =
+                hud::truncate(&mut self.text, Face::Body, &refusal, Step::Small, inner_w);
+            let warn_ink = hud::style(Token::Warning).text.unwrap_or([1.0; 4]);
+            let blocks = [
+                Block::Line {
+                    face: Face::Body,
+                    step: Step::Small,
+                    text: clipped,
+                    color: warn_ink,
+                },
+                Block::Line {
+                    face: Face::Body,
+                    step: Step::Small,
+                    text: "this is a refusal, not an error: the city is unchanged".into(),
+                    color: muted,
+                },
+            ];
+            let frame = Frame::new(x + 3.0 + pad(Space::Md), 0.0, inner_w, screen.h);
+            let mut measured = ui::measure(&mut self.text, ui, &frame, &blocks);
+            let height = measured.content_height + 2.0 * pad(Space::Sm);
+            let y = screen.bottom_anchor(height + 150.0, 12.0);
+            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::Panel);
+            hud::panel(&mut self.batch, &screen, x, y, 3.0, height, Token::Warning);
+            measured.frame.y = y + pad(Space::Sm);
+            let scroll = ui::Scroll::new();
+            ui::paint(&measured, &scroll, &mut self.batch, &screen, &mut self.text);
         }
 
         // ---- toast ---------------------------------------------------------
+        // Measured the same way: the pill is one small line plus its padding,
+        // whatever the scale.
         if let Some((message, at)) = self.toast.clone() {
             if tick.saturating_sub(at) < 120 {
-                let width =
-                    self.text.measure_step(Face::Body, &message, Step::Small) + pad(Space::Xl);
+                let max_w = screen.w * 0.7;
+                let clipped =
+                    hud::truncate(&mut self.text, Face::Body, &message, Step::Small, max_w);
+                let text_w = self.text.measure_step(Face::Body, &clipped, Step::Small);
+                let width = text_w + 2.0 * pad(Space::Md);
+                let blocks = [Block::Line {
+                    face: Face::Body,
+                    step: Step::Small,
+                    text: clipped,
+                    color: body_ink,
+                }];
+                let frame = Frame::new(0.0, 0.0, text_w, screen.h);
+                let mut measured = ui::measure(&mut self.text, ui, &frame, &blocks);
+                let height = measured.content_height + 2.0 * pad(Space::Sm);
                 let x = (screen.w - width) / 2.0;
-                let y = 40.0;
-                hud::panel(&mut self.batch, &screen, x, y, width, 24.0, Token::PanelRaised);
-                hud::label(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    x + pad(Space::Md),
-                    y + 5.0,
-                    Step::Small,
-                    Token::TextBody,
-                    &message,
-                );
+                let y = bar_h + pad(Space::Xs);
+                hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
+                measured.frame = Frame::new(x + pad(Space::Md), y + pad(Space::Sm), text_w, height);
+                let scroll = ui::Scroll::new();
+                ui::paint(&measured, &scroll, &mut self.batch, &screen, &mut self.text);
             } else {
                 self.toast = None;
             }
@@ -1643,126 +1603,128 @@ impl App {
         }
 
         // ---- pause menu -----------------------------------------------------
+        // Measured: the dialog's height is its content's height, so the menu
+        // stops clipping its own feedback field at 200% scale. The field is a
+        // `Fixed` region the caller draws, at the place the measurer gave it.
         if self.menu_open {
             let width = 620.0 * ui.0;
-            let height = 300.0 * ui.0;
             let x = (screen.w - width) / 2.0;
-            let y = (screen.h - height) / 2.0;
             hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, screen.h, Token::Desk);
-            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                y + pad(Space::Lg),
-                Step::Display,
-                Token::TextBody,
-                "Paused",
-            );
-            hud::label_mono(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                y + text_line * 2.0 + pad(Space::Xs),
-                Step::Small,
-                Token::TextMuted,
-                &format!(
-                    "{} · {} · {} interactions recorded · {} ticks simulated",
-                    self.gov.contract,
-                    self.world.clock.label(),
-                    self.session.count(),
-                    self.ticks_run
-                ),
-            );
 
-            let items = [
+            let field_h = pad(Space::Sm) * 2.0 + Step::Body.px(ui) as f32;
+            let mut menu_blocks = vec![
+                Block::Line {
+                    face: Face::Body,
+                    step: Step::Display,
+                    text: "Paused".into(),
+                    color: body_ink,
+                },
+                Block::Line {
+                    face: Face::Mono,
+                    step: Step::Small,
+                    text: format!(
+                        "{} · {} · {} interactions recorded · {} ticks simulated",
+                        self.gov.contract,
+                        self.world.clock.label(),
+                        self.session.count(),
+                        self.ticks_run
+                    ),
+                    color: muted,
+                },
+                Block::Gap(Space::Md),
+            ];
+            for item in [
                 "Esc   resume",
                 "F     leave feedback",
                 "S     save the city",
                 "O     load the last save",
                 "Q     flush the capture",
                 "U     interface scale",
-            ];
-            let mut iy = y + text_line * 4.0;
-            for item in items {
-                hud::label(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    x + pad(Space::Lg),
-                    iy,
-                    Step::Body,
-                    Token::TextBody,
-                    item,
-                );
-                iy += text_line;
+            ] {
+                menu_blocks.push(Block::Line {
+                    face: Face::Body,
+                    step: Step::Body,
+                    text: item.into(),
+                    color: body_ink,
+                });
             }
-
-            // Feedback is its own tier, always available, and its record says
-            // what it is: one playtest, at tentative confidence.
-            let field_y = y + text_line * 10.0;
-            hud::panel(
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                field_y,
-                width - 40.0,
-                30.0,
-                if self.feedback_focus { Token::Ink } else { Token::Panel },
-            );
-            if self.feedback.is_empty() && !self.feedback_focus {
-                hud::label(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    x + 30.0,
-                    field_y + pad(Space::Sm),
-                    Step::Small,
-                    Token::TextMuted,
-                    "press F to type feedback; Enter saves it into playtest/ with this session attached",
-                );
-            } else {
-                let shown = hud::truncate(
-                    &mut self.text,
-                    Face::Body,
-                    &self.feedback,
-                    Step::Body,
-                    width - 60.0,
-                );
-                hud::label(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    x + 30.0,
-                    field_y + 7.0,
-                    Step::Body,
-                    if self.feedback_focus { Token::TextOnInk } else { Token::TextBody },
-                    &shown,
-                );
-            }
+            menu_blocks.push(Block::Gap(Space::Md));
+            let field_index = menu_blocks.len();
+            menu_blocks.push(Block::Fixed { height: field_h });
             if self.feedback_focus {
-                hud::label(
-                    &mut self.text,
+                menu_blocks.push(Block::Gap(Space::Xs));
+                menu_blocks.push(Block::Line {
+                    face: Face::Body,
+                    step: Step::Small,
+                    text: "Enter writes the record · Esc backs out without writing".into(),
+                    color: muted,
+                });
+            }
+            let menu_frame = Frame::new(x + pad(Space::Lg), 0.0, width - 2.0 * pad(Space::Lg), screen.h);
+            let mut measured = ui::measure(&mut self.text, ui, &menu_frame, &menu_blocks);
+            let height = measured.content_height + 2.0 * pad(Space::Lg);
+            let y = ((screen.h - height) / 2.0).max(pad(Space::Md));
+            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
+            measured.frame.y = y + pad(Space::Lg);
+            ui::paint(&measured, &ui::Scroll::new(), &mut self.batch, &screen, &mut self.text);
+
+            // The feedback field, at its measured place. Feedback is its own
+            // tier, always available, and its record says what it is: one
+            // playtest, at tentative confidence.
+            if let Some((field_top, field_hm)) = measured.region(field_index) {
+                let fy = y + pad(Space::Lg) + field_top;
+                hud::panel(
                     &mut self.batch,
                     &screen,
                     x + pad(Space::Lg),
-                    field_y + text_line * 2.0,
-                    Step::Small,
-                    Token::TextMuted,
-                    "Enter writes the record · Esc backs out without writing",
+                    fy,
+                    width - 2.0 * pad(Space::Lg),
+                    field_hm,
+                    if self.feedback_focus { Token::Ink } else { Token::Panel },
                 );
+                let inner_w = width - 2.0 * pad(Space::Lg) - 2.0 * pad(Space::Sm);
+                if self.feedback.is_empty() && !self.feedback_focus {
+                    self.text.draw_step(
+                        Face::Body,
+                        &mut self.batch,
+                        &screen,
+                        x + pad(Space::Lg) + pad(Space::Sm),
+                        fy + pad(Space::Sm),
+                        Step::Small,
+                        muted,
+                        "press F to type feedback; Enter saves it into playtest/ with this session attached",
+                    );
+                } else {
+                    let shown = hud::truncate(
+                        &mut self.text,
+                        Face::Body,
+                        &self.feedback,
+                        Step::Body,
+                        inner_w,
+                    );
+                    self.text.draw_step(
+                        Face::Body,
+                        &mut self.batch,
+                        &screen,
+                        x + pad(Space::Lg) + pad(Space::Sm),
+                        fy + pad(Space::Sm),
+                        Step::Body,
+                        hud::style(if self.feedback_focus { Token::TextOnInk } else { Token::TextBody })
+                            .text
+                            .unwrap_or(body_ink),
+                        &shown,
+                    );
+                }
             }
         }
 
         // ---- help / the stage's own test script -----------------------------
+        // Measured: the dialog's height is its content's height. The old 300
+        // px panel ran its last lines below its own border at 1x.
         if self.show_help {
             let width = 700.0 * ui.0;
-            let height = 300.0 * ui.0;
             let x = (screen.w - width) / 2.0;
-            let y = (screen.h - height) / 2.0;
-            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
+
             let lines = [
                 ("H", "close this panel"),
                 ("1 / 2 / 3 / 4 / 5", "road · zone · power · demolish · inspect"),
@@ -1775,92 +1737,71 @@ impl App {
                 ("Esc then U", "interface scale 100 / 125 / 150 / 200%"),
                 ("Esc then F", "leave feedback at any time; Enter writes it to playtest/C1/"),
             ];
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                y + pad(Space::Lg),
-                Step::Display,
-                Token::TextBody,
-                "C1 — sim core",
-            );
-            let mut ly = y + text_line * 2.0 + pad(Space::Sm);
+            let key_col = 148.0 * ui.0;
+            let mut help_blocks = vec![
+                Block::Line {
+                    face: Face::Body,
+                    step: Step::Display,
+                    text: "C1 — sim core".into(),
+                    color: body_ink,
+                },
+                Block::Gap(Space::Sm),
+            ];
             for (keys, what) in lines {
-                hud::label_mono(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    x + pad(Space::Lg),
-                    ly,
-                    Step::Small,
-                    Token::TextMuted,
-                    keys,
-                );
-                hud::label(
-                    &mut self.text,
-                    &mut self.batch,
-                    &screen,
-                    x + 160.0,
-                    ly,
-                    Step::Small,
-                    Token::TextBody,
-                    what,
-                );
-                ly += text_line;
+                help_blocks.push(Block::Keyed {
+                    key: keys.into(),
+                    text: what.into(),
+                    step: Step::Small,
+                    key_color: muted,
+                    text_color: body_ink,
+                    key_col,
+                });
             }
-            hud::rule(&mut self.batch, &screen, x + pad(Space::Lg), ly, width - 40.0, Token::TextMuted);
-            ly += pad(Space::Sm);
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                ly,
-                Step::Small,
-                Token::TextMuted,
-                "Everything you place files a ticket. The ticket closes only when the world",
-            );
-            hud::label(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                ly + pad(Space::Lg),
-                Step::Small,
-                Token::TextMuted,
-                "shows what it promised, or honestly as unverified when it does not.",
-            );
+            help_blocks.push(Block::Gap(Space::Sm));
+            help_blocks.push(Block::Rule);
+            help_blocks.push(Block::Gap(Space::Xs));
+            help_blocks.push(Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: "Everything you place files a ticket. The ticket closes only when the world".into(),
+                color: muted,
+            });
+            help_blocks.push(Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: "shows what it promised, or honestly as unverified when it does not.".into(),
+                color: muted,
+            });
+            help_blocks.push(Block::Gap(Space::Sm));
             let adapter = self
                 .gpu
                 .as_ref()
                 .map(|gpu| gpu.adapter_name.clone())
                 .unwrap_or_else(|| "no device".to_string());
-            let measured = format!(
-                "{} city quads · body text on panels measures {:.2}:1 — measured, not asserted",
-                self.world_batch.count(),
-                hud::measured_body_on_panel()
-            );
-            hud::label_mono(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                ly + text_line * 3.0 - pad(Space::Xs),
-                Step::Small,
-                Token::TextMuted,
-                &format!("rendering on {adapter}"),
-            );
-            hud::label_mono(
-                &mut self.text,
-                &mut self.batch,
-                &screen,
-                x + pad(Space::Lg),
-                ly + text_line * 2.0,
-                Step::Small,
-                Token::TextMuted,
-                &measured,
-            );
+            help_blocks.push(Block::Line {
+                face: Face::Mono,
+                step: Step::Small,
+                text: format!(
+                    "{} city quads · body text on panels measures {:.2}:1 — measured, not asserted",
+                    self.world_batch.count(),
+                    hud::measured_body_on_panel()
+                ),
+                color: muted,
+            });
+            help_blocks.push(Block::Line {
+                face: Face::Mono,
+                step: Step::Small,
+                text: format!("rendering on {adapter}"),
+                color: muted,
+            });
+
+            let help_frame = Frame::new(x + pad(Space::Lg), 0.0, width - 2.0 * pad(Space::Lg), screen.h);
+            let mut measured = ui::measure(&mut self.text, ui, &help_frame, &help_blocks);
+            let height = measured.content_height + 2.0 * pad(Space::Lg);
+            let y = ((screen.h - height) / 2.0).max(pad(Space::Md));
+            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
+            measured.frame.y = y + pad(Space::Lg);
+            ui::paint(&measured, &ui::Scroll::new(), &mut self.batch, &screen, &mut self.text);
         }
     }
 
@@ -2033,6 +1974,96 @@ impl App {
         }
         targets
     }
+
+    fn scroll_ledger(&mut self, pixels: f32) {
+        if !self.show_ledger || pixels == 0.0 {
+            return;
+        }
+        let screen = self.screen();
+        let (frame, blocks) = self.ledger_layout(&screen);
+        let ui = self.text.ui_scale();
+        let measured = ui::measure(&mut self.text, ui, &frame, &blocks);
+        self.ledger_scroll.scroll_by(pixels, &measured);
+    }
+
+    /// The ledger panel's content: frame and blocks. One copy, shared by the
+    /// draw pass and the wheel handler.
+    fn ledger_layout(&mut self, screen: &Screen) -> (Frame, Vec<Block>) {
+        let ui = self.text.ui_scale();
+        let pad = |space: Space| hud::space(space, ui);
+        let width = 470.0;
+        let lx = screen.w - width - pad(Space::Md);
+        let ly = pad(Space::Sm) * 2.0
+            + Step::Small.px(ui) as f32 * ui::LINE_ADVANCE_FACTOR
+            + pad(Space::Sm)
+            + pad(Space::Xs);
+        let lh = screen.bottom_anchor(160.0, 12.0) - ly;
+        let frame = Frame::new(
+            lx + pad(Space::Md),
+            ly + pad(Space::Sm),
+            width - 2.0 * pad(Space::Md),
+            lh - 2.0 * pad(Space::Sm),
+        );
+
+        let muted = hud::style(Token::TextMuted).text.unwrap_or([0.8; 4]);
+        let body_ink = hud::style(Token::TextBody).text.unwrap_or([1.0; 4]);
+        let (open, closed) = self.gov.counts();
+        let counts = format!(
+            "open {open}   terminal {closed}   evidence {}   corrections {}   refusals {}",
+            self.gov.evidence.len(),
+            self.gov.corrections.len(),
+            self.gov.denials
+        );
+        let mut blocks = vec![
+            Block::Line {
+                face: Face::Body,
+                step: Step::Body,
+                text: "Ticket ledger".into(),
+                color: body_ink,
+            },
+            Block::Line {
+                face: Face::Body,
+                step: Step::Small,
+                text: counts,
+                color: muted,
+            },
+            Block::Rule,
+            Block::Gap(Space::Xs),
+        ];
+        // Every ticket becomes a row. The old panel drew 22 and then
+        // silently stopped — a ledger whose older entries simply did not
+        // exist. The viewport, not a cap, decides what is visible.
+        for ticket in self.gov.ledger(usize::MAX) {
+            let line = format!("{}  {}", ticket.id, ticket.objective);
+            let clipped =
+                hud::truncate(&mut self.text, Face::Body, &line, Step::Small, width - 130.0);
+            let token = if ticket.is_closed() {
+                match ticket.terminal {
+                    Some(reason) if reason.is_validated() => Token::Verified,
+                    Some(ala_cities::gov::RetirementReason::CompletedButUnverified) => Token::Warning,
+                    Some(ala_cities::gov::RetirementReason::CompletedWithKnownRegression) => Token::Refused,
+                    Some(ala_cities::gov::RetirementReason::BlockedAndClosed) => Token::CaseOpen,
+                    _ => Token::NotObtained,
+                }
+            } else {
+                Token::TextBody
+            };
+            let closing = ticket.closing_line();
+            // Truncated before the Row block is built: the text atlas is
+            // borrowed mutably to build the string, and again to draw it,
+            // which cannot overlap.
+            let clipped_closing =
+                hud::truncate(&mut self.text, Face::Mono, &closing, Step::Small, 160.0);
+            blocks.push(Block::Row {
+                label: clipped,
+                value: clipped_closing,
+                step: Step::Small,
+                color: hud::style(token).text.unwrap_or(body_ink),
+                value_color: muted,
+            });
+        }
+        (frame, blocks)
+    }
 }
 
 /// Where the tool buttons live. One function, used by both the drawing code and
@@ -2191,11 +2222,22 @@ impl ApplicationHandler for App {
                 self.on_click(state == ElementState::Pressed, button);
             }
             WindowEvent::MouseWheel { delta, .. } => {
-                let factor = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => 1.0 + y * 0.1,
-                    MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y as f32 * 0.01,
-                };
-                self.camera.zoom_by(factor, self.cursor);
+                // The open ledger owns the wheel while it is visible — the
+                // only surface in the game that scrolls — and the camera
+                // never sees the event. Closed, the wheel zooms as before.
+                if self.show_ledger {
+                    let pixels = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => y * 40.0,
+                        MouseScrollDelta::PixelDelta(pos) => pos.y as f32,
+                    };
+                    self.scroll_ledger(pixels);
+                } else {
+                    let factor = match delta {
+                        MouseScrollDelta::LineDelta(_, y) => 1.0 + y * 0.1,
+                        MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y as f32 * 0.01,
+                    };
+                    self.camera.zoom_by(factor, self.cursor);
+                }
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 let text = event.text.as_ref().map(|t| t.to_string());
@@ -2213,6 +2255,8 @@ impl ApplicationHandler for App {
             _ => {}
         }
     }
+
+
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
         if let Some(gpu) = self.gpu.as_ref() {
