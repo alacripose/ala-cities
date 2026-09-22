@@ -1,1 +1,5 @@
-{"build":"0.1.0-dev","kind":"session.header","opened_wall_ms":1790071881555,"recording":true,"session":"session-1790071809856","stage":"C1"}
+{"build":"0.1.0-dev","kind":"session.header","opened_wall_ms":1790076910740,"recording":true,"session":"session-1790071809856","stage":"C1"}
+{"tick":87772,"wall_ms":1790076888931,"kind":"build_road","tool":"Road","screen":[1046.0,592.0],"tile":[106,137],"ticket":"BLD-000007","detail":"46 tiles, filed as BLD-000007"}
+{"tick":87799,"wall_ms":1790076890984,"kind":"build_road","tool":"Road","screen":[425.0,560.0],"tile":[106,137],"ticket":"BLD-000008","detail":"28 tiles, filed as BLD-000008"}
+{"tick":87833,"wall_ms":1790076893510,"kind":"build_road","tool":"Road","screen":[332.0,606.0],"tile":[93,122],"ticket":"BLD-000009","detail":"10 tiles, filed as BLD-000009"}
+{"tick":87901,"wall_ms":1790076898493,"kind":"zone","tool":"Zone","screen":[628.0,513.0],"tile":[94,127],"ticket":"BLD-000010","detail":"130 tiles as residential, filed as BLD-000010"}

@@ -1,0 +1,29 @@
+{
+  "id": "RET-000031",
+  "ticket": "BLD-000028",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "lay 13 tiles of road",
+  "completion_claim": "the world shows 9 tiles are road",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "all 13 tiles are road"
+    ],
+    "checks_run": [
+      "9 tiles are road"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000031"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 752,
+  "retired_by": "operator"
+}

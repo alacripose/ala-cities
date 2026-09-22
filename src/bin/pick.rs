@@ -1,20 +1,21 @@
-//! The review picker: three generations of one icon, and what to change next.
+//! The review picker: six explicit pilot concepts of one icon, and what to change next.
 //!
 //! Run it after the icon pipeline has rendered a review set:
 //!
 //!     cargo run --release --bin pick
 //!
-//! What it shows, side by side, is the **same icon drawn three ways** — the
-//! declared generations from `tools/icons/shapes.py`: as authored, bold, and
-//! detailed. Each candidate is drawn at the largest shipped size, whole-number
-//! scaled so no filter invents pixels, with the *smallest* shipped size beside it,
+//! What it shows is the **same icon drawn six authored ways in a 2x3 grid** — the
+//! declared candidates from `tools/icons/shapes.py`: one canonical and five
+//! explicit alternate recipes. Each candidate is drawn at the largest shipped
+//! size, whole-number scaled so no filter invents pixels, with 32px recognition
+//! and the *smallest* shipped size beside it,
 //! because a choice that dies at 24 px should be seen to die while it is being made.
 //! Every candidate sits on a surface the icon **declares** — painted in that
 //! surface's own token colour, read out of `review.json` rather than retyped here.
 //!
 //! Two controls, and both are the point of the tool:
 //!
-//! * a **checkbox per generation** — check one, press Enter, and that generation
+//! * a **checkbox per candidate** — check one, press Enter, and that candidate
 //!   becomes the icon's target: the one the pipeline promotes into the shipping
 //!   set. Nothing ships that a person has not checked. A checkbox, not a radio
 //!   button, because *none of these* has to be reachable;
@@ -68,6 +69,8 @@ use render::{Batcher, Face, Screen, Text};
 const REVIEW_JSON: &str = "assets/icons/review.json";
 const DECISIONS: &str = "assets/icons/review-decisions.jsonl";
 const ASSETS: &str = "assets/icons";
+const AUTHORING_PHASE: &str = "icon-authoring-review";
+const CANDIDATE_COUNT: usize = 6;
 
 /// Whole pixels of window per pixel of icon, so the window shows the rendered
 /// pixels and not a resampling of them.
@@ -82,7 +85,7 @@ fn main() {
             eprintln!("{err}");
             eprintln!(
                 "render the review set first:\n  blender --background --factory-startup \
-                 --python tools/icons/generate.py -- --review surface"
+                 --python tools/icons/generate.py -- --review stage-1"
             );
             std::process::exit(1);
         }
@@ -96,6 +99,15 @@ fn main() {
     if review.icons.is_empty() {
         println!("nothing to review: every icon in the inventory has a decided target.");
         return;
+    }
+
+    let review_defects = review_defects(&review);
+    if !review_defects.is_empty() {
+        eprintln!("the icon-authoring review set is invalid:");
+        for defect in &review_defects {
+            eprintln!("  - {defect}");
+        }
+        std::process::exit(1);
     }
 
     // The gate first, on this tool's own controls: a review surface that ignores
@@ -154,7 +166,9 @@ fn controls() -> Vec<design::Target> {
 
 #[derive(Debug)]
 struct Review {
+    concept_set: String,
     decision_px: f32,
+    recognition_px: f32,
     context_px: f32,
     fills: HashMap<String, [f32; 4]>,
     host_fills: HashMap<String, [f32; 4]>,
@@ -175,6 +189,9 @@ struct Icon {
     /// Comments the pipeline already carries forward for this icon.
     directives: Vec<String>,
     generations: Vec<Generation>,
+    brief: Value,
+    lineage: Vec<String>,
+    forbidden_readings: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -183,9 +200,12 @@ struct Generation {
     label: String,
     why: String,
     sharp: PathBuf,
+    recognition: PathBuf,
     context: PathBuf,
     measurements: Value,
     checks: Value,
+    gate: Value,
+    brief: Value,
 }
 
 fn load_review() -> Result<Review, String> {
@@ -246,9 +266,12 @@ fn load_review() -> Result<Review, String> {
                 label: string(generation, "label"),
                 why: string(generation, "why"),
                 sharp: Path::new(ASSETS).join(string(&files, "raw")),
+                recognition: Path::new(ASSETS).join(string(&files, "recognition_raw")),
                 context: Path::new(ASSETS).join(string(&files, "context_raw")),
                 measurements: generation.get("measurements").cloned().unwrap_or(Value::Null),
                 checks: generation.get("checks").cloned().unwrap_or(Value::Null),
+                gate: generation.get("selection_notes").cloned().unwrap_or(Value::Array(Vec::new())),
+                brief: generation.get("brief").cloned().unwrap_or(Value::Null),
             });
         }
         if generations.is_empty() {
@@ -271,6 +294,9 @@ fn load_review() -> Result<Review, String> {
                 .unwrap_or_default(),
             identity: entry.get("identity").and_then(Value::as_str).map(str::to_string),
             identity_as: string(entry, "identity_as"),
+            brief: entry.get("brief").cloned().unwrap_or(Value::Null),
+            lineage: strings(entry.get("lineage")),
+            forbidden_readings: strings(entry.get("forbidden_readings")),
             directives,
             generations,
         });
@@ -279,7 +305,9 @@ fn load_review() -> Result<Review, String> {
     let blender = root.get("blender").cloned().unwrap_or(Value::Null);
     let palette_hash = string(&root, "palette_hash");
     Ok(Review {
+        concept_set: string(&root, "concept_set"),
         decision_px: number(&root, "decision_size_px"),
+        recognition_px: number(&root, "recognition_size_px"),
         context_px: number(&root, "context_size_px"),
         fills: colour_map("fills"),
         host_fills: colour_map("host_fills"),
@@ -297,9 +325,73 @@ fn string(value: &Value, key: &str) -> String {
     value.get(key).and_then(Value::as_str).unwrap_or_default().to_string()
 }
 
+fn strings(value: Option<&Value>) -> Vec<String> {
+    value.and_then(Value::as_array)
+        .map(|list| list.iter().filter_map(Value::as_str).map(str::to_string).collect())
+        .unwrap_or_default()
+}
+
 fn rgba(value: &Value) -> [f32; 4] {
     let channel = |index: usize| value.get(index).and_then(Value::as_f64).unwrap_or(0.0) as f32;
     [channel(0), channel(1), channel(2), 1.0]
+}
+
+/// Validate the authoring hand-off before opening a window. A malformed manifest
+/// must refuse here instead of turning into a missing texture, an out-of-bounds
+/// generation, or a misleading blank candidate in the review phase.
+fn review_defects(review: &Review) -> Vec<String> {
+    let mut defects = Vec::new();
+    if review.concept_set.is_empty() {
+        defects.push("review.json has no concept_set; refusing unversioned targets".to_string());
+    }
+    if review.decision_px <= 0.0 || review.recognition_px <= 0.0 || review.context_px <= 0.0 {
+        defects.push("decision, recognition, and context sizes must be positive".to_string());
+    }
+    for icon in &review.icons {
+        if icon.generations.len() != CANDIDATE_COUNT {
+            defects.push(format!(
+                "icon `{}` declares {} candidates; the pilot review requires exactly {}",
+                icon.id, icon.generations.len(), CANDIDATE_COUNT
+            ));
+        }
+        if icon.brief.is_null() || icon.lineage.is_empty() || icon.forbidden_readings.is_empty() {
+            defects.push(format!("icon `{}` is missing its full brief, lineage, or forbidden readings", icon.id));
+        }
+        if icon.sits_on.is_empty() {
+            defects.push(format!("icon `{}` declares no host surface", icon.id));
+        }
+        for generation in &icon.generations {
+            for (label, path, expected) in [
+                ("decision", &generation.sharp, review.decision_px),
+                ("recognition", &generation.recognition, review.recognition_px),
+                ("context", &generation.context, review.context_px),
+            ] {
+                let expected_bytes = (expected as usize)
+                    .saturating_mul(expected as usize)
+                    .saturating_mul(4);
+                match std::fs::metadata(path) {
+                    Ok(metadata) if metadata.len() == expected_bytes as u64 => {}
+                    Ok(metadata) => defects.push(format!(
+                        "{} `{}` for {} is {} bytes; expected {}x{} RGBA8 ({})",
+                        label,
+                        path.display(),
+                        icon.id,
+                        metadata.len(),
+                        expected,
+                        expected,
+                        expected_bytes
+                    )),
+                    Err(err) => defects.push(format!(
+                        "{} `{}` for {} cannot be read: {err}",
+                        label,
+                        path.display(),
+                        icon.id
+                    )),
+                }
+            }
+        }
+    }
+    defects
 }
 
 impl Review {
@@ -325,9 +417,10 @@ impl Review {
     fn header(&self) -> String {
         let short = &self.palette_hash[..8.min(self.palette_hash.len())];
         format!(
-            "\n{} icon(s) awaiting a decision · decision size {} px · context {} px\n\
+            "\n{} icon(s) awaiting a decision · six candidates · decision size {} px · context {} px\n\
              rendered by {} · palette {short}\n\n\
-             check a generation and press Enter to make it the target · type in the \
+             concept set: {} · phase: {AUTHORING_PHASE}\n\
+             check a candidate and press Enter to make it the target · type in the \
              comment box to say what the next generation should change\n\
              a comment is recorded with or without a target, and only a checked \
              generation is promoted into the shipping set\n\
@@ -335,6 +428,7 @@ impl Review {
             self.icons.len(),
             self.decision_px,
             self.context_px,
+            self.concept_set,
             self.blender,
         )
     }
@@ -358,6 +452,9 @@ impl Generation {
                 .and_then(Value::as_f64)
                 .unwrap_or_default()
         };
+        if let Some(role) = self.brief.get("candidate_role").and_then(Value::as_str) {
+            parts.push(format!("role {role}"));
+        }
         parts.push(format!(
             "cover 24 {:.2} / {} {:.2}",
             coverage("24"),
@@ -424,9 +521,12 @@ fn record(
         "generation_why": generation.map(|g| g.why.clone()),
         "target": target,
         "comment": shaped_comment,
-        "at_unix_seconds": now,
-        "by": "ala-cities pick",
-        "build": {
+        "at_unix_seconds": now,        "by": "ala-cities pick",
+        "phase": AUTHORING_PHASE,
+        "concept_set": review.concept_set,
+        "concept_set": review.concept_set,
+            "concept_set": review.concept_set,
+            "build": {
             "blender": review.blender,
             "palette_hash": review.palette_hash,
             "decision_size_px": review.decision_px,
@@ -455,7 +555,7 @@ fn record(
 /// Every comment recorded for an icon, oldest first, from the picker's own log — so
 /// the comments shown next to an icon include the newest ones even before the
 /// pipeline has re-read them.
-fn read_directives(path: &Path) -> HashMap<String, Vec<String>> {
+fn read_directives(path: &Path, concept_set: &str) -> HashMap<String, Vec<String>> {
     let mut out: HashMap<String, Vec<String>> = HashMap::new();
     let Ok(text) = std::fs::read_to_string(path) else {
         return out;
@@ -467,6 +567,9 @@ fn read_directives(path: &Path) -> HashMap<String, Vec<String>> {
         let Some(icon) = record.get("icon").and_then(Value::as_str) else {
             continue;
         };
+        if record.get("concept_set").and_then(Value::as_str) != Some(concept_set) {
+            continue;
+        }
         if let Some(comment) = record.get("comment").and_then(Value::as_str) {
             out.entry(icon.to_string()).or_default().push(comment.to_string());
         }
@@ -513,14 +616,17 @@ impl Layout {
         let tile = (review.decision_px * DECISION_ZOOM).round();
         let context = (review.context_px * CONTEXT_ZOOM).round();
         let gap = Space::Xl.px(ui);
-        let columns = 3.0_f32.max(review.icons.first().map(|i| i.generations.len()).unwrap_or(3) as f32);
+        let columns = 3.0_f32.min(review.icons.first().map(|i| i.generations.len()).unwrap_or(CANDIDATE_COUNT) as f32);
         let row_width = columns * tile + (columns - 1.0) * gap;
         let left = ((width - row_width) / 2.0).max(margin);
         let tile_top = margin + header + Space::Lg.px(ui);
         let checkbox_top = tile_top + tile + Space::Sm.px(ui);
         let checkbox_h = design::MIN_TARGET_PX * ui.0;
         let context_top = checkbox_top + checkbox_h + Space::Xl.px(ui);
-        let comment_top = context_top + context + Space::Xl.px(ui) + small_h + Space::Md.px(ui);
+        let row_step = tile + Space::Sm.px(ui) + checkbox_h + Space::Xl.px(ui)
+            + context + Space::Xl.px(ui) + small_h + Space::Lg.px(ui);
+        let comment_top = context_top + context + Space::Xl.px(ui) + small_h + Space::Md.px(ui)
+            + row_step;
         let comment_h = design::MIN_TARGET_PX * ui.0;
         let hint_top = comment_top + comment_h + Space::Sm.px(ui);
         Self {
@@ -546,7 +652,23 @@ impl Layout {
     }
 
     fn column_x(&self, position: usize) -> f32 {
-        self.left + position as f32 * (self.tile + self.gap)
+        self.left + (position % 3) as f32 * (self.tile + self.gap)
+    }
+
+    fn row_offset(&self, position: usize) -> f32 {
+        (position / 3) as f32 * (self.comment_top - self.context_top + self.context + Space::Xl.px(UiScale::default()))
+    }
+
+    fn tile_y(&self, position: usize) -> f32 {
+        self.tile_top + self.row_offset(position)
+    }
+
+    fn checkbox_y(&self, position: usize) -> f32 {
+        self.checkbox_top + self.row_offset(position)
+    }
+
+    fn context_y(&self, position: usize) -> f32 {
+        self.context_top + self.row_offset(position)
     }
 
     fn context_x(&self, position: usize) -> f32 {
@@ -575,7 +697,7 @@ struct Picker {
     ui: UiScale,
     text: Text,
     icon_index: usize,
-    /// The checked generation, if any. A checkbox, so it can be unchecked: "none of
+    /// The checked concept, if any. A checkbox, so it can be unchecked: "none of
     /// these" has to be reachable without leaving the tool.
     checked: Option<usize>,
     comment: String,
@@ -596,7 +718,7 @@ impl Picker {
         let mut text = Text::new();
         text.set_ui_scale(UiScale::default());
         let fonts_ok = !text.missing_font;
-        let directives = read_directives(Path::new(DECISIONS));
+        let directives = read_directives(Path::new(DECISIONS), &review.concept_set);
         Self {
             review,
             window: None,
@@ -649,10 +771,10 @@ impl Picker {
         let comment = self.comment.trim().to_string();
         let checked = self.checked;
         if checked.is_none() && comment.is_empty() {
-            println!("nothing to record on {}: check a generation or type a comment", icon.id);
+            println!(            "nothing to record on {}: check a concept or type a comment", icon.id);
             return;
         }
-        let position = checked.unwrap_or(0);
+        let position = checked.unwrap_or(0).min(icon.generations.len().saturating_sub(1));
         let line = record(
             &self.review,
             &icon,
@@ -710,6 +832,23 @@ impl Picker {
     /// The checkbox: checking one unchecks the others, and checking the checked one
     /// again unchecks it, so "none of these" is always reachable.
     fn toggle(&mut self, position: usize) {
+        if position >= self.icon().generations.len() {
+            return;
+        }
+        let generation = &self.icon().generations[position];
+        if generation
+            .gate
+            .as_array()
+            .map(|notes| !notes.is_empty())
+            .unwrap_or(false)
+        {
+            self.last = Some(format!(
+                "{} · {} is not selectable until its checks pass",
+                self.icon().id,
+                generation.label
+            ));
+            return;
+        }
         self.focus = Focus::None;
         self.checked = if self.checked == Some(position) {
             None
@@ -735,6 +874,9 @@ impl Picker {
             KeyCode::Digit1 | KeyCode::KeyA => self.toggle(0),
             KeyCode::Digit2 | KeyCode::KeyB => self.toggle(1),
             KeyCode::Digit3 | KeyCode::KeyC => self.toggle(2),
+            KeyCode::Digit4 => self.toggle(3),
+            KeyCode::Digit5 => self.toggle(4),
+            KeyCode::Digit6 => self.toggle(5),
             KeyCode::Tab => self.focus = Focus::Comment,
             KeyCode::Enter => self.record_and_advance(),
             KeyCode::KeyS | KeyCode::KeyN => self.step(1),
@@ -781,8 +923,18 @@ impl Picker {
             icon.identity.clone().unwrap_or_else(|| "—".into()),
             icon.identity_as,
         );
+        println!("    lineage: {} · forbidden readings: {}", icon.lineage.join(" / "), icon.forbidden_readings.join(" / "));
+        if let Some(cues) = icon.brief.get("semantic_cues").and_then(Value::as_array) {
+            println!("    doctrine chips: Meaning=present · Silhouette={} cue(s) · Lineage={} · Material={} · Authority=guarded · Motion=metadata · Fallback=present",
+                cues.len(), icon.lineage.len(), icon.brief.get("material_family").and_then(Value::as_str).unwrap_or("declared"));
+        }
         for (position, generation) in icon.generations.iter().enumerate() {
-            let mark = if Some(position) == self.checked { "☑" } else { "☐" };
+            let blocked = icon.generations[position]
+                .gate
+                .as_array()
+                .map(|notes| !notes.is_empty())
+                .unwrap_or(false);
+            let mark = if blocked { "⊘" } else if Some(position) == self.checked { "☑" } else { "☐" };
             let highlight = if Some(position) == self.hover { "▶" } else { " " };
             println!(
                 " {highlight}{mark} {}. {} — {}\n      {}\n      {}",
@@ -938,8 +1090,8 @@ fn hit_checkbox(icon: &Icon, layout: &Layout, cursor: (f32, f32)) -> Option<usiz
         let x = layout.column_x(position);
         if cursor.0 >= x
             && cursor.0 <= x + layout.tile
-            && cursor.1 >= layout.checkbox_top
-            && cursor.1 <= layout.checkbox_top + layout.checkbox_h
+            && cursor.1 >= layout.checkbox_y(position)
+            && cursor.1 <= layout.checkbox_y(position) + layout.checkbox_h
         {
             return Some(position);
         }
@@ -952,8 +1104,8 @@ fn hit_tile(icon: &Icon, layout: &Layout, cursor: (f32, f32)) -> Option<usize> {
         let x = layout.column_x(position);
         if cursor.0 >= x
             && cursor.0 <= x + layout.tile
-            && cursor.1 >= layout.tile_top
-            && cursor.1 <= layout.tile_top + layout.tile
+            && cursor.1 >= layout.tile_y(position)
+            && cursor.1 <= layout.tile_y(position) + layout.tile
         {
             return Some(position);
         }
@@ -1281,7 +1433,8 @@ impl Gpu {
         for (position, generation) in icon.generations.iter().enumerate() {
             for (kind, path, px) in [
                 (0u8, &generation.sharp, review.decision_px),
-                (1u8, &generation.context, review.context_px),
+                (1u8, &generation.recognition, review.recognition_px),
+                (2u8, &generation.context, review.context_px),
             ] {
                 let key: ImageKey = (icon.id.clone(), position, kind);
                 if self.image_bind.contains_key(&key) {
@@ -1382,7 +1535,7 @@ impl Gpu {
             batch.screen_rect(
                 &screen,
                 x,
-                layout.tile_top,
+                layout.tile_y(position),
                 layout.tile,
                 layout.tile,
                 host,
@@ -1392,7 +1545,7 @@ impl Gpu {
                 batch.screen_outline(
                     &screen,
                     x - 2.0,
-                    layout.tile_top - 2.0,
+                    layout.tile_y(position) - 2.0,
                     layout.tile + 4.0,
                     layout.tile + 4.0,
                     active,
@@ -1400,7 +1553,7 @@ impl Gpu {
                 batch.screen_outline(
                     &screen,
                     x - 3.0,
-                    layout.tile_top - 3.0,
+                    layout.tile_y(position) - 3.0,
                     layout.tile + 6.0,
                     layout.tile + 6.0,
                     active,
@@ -1409,7 +1562,7 @@ impl Gpu {
                 batch.screen_outline(
                     &screen,
                     x - 2.0,
-                    layout.tile_top - 2.0,
+                    layout.tile_y(position) - 2.0,
                     layout.tile + 4.0,
                     layout.tile + 4.0,
                     marker,
@@ -1422,15 +1575,26 @@ impl Gpu {
         for position in 0..icon.generations.len() {
             let x = layout.column_x(position);
             let box_x = x + Space::Sm.px(ui);
-            let box_y = layout.checkbox_top + (layout.checkbox_h - layout.checkbox_box) / 2.0;
+            let box_y = layout.checkbox_y(position) + (layout.checkbox_h - layout.checkbox_box) / 2.0;
             let is_checked = Some(position) == checked;
+            let blocked = icon.generations[position]
+                .gate
+                .as_array()
+                .map(|notes| !notes.is_empty())
+                .unwrap_or(false);
             batch.screen_outline(
                 &screen,
                 box_x,
                 box_y,
                 layout.checkbox_box,
                 layout.checkbox_box,
-                if is_checked { active } else { ink },
+                if blocked {
+                    muted
+                } else if is_checked {
+                    active
+                } else {
+                    ink
+                },
             );
             if is_checked {
                 let inset = (layout.checkbox_box * 0.28).round();
@@ -1449,10 +1613,21 @@ impl Gpu {
                 &mut batch,
                 &screen,
                 box_x + layout.checkbox_box + Space::Sm.px(ui),
-                layout.checkbox_top + (layout.checkbox_h - layout.body_h) / 2.0,
+                layout.checkbox_y(position) + (layout.checkbox_h - layout.body_h) / 2.0,
                 Step::Body,
-                if is_checked { ink } else { muted },
-                &format!("{} · {}", icon.generations[position].label, icon.generations[position].facts()),
+                if blocked {
+                    muted
+                } else if is_checked {
+                    ink
+                } else {
+                    muted
+                },
+                &format!(
+                    "{}{} · {}",
+                    if blocked { "blocked: " } else { "" },
+                    icon.generations[position].label,
+                    icon.generations[position].facts()
+                ),
             );
         }
 
@@ -1462,7 +1637,7 @@ impl Gpu {
             batch.screen_rect(
                 &screen,
                 layout.context_x(position),
-                layout.context_top,
+                layout.context_y(position),
                 layout.context,
                 layout.context,
                 host,
@@ -1473,7 +1648,7 @@ impl Gpu {
                 &mut batch,
                 &screen,
                 layout.column_x(position),
-                layout.context_top + layout.context + Space::Xs.px(ui),
+                layout.context_y(position) + layout.context + Space::Xs.px(ui),
                 Step::Small,
                 muted,
                 &format!(
@@ -1567,11 +1742,11 @@ impl Gpu {
         let mut images: Vec<(usize, render::Instance)> = Vec::new();
         for position in 0..icon.generations.len() {
             for (kind, x, y, side) in [
-                (0u8, layout.column_x(position), layout.tile_top, layout.tile),
+                (0u8, layout.column_x(position), layout.tile_y(position), layout.tile),
                 (
-                    1u8,
+                    2u8,
                     layout.context_x(position),
-                    layout.context_top,
+                    layout.context_y(position),
                     layout.context,
                 ),
             ] {
@@ -1836,12 +2011,13 @@ fn load_image(
 // ---------------------------------------------------------------------------
 
 fn selftest(review: &Review) {
-    println!("selftest: {} icon(s) awaiting a decision", review.icons.len());
+    println!("selftest: phase={AUTHORING_PHASE}; {} icon(s) awaiting a decision", review.icons.len());
     if review.icons.is_empty() {
         println!("selftest: nothing to decide, so nothing to check");
         return;
     }
     let icon = &review.icons[0];
+    assert!(review_defects(review).is_empty(), "review assets must validate before authoring");
 
     let path = PathBuf::from("target/pick-selftest.jsonl");
     let _ = std::fs::remove_file(&path);
@@ -1874,7 +2050,7 @@ fn selftest(review: &Review) {
         Some("none of these — try a squarer body")
     );
 
-    let directives = read_directives(&path);
+    let directives = read_directives(&path, &review.concept_set);
     let for_icon = directives
         .get(&icon.id)
         .expect("both comments are directives for the icon");
@@ -1883,6 +2059,7 @@ fn selftest(review: &Review) {
     for generation in &icon.generations {
         for (path, px) in [
             (&generation.sharp, review.decision_px),
+            (&generation.recognition, review.recognition_px),
             (&generation.context, review.context_px),
         ] {
             let bytes = std::fs::read(path).unwrap_or_default();
@@ -1899,7 +2076,6 @@ fn selftest(review: &Review) {
     println!(
         "selftest: a mark and a note are both written and read back, {} directive(s) \
          recovered, {} image(s) at the declared sizes, layout targets verified at startup",
-        for_icon.len(),
-        icon.generations.len() * 2
+        for_icon.len(),            icon.generations.len() * 3
     );
 }

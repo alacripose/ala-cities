@@ -1,0 +1,35 @@
+{
+  "id": "BLD-000033",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "lay 11 tiles of road",
+  "gate": "all 11 tiles are road",
+  "opened_tick": 916,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "RoadTiles": [
+      34151,
+      34407,
+      34663,
+      34919,
+      35431,
+      35687,
+      36199,
+      36455
+    ]
+  },
+  "roads_before": [
+    35175,
+    35943,
+    36711
+  ],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

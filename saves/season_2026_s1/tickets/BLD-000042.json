@@ -1,0 +1,25 @@
+{
+  "id": "BLD-000042",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "lay 2 tiles of road",
+  "gate": "all 2 tiles are road",
+  "opened_tick": 2506,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "RoadTiles": [
+      40575,
+      40576
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

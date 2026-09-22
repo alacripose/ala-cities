@@ -1,0 +1,29 @@
+{
+  "id": "RET-000021",
+  "ticket": "BLD-000018",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "zone 144 tiles industrial",
+  "completion_claim": "the world shows 144 tiles carry the zone set",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "all 144 tiles carry the zone set"
+    ],
+    "checks_run": [
+      "144 tiles carry the zone set"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000021"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 344,
+  "retired_by": "operator"
+}

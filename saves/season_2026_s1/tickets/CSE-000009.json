@@ -1,0 +1,20 @@
+{
+  "id": "CSE-000009",
+  "contract": "CTR-CITY-0001",
+  "kind": "Case",
+  "status": "Open",
+  "objective": "district 35: 8 residents commute more than 24 tiles; the road network does not connect where people live to where they work",
+  "gate": "the residents' condition improves, read from the world",
+  "opened_tick": 1360,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": "d35:long_commute",
+  "count": 8,
+  "expectation": "None",
+  "roads_before": [],
+  "evidence": [],
+  "actor": "sim",
+  "corrected": null
+}

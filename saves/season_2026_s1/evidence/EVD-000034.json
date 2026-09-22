@@ -1,0 +1,8 @@
+{
+  "id": "EVD-000034",
+  "ticket": "BLD-000031",
+  "grade": "B",
+  "kind": "world_read_back",
+  "detail": "read back from world state at tick 852: 9 tiles are road",
+  "tick": 852
+}

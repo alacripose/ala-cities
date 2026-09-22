@@ -1,0 +1,8 @@
+{
+  "id": "EVD-000025",
+  "ticket": "BLD-000022",
+  "grade": "B",
+  "kind": "world_read_back",
+  "detail": "read back from world state at tick 392: a structure stands on tile 36978",
+  "tick": 392
+}

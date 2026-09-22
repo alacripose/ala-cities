@@ -1,0 +1,27 @@
+{
+  "id": "RET-000052",
+  "ticket": "CSE-000011",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "blocked_and_closed",
+  "objective": "district 35: 338 residents have no job within reach",
+  "completion_claim": "unresolved after 31s: the condition this case describes is still present. Closed rather than left open forever; if it still holds, a new case will be filed that references this one.",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "the residents' condition improves, read from the world"
+    ],
+    "checks_run": [
+      "no world expectation (nothing to read back)"
+    ],
+    "passed": false,
+    "regressions_detected": false
+  },
+  "evidence": [],
+  "governor_version": 3,
+  "retired_at_tick": 2340,
+  "retired_by": "operator"
+}

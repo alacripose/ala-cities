@@ -1,0 +1,27 @@
+{
+  "id": "BLD-000015",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 1 tiles residential",
+  "gate": "all 1 tiles carry the zone set",
+  "opened_tick": 233,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        30299,
+        "Residential"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}
