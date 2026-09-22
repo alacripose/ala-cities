@@ -8,11 +8,6 @@
 //! renderer runs uncapped so a 240 Hz panel is actually fed. Agents are drawn by
 //! the *work they have completed*, never by a frame clock.
 
-mod design;
-mod hud;
-mod render;
-mod ui;
-
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -29,9 +24,13 @@ use ala_cities::session::{write_feedback, Interaction, Session};
 use ala_cities::sim::citizen::CitizenState;
 use ala_cities::sim::{BuildingKind, Terrain, World, Zone, DAYS_PER_MONTH, SIM_HZ, TICKS_PER_DAY};
 
-use design::{Space, Step, Target, UiScale};
-use hud::Token;
-use render::{Batcher, Camera, Face, Gpu, Layer, Screen, Text, WorldBatch, LEVEL_HEIGHT, TILE};
+use ala_cities::design::{self, Space, Step, Target, UiScale};
+use ala_cities::hud::{self, Token};
+use ala_cities::render::{
+    self, Batcher, Camera, Face, Gpu, Layer, Screen, Text, WorldBatch, LEVEL_HEIGHT, TILE,
+};
+#[allow(unused_imports)]
+use ala_cities::ui;
 
 const STAGE: &str = "C1";
 const MAP: u32 = 256;
