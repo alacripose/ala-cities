@@ -1,0 +1,119 @@
+{
+  "id": "BLD-000067",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 24 tiles commercial",
+  "gate": "all 24 tiles carry the zone set",
+  "opened_tick": 548,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        31617,
+        "Commercial"
+      ],
+      [
+        31618,
+        "Commercial"
+      ],
+      [
+        31873,
+        "Commercial"
+      ],
+      [
+        31874,
+        "Commercial"
+      ],
+      [
+        32129,
+        "Commercial"
+      ],
+      [
+        32130,
+        "Commercial"
+      ],
+      [
+        32385,
+        "Commercial"
+      ],
+      [
+        32386,
+        "Commercial"
+      ],
+      [
+        32897,
+        "Commercial"
+      ],
+      [
+        32898,
+        "Commercial"
+      ],
+      [
+        33153,
+        "Commercial"
+      ],
+      [
+        33154,
+        "Commercial"
+      ],
+      [
+        33665,
+        "Commercial"
+      ],
+      [
+        33666,
+        "Commercial"
+      ],
+      [
+        33921,
+        "Commercial"
+      ],
+      [
+        33922,
+        "Commercial"
+      ],
+      [
+        34433,
+        "Commercial"
+      ],
+      [
+        34434,
+        "Commercial"
+      ],
+      [
+        34689,
+        "Commercial"
+      ],
+      [
+        34690,
+        "Commercial"
+      ],
+      [
+        35201,
+        "Commercial"
+      ],
+      [
+        35202,
+        "Commercial"
+      ],
+      [
+        35457,
+        "Commercial"
+      ],
+      [
+        35458,
+        "Commercial"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

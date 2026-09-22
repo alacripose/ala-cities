@@ -1,0 +1,29 @@
+{
+  "id": "RET-000098",
+  "ticket": "CSE-000019",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "district 28: 8 zoned tiles have no power; growth has stopped on them",
+  "completion_claim": "the condition this case described is no longer present in the world",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "the residents' condition improves, read from the world"
+    ],
+    "checks_run": [
+      "no world expectation (nothing to read back)"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000089"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 1120,
+  "retired_by": "operator"
+}

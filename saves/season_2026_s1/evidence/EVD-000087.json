@@ -1,0 +1,8 @@
+{
+  "id": "EVD-000087",
+  "ticket": "INT-000001",
+  "grade": "B",
+  "kind": "world_read_back",
+  "detail": "read back from world state at tick 972: tile 35468 is clear",
+  "tick": 972
+}

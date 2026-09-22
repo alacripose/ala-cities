@@ -1,0 +1,215 @@
+{
+  "id": "BLD-000073",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 48 tiles residential",
+  "gate": "all 48 tiles carry the zone set",
+  "opened_tick": 746,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        31627,
+        "Residential"
+      ],
+      [
+        31628,
+        "Residential"
+      ],
+      [
+        31629,
+        "Residential"
+      ],
+      [
+        31883,
+        "Residential"
+      ],
+      [
+        31884,
+        "Residential"
+      ],
+      [
+        31885,
+        "Residential"
+      ],
+      [
+        32139,
+        "Residential"
+      ],
+      [
+        32140,
+        "Residential"
+      ],
+      [
+        32141,
+        "Residential"
+      ],
+      [
+        32395,
+        "Residential"
+      ],
+      [
+        32396,
+        "Residential"
+      ],
+      [
+        32397,
+        "Residential"
+      ],
+      [
+        32651,
+        "Residential"
+      ],
+      [
+        32652,
+        "Residential"
+      ],
+      [
+        32653,
+        "Residential"
+      ],
+      [
+        32907,
+        "Residential"
+      ],
+      [
+        32908,
+        "Residential"
+      ],
+      [
+        32909,
+        "Residential"
+      ],
+      [
+        33163,
+        "Residential"
+      ],
+      [
+        33164,
+        "Residential"
+      ],
+      [
+        33165,
+        "Residential"
+      ],
+      [
+        33419,
+        "Residential"
+      ],
+      [
+        33420,
+        "Residential"
+      ],
+      [
+        33421,
+        "Residential"
+      ],
+      [
+        33675,
+        "Residential"
+      ],
+      [
+        33676,
+        "Residential"
+      ],
+      [
+        33677,
+        "Residential"
+      ],
+      [
+        33931,
+        "Residential"
+      ],
+      [
+        33932,
+        "Residential"
+      ],
+      [
+        33933,
+        "Residential"
+      ],
+      [
+        34187,
+        "Residential"
+      ],
+      [
+        34188,
+        "Residential"
+      ],
+      [
+        34189,
+        "Residential"
+      ],
+      [
+        34443,
+        "Residential"
+      ],
+      [
+        34444,
+        "Residential"
+      ],
+      [
+        34445,
+        "Residential"
+      ],
+      [
+        34699,
+        "Residential"
+      ],
+      [
+        34700,
+        "Residential"
+      ],
+      [
+        34701,
+        "Residential"
+      ],
+      [
+        34955,
+        "Residential"
+      ],
+      [
+        34956,
+        "Residential"
+      ],
+      [
+        34957,
+        "Residential"
+      ],
+      [
+        35211,
+        "Residential"
+      ],
+      [
+        35212,
+        "Residential"
+      ],
+      [
+        35213,
+        "Residential"
+      ],
+      [
+        35467,
+        "Residential"
+      ],
+      [
+        35468,
+        "Residential"
+      ],
+      [
+        35469,
+        "Residential"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

@@ -1,0 +1,20 @@
+{
+  "id": "CSE-000027",
+  "contract": "CTR-CITY-0001",
+  "kind": "Case",
+  "status": "Open",
+  "objective": "district 35: 152 residents have no job within reach",
+  "gate": "the residents' condition improves, read from the world",
+  "opened_tick": 1520,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": "d35:jobless",
+  "count": 152,
+  "expectation": "None",
+  "roads_before": [],
+  "evidence": [],
+  "actor": "sim",
+  "corrected": null
+}

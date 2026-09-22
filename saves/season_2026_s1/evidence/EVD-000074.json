@@ -1,0 +1,8 @@
+{
+  "id": "EVD-000074",
+  "ticket": "BLD-000067",
+  "grade": "B",
+  "kind": "world_read_back",
+  "detail": "read back from world state at tick 552: 24 tiles carry the zone set",
+  "tick": 552
+}

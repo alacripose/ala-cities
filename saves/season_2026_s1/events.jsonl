@@ -327,3 +327,212 @@
 {"detail":"CSE-000016 — district 26: 24 residents have no job within reach","kind":"case.updated","sim_seconds":160.0,"tick":3200}
 {"detail":"CSE-000015 — district 35: 332 residents have no job within reach","kind":"case.updated","sim_seconds":160.0,"tick":3200}
 {"detail":"CSE-000014 — district 35: 8 residents commute more than 24 tiles; the road network does not connect where people live to where they work","kind":"case.updated","sim_seconds":160.0,"tick":3200}
+{"detail":"CSE-000014 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.0,"tick":40}
+{"detail":"CSE-000015 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.0,"tick":40}
+{"detail":"CSE-000016 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.0,"tick":40}
+{"detail":"BLD-000054 — lay 30 tiles of road","kind":"ticket.filed","sim_seconds":5.1,"tick":102}
+{"detail":"BLD-000054 — completed_and_validated","kind":"ticket.retired","sim_seconds":5.2,"tick":104}
+{"detail":"BLD-000055 — lay 17 tiles of road","kind":"ticket.filed","sim_seconds":6.85,"tick":137}
+{"detail":"BLD-000055 — completed_and_validated","kind":"ticket.retired","sim_seconds":7.0,"tick":140}
+{"detail":"BLD-000056 — lay 17 tiles of road","kind":"ticket.filed","sim_seconds":7.95,"tick":159}
+{"detail":"BLD-000056 — completed_and_validated","kind":"ticket.retired","sim_seconds":8.2,"tick":164}
+{"detail":"BLD-000057 — lay 4 tiles of road","kind":"ticket.filed","sim_seconds":8.8,"tick":176}
+{"detail":"BLD-000057 — completed_and_validated","kind":"ticket.retired","sim_seconds":9.0,"tick":180}
+{"detail":"BLD-000058 — lay 16 tiles of road","kind":"ticket.filed","sim_seconds":12.6,"tick":252}
+{"detail":"BLD-000058 — completed_and_validated","kind":"ticket.retired","sim_seconds":12.8,"tick":256}
+{"detail":"BLD-000059 — lay 16 tiles of road","kind":"ticket.filed","sim_seconds":14.35,"tick":287}
+{"detail":"BLD-000059 — completed_and_validated","kind":"ticket.retired","sim_seconds":14.6,"tick":292}
+{"detail":"BLD-000060 — lay 16 tiles of road","kind":"ticket.filed","sim_seconds":15.7,"tick":314}
+{"detail":"BLD-000060 — completed_and_validated","kind":"ticket.retired","sim_seconds":15.8,"tick":316}
+{"detail":"BLD-000061 — lay 16 tiles of road","kind":"ticket.filed","sim_seconds":16.95,"tick":339}
+{"detail":"BLD-000061 — completed_and_validated","kind":"ticket.retired","sim_seconds":17.2,"tick":344}
+{"detail":"BLD-000062 — lay 15 tiles of road","kind":"ticket.filed","sim_seconds":18.55,"tick":371}
+{"detail":"BLD-000062 — completed_and_validated","kind":"ticket.retired","sim_seconds":18.8,"tick":376}
+{"detail":"BLD-000063 — lay 15 tiles of road","kind":"ticket.filed","sim_seconds":19.6,"tick":392}
+{"detail":"BLD-000063 — completed_and_validated","kind":"ticket.retired","sim_seconds":19.8,"tick":396}
+{"detail":"BLD-000064 — lay 15 tiles of road","kind":"ticket.filed","sim_seconds":20.75,"tick":415}
+{"detail":"BLD-000064 — completed_and_validated","kind":"ticket.retired","sim_seconds":21.0,"tick":420}
+{"detail":"BLD-000065 — lay 15 tiles of road","kind":"ticket.filed","sim_seconds":21.8,"tick":436}
+{"detail":"BLD-000065 — completed_and_validated","kind":"ticket.retired","sim_seconds":22.0,"tick":440}
+{"detail":"BLD-000066 — zone 48 tiles residential","kind":"ticket.filed","sim_seconds":24.95,"tick":499}
+{"detail":"BLD-000066 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.2,"tick":504}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":26.0,"tick":520}
+{"detail":"CSE-000017 supersedes CSE-000001","kind":"case.supersedes","sim_seconds":26.0,"tick":520}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":26.0,"tick":520}
+{"detail":"CSE-000018 supersedes CSE-000003","kind":"case.supersedes","sim_seconds":26.0,"tick":520}
+{"detail":"BLD-000067 — zone 24 tiles commercial","kind":"ticket.filed","sim_seconds":27.4,"tick":548}
+{"detail":"BLD-000067 — completed_and_validated","kind":"ticket.retired","sim_seconds":27.6,"tick":552}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":28.0,"tick":560}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":28.0,"tick":560}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":28.0,"tick":560}
+{"detail":"CSE-000020 — district 36: 16 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":28.0,"tick":560}
+{"detail":"BLD-000068 — zone 24 tiles industrial","kind":"ticket.filed","sim_seconds":29.4,"tick":588}
+{"detail":"BLD-000068 — completed_and_validated","kind":"ticket.retired","sim_seconds":29.6,"tick":592}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":30.0,"tick":600}
+{"detail":"CSE-000019 — district 28: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":30.0,"tick":600}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":30.0,"tick":600}
+{"detail":"CSE-000020 — district 36: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":30.0,"tick":600}
+{"detail":"BLD-000069 — zone 36 tiles commercial","kind":"ticket.filed","sim_seconds":31.25,"tick":625}
+{"detail":"BLD-000069 — completed_and_validated","kind":"ticket.retired","sim_seconds":31.4,"tick":628}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000019 — district 28: 28 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000020 — district 36: 56 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":32.0,"tick":640}
+{"detail":"BLD-000070 — lay 4 tiles of road","kind":"ticket.filed","sim_seconds":33.25,"tick":665}
+{"detail":"BLD-000070 — completed_and_validated","kind":"ticket.retired","sim_seconds":33.4,"tick":668}
+{"detail":"BLD-000071 — lay 18 tiles of road","kind":"ticket.filed","sim_seconds":33.95,"tick":679}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000019 — district 28: 28 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000020 — district 36: 56 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":34.0,"tick":680}
+{"detail":"BLD-000071 — completed_and_validated","kind":"ticket.retired","sim_seconds":34.2,"tick":684}
+{"detail":"BLD-000072 — lay 4 tiles of road","kind":"ticket.filed","sim_seconds":34.55,"tick":691}
+{"detail":"BLD-000072 — completed_and_validated","kind":"ticket.retired","sim_seconds":34.8,"tick":696}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"CSE-000019 — district 28: 28 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"CSE-000020 — district 36: 56 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"BLD-000073 — zone 48 tiles residential","kind":"ticket.filed","sim_seconds":37.3,"tick":746}
+{"detail":"BLD-000073 — completed_and_validated","kind":"ticket.retired","sim_seconds":37.4,"tick":748}
+{"detail":"CSE-000017 — district 27: 16 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"CSE-000019 — district 28: 43 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"CSE-000018 — district 35: 32 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"CSE-000020 — district 36: 89 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"BLD-000074 — place power plant 1","kind":"ticket.filed","sim_seconds":38.4,"tick":768}
+{"detail":"BLD-000074 — completed_and_validated","kind":"ticket.retired","sim_seconds":38.6,"tick":772}
+{"detail":"CSE-000017 — completed_and_validated","kind":"ticket.retired","sim_seconds":40.0,"tick":800}
+{"detail":"CSE-000019 — district 28: 21 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":40.0,"tick":800}
+{"detail":"CSE-000018 — district 35: 14 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":40.0,"tick":800}
+{"detail":"CSE-000020 — district 36: 82 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":40.0,"tick":800}
+{"detail":"BLD-000075 — place power plant 26","kind":"ticket.filed","sim_seconds":40.85,"tick":817}
+{"detail":"BLD-000075 — completed_and_validated","kind":"ticket.retired","sim_seconds":41.0,"tick":820}
+{"detail":"BLD-000076 — place power plant 35","kind":"ticket.filed","sim_seconds":41.65,"tick":833}
+{"detail":"BLD-000076 — completed_and_validated","kind":"ticket.retired","sim_seconds":41.8,"tick":836}
+{"detail":"CSE-000018 — completed_and_validated","kind":"ticket.retired","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000021 — district 27: 64 residents have no job within reach","kind":"case.opened","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000021 — district 27: 74 residents have no job within reach","kind":"case.updated","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000022 — district 28: 8 residents have no job within reach","kind":"case.opened","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000023 — district 35: 104 residents have no job within reach","kind":"case.opened","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000023 supersedes CSE-000005","kind":"case.supersedes","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000021 — district 27: 38 residents have no job within reach","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000022 — district 28: 80 residents have no job within reach","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000023 — district 35: 104 residents have no job within reach","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000024 — district 36: 16 residents have no job within reach","kind":"case.opened","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000021 — completed_and_validated","kind":"ticket.retired","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000022 — district 28: 80 residents have no job within reach","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000023 — district 35: 192 residents have no job within reach","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000024 — district 36: 88 residents have no job within reach","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"INT-000001 — clear the tile (retiring structure 98)","kind":"ticket.filed","sim_seconds":48.45,"tick":969}
+{"detail":"INT-000001 — completed_and_validated","kind":"ticket.retired","sim_seconds":48.6,"tick":972}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000022 — district 28: 80 residents have no job within reach","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000023 — district 35: 220 residents have no job within reach","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000024 — district 36: 128 residents have no job within reach","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000022 — district 28: 80 residents have no job within reach","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000024 — district 36: 144 residents have no job within reach","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000019 — district 28: 8 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000020 — district 36: 18 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000022 — district 28: 80 residents have no job within reach","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000024 — district 36: 144 residents have no job within reach","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"BLD-000077 — lay 17 tiles of road","kind":"ticket.filed","sim_seconds":54.45,"tick":1089}
+{"detail":"BLD-000077 — completed_and_validated","kind":"ticket.retired","sim_seconds":54.6,"tick":1092}
+{"detail":"CSE-000019 — completed_and_validated","kind":"ticket.retired","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000020 — district 36: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000022 — district 28: 80 residents have no job within reach","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000024 — district 36: 144 residents have no job within reach","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000020 — district 36: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000024 — district 36: 152 residents have no job within reach","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000020 — blocked_and_closed","kind":"ticket.retired","sim_seconds":59.0,"tick":1180}
+{"detail":"CSE-000025 — district 36: 10 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000025 supersedes CSE-000020","kind":"case.supersedes","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000024 — district 36: 152 residents have no job within reach","kind":"case.updated","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000025 — district 36: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000024 — district 36: 152 residents have no job within reach","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000025 — district 36: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000024 — district 36: 152 residents have no job within reach","kind":"case.updated","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000025 — district 36: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000024 — district 36: 152 residents have no job within reach","kind":"case.updated","sim_seconds":66.0,"tick":1320}
+{"detail":"BLD-000078 — place power plant 110","kind":"ticket.filed","sim_seconds":67.05,"tick":1341}
+{"detail":"BLD-000078 — completed_and_validated","kind":"ticket.retired","sim_seconds":67.2,"tick":1344}
+{"detail":"CSE-000025 — completed_and_validated","kind":"ticket.retired","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000024 — district 36: 152 residents have no job within reach","kind":"case.updated","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000022 — district 28: 88 residents have no job within reach","kind":"case.updated","sim_seconds":70.0,"tick":1400}
+{"detail":"CSE-000023 — district 35: 162 residents have no job within reach","kind":"case.updated","sim_seconds":70.0,"tick":1400}
+{"detail":"CSE-000024 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":70.0,"tick":1400}
+{"detail":"CSE-000022 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":72.0,"tick":1440}
+{"detail":"CSE-000023 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":72.0,"tick":1440}
+{"detail":"CSE-000024 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":72.0,"tick":1440}
+{"detail":"CSE-000022 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":74.0,"tick":1480}
+{"detail":"CSE-000023 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":74.0,"tick":1480}
+{"detail":"CSE-000024 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":74.0,"tick":1480}
+{"detail":"CSE-000022 — blocked_and_closed","kind":"ticket.retired","sim_seconds":75.0,"tick":1500}
+{"detail":"CSE-000023 — blocked_and_closed","kind":"ticket.retired","sim_seconds":75.0,"tick":1500}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.opened","sim_seconds":76.0,"tick":1520}
+{"detail":"CSE-000026 supersedes CSE-000022","kind":"case.supersedes","sim_seconds":76.0,"tick":1520}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.opened","sim_seconds":76.0,"tick":1520}
+{"detail":"CSE-000027 supersedes CSE-000005","kind":"case.supersedes","sim_seconds":76.0,"tick":1520}
+{"detail":"CSE-000024 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":76.0,"tick":1520}
+{"detail":"CSE-000024 — blocked_and_closed","kind":"ticket.retired","sim_seconds":77.0,"tick":1540}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":78.0,"tick":1560}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":78.0,"tick":1560}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.opened","sim_seconds":78.0,"tick":1560}
+{"detail":"CSE-000028 supersedes CSE-000024","kind":"case.supersedes","sim_seconds":78.0,"tick":1560}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":80.0,"tick":1600}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":80.0,"tick":1600}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":80.0,"tick":1600}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":82.0,"tick":1640}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":82.0,"tick":1640}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":82.0,"tick":1640}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":84.0,"tick":1680}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":84.0,"tick":1680}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":84.0,"tick":1680}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":86.0,"tick":1720}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":86.0,"tick":1720}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":86.0,"tick":1720}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":88.0,"tick":1760}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":88.0,"tick":1760}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":88.0,"tick":1760}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":90.0,"tick":1800}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":90.0,"tick":1800}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":90.0,"tick":1800}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":92.0,"tick":1840}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":92.0,"tick":1840}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":92.0,"tick":1840}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":94.0,"tick":1880}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":94.0,"tick":1880}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":94.0,"tick":1880}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":96.0,"tick":1920}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":96.0,"tick":1920}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":96.0,"tick":1920}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":98.0,"tick":1960}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":98.0,"tick":1960}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":98.0,"tick":1960}
+{"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":100.0,"tick":2000}
+{"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":100.0,"tick":2000}
+{"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":100.0,"tick":2000}

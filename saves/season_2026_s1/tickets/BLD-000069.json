@@ -1,0 +1,167 @@
+{
+  "id": "BLD-000069",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 36 tiles commercial",
+  "gate": "all 36 tiles carry the zone set",
+  "opened_tick": 625,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        31623,
+        "Commercial"
+      ],
+      [
+        31624,
+        "Commercial"
+      ],
+      [
+        31625,
+        "Commercial"
+      ],
+      [
+        31879,
+        "Commercial"
+      ],
+      [
+        31880,
+        "Commercial"
+      ],
+      [
+        31881,
+        "Commercial"
+      ],
+      [
+        32135,
+        "Commercial"
+      ],
+      [
+        32136,
+        "Commercial"
+      ],
+      [
+        32137,
+        "Commercial"
+      ],
+      [
+        32391,
+        "Commercial"
+      ],
+      [
+        32392,
+        "Commercial"
+      ],
+      [
+        32393,
+        "Commercial"
+      ],
+      [
+        32903,
+        "Commercial"
+      ],
+      [
+        32904,
+        "Commercial"
+      ],
+      [
+        32905,
+        "Commercial"
+      ],
+      [
+        33159,
+        "Commercial"
+      ],
+      [
+        33160,
+        "Commercial"
+      ],
+      [
+        33161,
+        "Commercial"
+      ],
+      [
+        33671,
+        "Commercial"
+      ],
+      [
+        33672,
+        "Commercial"
+      ],
+      [
+        33673,
+        "Commercial"
+      ],
+      [
+        33927,
+        "Commercial"
+      ],
+      [
+        33928,
+        "Commercial"
+      ],
+      [
+        33929,
+        "Commercial"
+      ],
+      [
+        34439,
+        "Commercial"
+      ],
+      [
+        34440,
+        "Commercial"
+      ],
+      [
+        34441,
+        "Commercial"
+      ],
+      [
+        34695,
+        "Commercial"
+      ],
+      [
+        34696,
+        "Commercial"
+      ],
+      [
+        34697,
+        "Commercial"
+      ],
+      [
+        35207,
+        "Commercial"
+      ],
+      [
+        35208,
+        "Commercial"
+      ],
+      [
+        35209,
+        "Commercial"
+      ],
+      [
+        35463,
+        "Commercial"
+      ],
+      [
+        35464,
+        "Commercial"
+      ],
+      [
+        35465,
+        "Commercial"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

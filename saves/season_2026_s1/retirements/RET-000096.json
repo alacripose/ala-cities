@@ -1,0 +1,29 @@
+{
+  "id": "RET-000096",
+  "ticket": "INT-000001",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "clear the tile (retiring structure 98)",
+  "completion_claim": "the world shows tile 35468 is clear",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "nothing stands on the tile"
+    ],
+    "checks_run": [
+      "tile 35468 is clear"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000087"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 972,
+  "retired_by": "operator"
+}
