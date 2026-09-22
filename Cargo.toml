@@ -15,9 +15,8 @@ path = "src/main.rs"
 name = "verify"
 path = "src/bin/verify.rs"
 
-# The icon review picker: a tool, not the game. It shows the three rendered
-# generations of an icon side by side and appends the choice that promotes one of
-# them into the shipping set.
+# The icon review picker: a tool, not the game. It shows six authored candidates
+# of an icon in a 2x3 grid and appends the choice that promotes one into shipping.
 [[bin]]
 name = "pick"
 path = "src/bin/pick.rs"

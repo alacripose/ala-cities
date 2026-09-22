@@ -21,6 +21,19 @@
 __pycache__/
 *.pyc
 
+# Reference corpora, recorded by digest rather than vendored (C7 a136): the
+# MD1 pack is Apache-2.0 but is not redistributed here, and the TouchWiz and
+# iOS 6 packs are reference-grade only (see docs/GRILLING-C3.md, round 17).
+# The manifest's digests carry the provenance; the packs stay local.
+/assets/reference/
+
+# Superseded icon renders kept as local historical evidence, never active assets.
+/assets/icons/archive/
+
+# Blender backup/autosave files; the shared reference.blend is intentional.
+/assets/icons/*.blend1
+/assets/icons/*.blend@
+
 # Editor / OS noise
 .vscode/
 .idea/
