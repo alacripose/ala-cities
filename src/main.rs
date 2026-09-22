@@ -2264,7 +2264,12 @@ fn main() {
     // And then it **fails closed**, like the style table does. A scale that is
     // allowed to drift is the defect this check exists to prevent, and a check
     // that only prints is a check nobody reads.
-    let defects = design::verify(&targets, ui);
+    let mut defects = design::verify(&targets, ui);
+    // The check the scale gate cannot make on its own, because it holds no font: that
+    // each step *renders* at the size it declares. The build that shipped the
+    // unreadable text passed every declared-size check it was ever given — the scale
+    // said 16 px and the screen drew 12, and every measurement agreed with the scale.
+    defects.extend(app.text.scale_defects());
     if !defects.is_empty() {
         eprintln!("the design check failed closed:");
         for defect in &defects {

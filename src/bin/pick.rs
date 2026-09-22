@@ -104,7 +104,12 @@ fn main() {
     for line in design::audit(&targets, UiScale::default()) {
         println!("picker design: {line}");
     }
-    let defects = design::verify(&targets, UiScale::default());
+    let mut defects = design::verify(&targets, UiScale::default());
+    // And the check the design gate cannot make, because it holds no font: that the
+    // type scale renders at the sizes it declares. The last build passed every
+    // design check while drawing every step 25 % small.
+    let probe = render::Text::new();
+    defects.extend(probe.scale_defects());
     if !defects.is_empty() {
         eprintln!("the picker's own design check failed closed:");
         for defect in &defects {

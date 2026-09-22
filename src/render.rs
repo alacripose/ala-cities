@@ -49,6 +49,37 @@ pub enum Layer {
 // Text
 // ---------------------------------------------------------------------------
 
+/// The `ab_glyph` scale that renders a glyph at an em size of `px` pixels.
+///
+/// This is the fix for the bug the player kept reporting as *"the text is difficult
+/// to read and inconsistently sized"*, and it is one line of arithmetic that was
+/// missing from the beginning.
+///
+/// `PxScale` is **not** the em size: the crate defines it as "the pixel-height of a
+/// font" — ascender to descender — and `Font::pt_to_px_scale` says so in as many
+/// words:
+///
+/// ```text
+/// let px_per_em = pt_size * (96.0 / 72.0);
+/// let height = self.height_unscaled();
+/// PxScale::from(px_per_em * height / units_per_em)
+/// ```
+///
+/// Segoe UI's height is 1.33 em, so `PxScale::from(16.0)` rasterised an em of
+/// 16 x 2048 / 2724 = **12 px**, and advanced the pen at 12 px too. Every step on
+/// the type scale rendered at 75 % of its declared size: the 16 px body arrived as
+/// 12 px, and the 12 px micro step arrived as 9 px — below the 12 px floor the
+/// design document sets, at a size nothing was measured at. The measurements were
+/// all honest and all of them were of the wrong size, which is why the pass that
+/// built the scale did not fix the complaint.
+fn em_scale(font: &FontVec, px: u32) -> PxScale {
+    let units_per_em = font.units_per_em().unwrap_or(1.0);
+    let height = font.height_unscaled();
+    // Inverse of the crate's own `pt_to_px_scale`, with the em given in pixels
+    // directly: pixels per em -> the font's height in pixels.
+    PxScale::from(px as f32 * height / units_per_em)
+}
+
 /// One instanced quad, already in clip space.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
@@ -217,6 +248,56 @@ impl Text {
         step.px(self.ui)
     }
 
+    /// The em size a step actually renders at, derived from the font's own metrics
+    /// rather than from the conversion that sets it.
+    ///
+    /// Read out of the rendered advance: divide the advance at this scale by the
+    /// advance in the font's unscaled units, and the result is pixels per em. A
+    /// tautology would prove nothing here — this reads the measurement back out.
+    pub fn em_px(&self, step: Step) -> Option<f32> {
+        let font = self.fonts[Face::Body as usize].as_ref()?;
+        let size = self.px(step);
+        let scaled = font.as_scaled(em_scale(font, size));
+        let id = font.glyph_id('H');
+        let unscaled = font.h_advance_unscaled(id);
+        let units_per_em = font.units_per_em()?;
+        if unscaled <= 0.0 {
+            return None;
+        }
+        Some(scaled.h_advance(id) / unscaled * units_per_em)
+    }
+
+    /// Every step that does not render at the size it declares.
+    ///
+    /// This is the check whose absence let a whole pass of typography work ship
+    /// against measurements of the wrong size: the scale was declared correctly and
+    /// rendered 25 % small, and every contrast, floor and fit check measured the
+    /// declared number rather than the drawn one. A step that declares 16 px and
+    /// rastersises at 12 px is a defect, not a nuance.
+    pub fn scale_defects(&self) -> Vec<String> {
+        let mut defects = Vec::new();
+        if self.missing_font {
+            return defects;
+        }
+        for step in Step::ALL {
+            let declared = self.px(step) as f32;
+            match self.em_px(step) {
+                Some(effective) if (effective - declared).abs() > 0.05 => defects.push(format!(
+                    "type step `{}` declares {declared:.0} px and renders at {effective:.2} px, \
+                     which is {:.0} % of the size every measurement assumes",
+                    step.name(),
+                    effective / declared * 100.0
+                )),
+                None => defects.push(format!(
+                    "type step `{}` cannot be measured: the font reports no unscaled advance",
+                    step.name()
+                )),
+                _ => {}
+            }
+        }
+        defects
+    }
+
     /// UVs of the solid white texel. Every non-text quad uses this.
     pub fn solid_uv() -> [f32; 4] {
         [
@@ -229,7 +310,7 @@ impl Text {
 
     fn rasterise(&mut self, face: Face, ch: char, size: u32) -> Option<Slot> {
         let font = self.fonts[face as usize].as_ref()?;
-        let scale = PxScale::from(size as f32);
+        let scale = em_scale(font, size);
         let scaled = font.as_scaled(scale);
         let id = font.glyph_id(ch);
         let advance = scaled.h_advance(id);
@@ -1988,6 +2069,150 @@ mod tests {
         let uv = Text::solid_uv();
         assert!(uv[0] > 0.0 && uv[0] < 1.0);
         assert_eq!(uv[0], uv[2], "a solid draw samples one texel");
+    }
+
+    /// What the quads would paint, composited on the CPU from the atlas they
+    /// reference. This is the test that can tell "the text is wrong" apart from
+    /// "the text never reached the GPU": it reads the atlas through the same UVs
+    /// the shader would, so a wrong region shows up here as a wrong letter.
+    #[test]
+    fn the_quads_paint_the_letters_they_say_they_do() {
+        let mut text = Text::new();
+        if text.missing_font {
+            eprintln!("no system font available; the composite is not exercised");
+            return;
+        }
+        let mut batch = Batcher::default();
+        let screen = Screen { w: 400.0, h: 24.0 };
+        let phrase = "Hamburgefons gyp 12.5:1";
+        for step in Step::ALL {
+            let mut probe = Batcher::default();
+            text.draw_step(Face::Body, &mut probe, &screen, 2.0, 2.0, step, [1.0; 4], phrase);
+            println!(
+                "\n{} at {} px: {} quads, measured width {:.1} px",
+                step.name(),
+                step.px(UiScale::default()),
+                probe.instances.len(),
+                text.measure_step(Face::Body, phrase, step)
+            );
+            let (w, h) = (screen.w as usize, screen.h as usize);
+            let mut canvas = vec![0.0f32; w * h];
+            for instance in &probe.instances {
+                let x0 = ((instance.pos[0] + 1.0) / 2.0 * screen.w).round() as i64;
+                let y0 = ((1.0 - instance.pos[1]) / 2.0 * screen.h).round() as i64;
+                let dw = (instance.size[0] / 2.0 * screen.w).round().max(1.0) as i64;
+                let dh = (-instance.size[1] / 2.0 * screen.h).round().max(1.0) as i64;
+                let [u0, v0, u1, v1] = instance.uv;
+                for py in 0..dh {
+                    for px in 0..dw {
+                        let u = u0 + (px as f32 + 0.5) / dw as f32 * (u1 - u0);
+                        let v = v0 + (py as f32 + 0.5) / dh as f32 * (v1 - v0);
+                        let tx = ((u * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
+                        let ty = ((v * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
+                        let (cx, cy) = (x0 + px, y0 + py);
+                        if cx >= 0 && cy >= 0 && (cx as usize) < w && (cy as usize) < h {
+                            canvas[cy as usize * w + cx as usize] =
+                                text.data[ty * ATLAS_SIZE as usize + tx] as f32 / 255.0;
+                        }
+                    }
+                }
+            }
+            let ramp: Vec<char> = " .:-=+*#%@".chars().collect();
+            for row in canvas.chunks(w) {
+                let line: String = row
+                    .iter()
+                    .map(|v| ramp[((v * 9.99).min(9.0)) as usize])
+                    .collect();
+                println!("{}", line.trim_end());
+            }
+            batch = probe;
+        }
+        let phrase = "as authored";
+
+        let (w, h) = (screen.w as usize, screen.h as usize);
+        let mut canvas = vec![0.0f32; w * h];
+        let mut painted = 0usize;
+        for instance in &batch.instances {
+            // Invert `screen_rect`: clip space back to device pixels.
+            let x0 = ((instance.pos[0] + 1.0) / 2.0 * screen.w).round() as i64;
+            let y0 = ((1.0 - instance.pos[1]) / 2.0 * screen.h).round() as i64;
+            let dw = (instance.size[0] / 2.0 * screen.w).round().max(1.0) as i64;
+            let dh = (-instance.size[1] / 2.0 * screen.h).round().max(1.0) as i64;
+            let [u0, v0, u1, v1] = instance.uv;
+            for py in 0..dh {
+                for px in 0..dw {
+                    let u = u0 + (px as f32 + 0.5) / dw as f32 * (u1 - u0);
+                    let v = v0 + (py as f32 + 0.5) / dh as f32 * (v1 - v0);
+                    let tx = ((u * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
+                    let ty = ((v * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
+                    let (cx, cy) = (x0 + px, y0 + py);
+                    if cx >= 0 && cy >= 0 && (cx as usize) < w && (cy as usize) < h {
+                        canvas[cy as usize * w + cx as usize] =
+                            text.data[ty * ATLAS_SIZE as usize + tx] as f32 / 255.0;
+                        painted += 1;
+                    }
+                }
+            }
+        }
+
+        // The scale gate itself: no step may render at a size other than the one it
+        // declares. This is the check that would have caught the defect that made
+        // every previous typography measurement a measurement of the wrong size.
+        let defects = text.scale_defects();
+        println!("\nscale gate: {}", if defects.is_empty() { "every step renders at its declared size".to_string() } else { defects.join("; ") });
+        assert!(defects.is_empty(), "the type scale does not render at the sizes it declares");
+        for step in Step::ALL {
+            let declared = step.px(UiScale::default()) as f32;
+            let effective = text.em_px(step).expect("a measurable step");
+            assert!(
+                (effective - declared).abs() <= 0.05,
+                "{} declares {declared} px and renders at {effective} px",
+                step.name()
+            );
+        }
+
+        // And independently of that: the drawn width has to agree with the font's
+        // own unscaled advances at the declared em size. A scale bug that fooled
+        // both the rasteriser and the measurement would pass the check above and
+        // fail here.
+        // Borrowed in its own scope so the measurement below can take `text` mutably.
+        let expected: Vec<f32> = {
+            let font = text.fonts[Face::Body as usize].as_ref().expect("the body face");
+            let units_per_em = font.units_per_em().expect("units per em");
+            Step::ALL
+                .iter()
+                .map(|step| {
+                    let em = step.px(UiScale::default()) as f32;
+                    phrase
+                        .chars()
+                        .map(|ch| font.h_advance_unscaled(font.glyph_id(ch)) * em / units_per_em)
+                        .sum()
+                })
+                .collect()
+        };
+        for (step, want) in Step::ALL.iter().zip(expected) {
+            let got = text.measure_step(Face::Body, phrase, *step);
+            assert!(
+                (got - want).abs() < 0.5,
+                "at {} px the drawn width is {got:.1} px; the font's own advances say {want:.1} px",
+                step.name()
+            );
+        }
+
+        let cells: usize = canvas.iter().filter(|v| **v > 0.5).count();
+        let expected_width = text.measure_step(Face::Body, phrase, Step::Body);
+        println!("\ncomposite of {phrase:?}: {} quads, {painted} pixels painted, {cells} above half coverage, measured width {expected_width:.1} px", batch.instances.len());
+        let ramp: Vec<char> = " .:-=+*#%@".chars().collect();
+        for row in canvas.chunks(w) {
+            let line: String = row
+                .iter()
+                .map(|v| ramp[((v * 9.99).min(9.0)) as usize])
+                .collect();
+            println!("{}", line.trim_end());
+        }
+
+        assert!(painted > 0, "the quads painted nothing at all");
+        assert!(cells > 20, "{cells} pixels of ink is not a phrase");
     }
 
     /// The bug this pins, in one sentence: a glyph rasterised *after* the one
