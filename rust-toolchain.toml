@@ -1,0 +1,8 @@
+# Pinned deliberately. Both installed toolchains were probed and both link,
+# but msvc is the standard pairing for Windows GPU work and is what this
+# project's builds and playtests are recorded against.
+#
+#   verified 2026-09-21: hello-world linked in 3.83s (msvc) / 2.51s (gnu).
+[toolchain]
+channel = "stable-x86_64-pc-windows-msvc"
+components = ["clippy", "rustfmt"]

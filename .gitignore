@@ -1,0 +1,23 @@
+# Build output
+/target
+**/*.pdb
+
+# Local playthrough state.
+#
+# The world snapshot is local and disposable: it is one city at one moment, and
+# it is large. The season record beside it — tickets, evidence, retirements,
+# corrections — is the city's own history, and history is tracked. That is the
+# whole point of keeping it in a portable object layout rather than in a binary
+# blob.
+/saves/*.ron
+/saves/*.tmp
+
+# Crash dumps and logs
+*.dmp
+*.log
+
+# Editor / OS noise
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

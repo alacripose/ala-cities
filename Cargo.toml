@@ -1,0 +1,53 @@
+[package]
+name = "ala-cities"
+version = "0.1.0"
+edition = "2021"
+description = "A real-time city builder with an evidence-first record of everything built, refused, and retired."
+license = "Apache-2.0"
+
+# Default run target is the game client. Simulations live in `sim/`, the
+# governance layer in `gov/`, and the headless verifier is its own binary.
+[[bin]]
+name = "ala-cities"
+path = "src/main.rs"
+
+[[bin]]
+name = "verify"
+path = "src/bin/verify.rs"
+
+[dependencies]
+# Rendering and windowing: large, non-determinism-critical, taken as wheels.
+wgpu = "29.0.4"
+winit = "0.30.13"
+pollster = "0.3"
+bytemuck = { version = "1.25", features = ["derive"] }
+glam = { version = "0.32", features = ["bytemuck"] }
+ab_glyph = "0.2.32"
+
+# Records, saves and telemetry.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ron = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# NOTE ON WHAT IS DELIBERATELY *NOT* A DEPENDENCY.
+# The determinism-critical pieces are ours, because a dependency update must
+# never be able to change a replay:
+#   * RNG        -> hand-rolled PCG32 (src/sim/rng.rs)
+#   * noise      -> hand-rolled seeded value noise (src/sim/terrain.rs)
+#   * road graph -> hand-rolled adjacency lists (src/sim/road.rs)
+# `rand`, `noise`, `pathfinding`, `petgraph`, `bevy_ecs`, `cosmic-text` and
+# `rayon` were all considered and deferred. See README.md, "Wheel map".
+
+[profile.dev]
+opt-level = 1
+
+# Keep the dependency graph fast even in dev builds -- a slow wgpu makes the
+# game untestable, and an untestable build is one that never gets playtested.
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

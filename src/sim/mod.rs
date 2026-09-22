@@ -1,0 +1,1176 @@
+//! The city.
+//!
+//! Everything here is a pure function of `(seed, tick, input events)`. No wall
+//! clock, no floating-point randomness, no hidden global state: the headless
+//! verifier re-runs this exact code with no window attached, and a save
+//! replays to the same city.
+
+pub mod citizen;
+pub mod road;
+pub mod rng;
+pub mod terrain;
+
+use serde::{Deserialize, Serialize};
+
+use crate::gov::RetirementReason;
+use citizen::{Citizen, CitizenState};
+use rng::Pcg32;
+use road::RoadGraph;
+
+/// Simulation rate. Fixed, and never negotiated with the renderer.
+pub const SIM_HZ: u32 = 20;
+/// Sim-ticks in one game day. At 1x, a day is two seconds.
+pub const TICKS_PER_DAY: u64 = 40;
+pub const DAYS_PER_MONTH: u64 = 30;
+pub const MONTHS_PER_YEAR: u64 = 12;
+/// How long construction takes, in ticks.
+pub const BUILD_TICKS: u64 = 40;
+/// Tiles within this distance of the camera focus are simulated as full agents.
+/// Stored in the save so a replay reproduces the same level-of-detail split.
+pub const LOD_RADIUS: i32 = 48;
+/// A power plant lights this many road-distance tiles.
+pub const POWER_RADIUS: u32 = 14;
+pub const POWER_PER_PLANT: u32 = 60;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Terrain {
+    Ground,
+    Water,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Zone {
+    None,
+    Residential,
+    Commercial,
+    Industrial,
+}
+
+impl Zone {
+    pub fn name(self) -> &'static str {
+        match self {
+            Zone::None => "unzoned",
+            Zone::Residential => "residential",
+            Zone::Commercial => "commercial",
+            Zone::Industrial => "industrial",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Tile {
+    pub terrain: Terrain,
+    pub zone: Zone,
+    pub road: bool,
+    /// Index into [`World::buildings`] for the structure standing here.
+    pub building: Option<u32>,
+    pub powered: bool,
+}
+
+impl Default for Tile {
+    fn default() -> Self {
+        Self {
+            terrain: Terrain::Ground,
+            zone: Zone::None,
+            road: false,
+            building: None,
+            powered: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuildingKind {
+    Home,
+    Shop,
+    Factory,
+    PowerPlant,
+}
+
+impl BuildingKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            BuildingKind::Home => "home",
+            BuildingKind::Shop => "shop",
+            BuildingKind::Factory => "factory",
+            BuildingKind::PowerPlant => "power plant",
+        }
+    }
+
+    pub fn zone(self) -> Zone {
+        match self {
+            BuildingKind::Home => Zone::Residential,
+            BuildingKind::Shop => Zone::Commercial,
+            BuildingKind::Factory => Zone::Industrial,
+            BuildingKind::PowerPlant => Zone::None,
+        }
+    }
+
+    pub fn build_cost(self) -> i64 {
+        match self {
+            BuildingKind::Home => 120,
+            BuildingKind::Shop => 240,
+            BuildingKind::Factory => 400,
+            BuildingKind::PowerPlant => 1_800,
+        }
+    }
+
+    pub fn capacity(self) -> u32 {
+        match self {
+            BuildingKind::Home => 8,
+            BuildingKind::Shop => 6,
+            BuildingKind::Factory => 12,
+            BuildingKind::PowerPlant => 0,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Building {
+    pub id: u32,
+    pub kind: BuildingKind,
+    pub tile: u32,
+    pub level: u8,
+    pub built_tick: u64,
+    pub ready_tick: u64,
+    /// A demolished building is retired, never removed: the record of what the
+    /// city used to be is part of the city.
+    pub retired: Option<RetirementReason>,
+    pub retired_tick: Option<u64>,
+    pub powered: bool,
+    pub occupants: u32,
+}
+
+impl Building {
+    pub fn is_ready(&self, tick: u64) -> bool {
+        self.retired.is_none() && tick >= self.ready_tick
+    }
+
+    pub fn capacity(&self) -> u32 {
+        self.kind.capacity() + self.kind.capacity() * self.level.saturating_sub(1) as u32
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Economy {
+    /// City funds. Fiction — labelled as fiction everywhere it is shown.
+    pub credits: i64,
+    pub tax_residential: f32,
+    pub tax_commercial: f32,
+    pub tax_industrial: f32,
+    pub loan_balance: i64,
+    pub month_income: i64,
+    pub month_expense: i64,
+    pub lifetime_income: i64,
+    pub lifetime_expense: i64,
+    pub months_in_debt: u32,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Demand {
+    pub residential: f32,
+    pub commercial: f32,
+    pub industrial: f32,
+}
+
+impl Demand {
+    pub fn for_zone(&self, zone: Zone) -> f32 {
+        match zone {
+            Zone::Residential => self.residential,
+            Zone::Commercial => self.commercial,
+            Zone::Industrial => self.industrial,
+            Zone::None => 0.0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Clock {
+    pub tick: u64,
+}
+
+impl Clock {
+    pub fn day(&self) -> u64 {
+        self.tick / TICKS_PER_DAY
+    }
+
+    /// One-based, because "month 0" is not a month.
+    pub fn month(&self) -> u64 {
+        (self.day() / DAYS_PER_MONTH) % MONTHS_PER_YEAR + 1
+    }
+
+    pub fn year(&self) -> u64 {
+        self.day() / (DAYS_PER_MONTH * MONTHS_PER_YEAR) + 1
+    }
+
+    /// True on the single tick that closes a month, so income posts once.
+    pub fn closes_month(&self) -> bool {
+        self.tick > 0 && self.tick.is_multiple_of(TICKS_PER_DAY * DAYS_PER_MONTH)
+    }
+
+    pub fn label(&self) -> String {
+        format!("Y{} M{:02} D{:02}", self.year(), self.month(), self.day())
+    }
+
+    /// Sim-seconds elapsed. The stall bound is expressed in these, so it holds
+    /// at every game speed.
+    pub fn sim_seconds(&self) -> f64 {
+        self.tick as f64 / SIM_HZ as f64
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Stats {
+    pub population: u32,
+    pub homes: u32,
+    pub shops: u32,
+    pub factories: u32,
+    pub power_plants: u32,
+    pub retired_buildings: u32,
+    pub jobs: u32,
+    pub employed: u32,
+    pub unemployed: u32,
+    pub road_tiles: u32,
+    pub powered_tiles: u32,
+    pub unpowered_zoned: u32,
+    pub commute_failures: u32,
+    pub full_agents: u32,
+    pub brownout: bool,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct World {
+    pub width: u32,
+    pub height: u32,
+    pub seed: u64,
+    pub tiles: Vec<Tile>,
+    pub buildings: Vec<Building>,
+    pub citizens: Vec<Citizen>,
+    pub economy: Economy,
+    pub demand: Demand,
+    pub clock: Clock,
+    pub stats: Stats,
+    pub rng: Pcg32,
+    /// Where the camera is looking, in tiles. Part of the saved state because
+    /// level-of-detail is driven by it, and a replay must split identically.
+    pub focus: (i32, i32),
+    pub next_building_id: u32,
+    pub next_citizen_id: u32,
+
+    /// Derived from `tiles`. Rebuilt after any road or load, never serialised:
+    /// two sources of truth for where a road is would be one too many.
+    #[serde(skip)]
+    pub roads: RoadGraph,
+    #[serde(skip)]
+    road_access: Vec<bool>,
+}
+
+impl World {
+    pub fn new(width: u32, height: u32, seed: u64) -> Self {
+        let mut tiles = vec![Tile::default(); (width * height) as usize];
+        for y in 0..height {
+            for x in 0..width {
+                let n = terrain::fbm(x as f32 * 0.045, y as f32 * 0.045, seed, 4);
+                tiles[(y * width + x) as usize].terrain = if n < 0.34 {
+                    Terrain::Water
+                } else {
+                    Terrain::Ground
+                };
+            }
+        }
+
+        // The map edge carries a road, so a new city has something to connect
+        // to instead of starting from nowhere.
+        for y in 0..height {
+            let tile = &mut tiles[(y * width) as usize];
+            if tile.terrain == Terrain::Ground {
+                tile.road = true;
+            }
+        }
+
+        let mut world = Self {
+            width,
+            height,
+            seed,
+            tiles,
+            buildings: Vec::new(),
+            citizens: Vec::new(),
+            economy: Economy {
+                credits: 25_000,
+                tax_residential: 0.09,
+                tax_commercial: 0.09,
+                tax_industrial: 0.09,
+                ..Default::default()
+            },
+            demand: Demand {
+                residential: 0.6,
+                commercial: 0.25,
+                industrial: 0.35,
+            },
+            clock: Clock::default(),
+            stats: Stats::default(),
+            rng: Pcg32::new(seed),
+            focus: (width as i32 / 2, height as i32 / 2),
+            next_building_id: 1,
+            next_citizen_id: 1,
+            roads: RoadGraph::default(),
+            road_access: Vec::new(),
+        };
+        world.rebuild_derived();
+        world
+    }
+
+    /// Rebuild everything derived from the tiles. Must be called after load.
+    pub fn rebuild_derived(&mut self) {
+        self.roads = RoadGraph::rebuild(self.width, self.height, &self.tiles);
+
+        // Road access: within two tiles of a road, and on ground.
+        let mut access = vec![false; self.tiles.len()];
+        for tile in 0..self.tiles.len() as u32 {
+            if self.tiles[tile as usize].terrain != Terrain::Ground {
+                continue;
+            }
+            if self.tiles[tile as usize].road {
+                access[tile as usize] = true;
+                continue;
+            }
+            access[tile as usize] = self
+                .roads
+                .nearest_node_within(self.width, self.height, tile, 2)
+                .is_some();
+        }
+        self.road_access = access;
+        self.recount();
+    }
+
+    pub fn in_bounds(&self, x: i32, y: i32) -> bool {
+        x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32
+    }
+
+    pub fn index(&self, x: u32, y: u32) -> u32 {
+        y * self.width + x
+    }
+
+    pub fn coords(&self, tile: u32) -> (u32, u32) {
+        (tile % self.width, tile / self.width)
+    }
+
+    pub fn has_road_access(&self, tile: u32) -> bool {
+        self.road_access.get(tile as usize).copied().unwrap_or(false)
+    }
+
+    pub fn tile(&self, tile: u32) -> &Tile {
+        &self.tiles[tile as usize]
+    }
+
+    pub fn building(&self, index: u32) -> &Building {
+        &self.buildings[index as usize]
+    }
+
+    // ---------------------------------------------------------------------
+    // Player actions. Each returns a description of what actually changed,
+    // which the caller turns into a ticket. Nothing here decides whether the
+    // action was *authorised* -- that is the governor's job, and it happens
+    // before these are ever called.
+    // ---------------------------------------------------------------------
+
+    /// The tiles a straight leg between two tiles passes through, without
+    /// changing anything. The client asks for these *before* building so it can
+    /// see what already existed — which is what a regression check compares
+    /// against afterwards.
+    pub fn leg_tiles(&self, from: u32, to: u32) -> Vec<u32> {
+        let (x0, y0) = self.coords(from);
+        let (x1, y1) = self.coords(to);
+        let mut tiles = Vec::new();
+        let (mut x, mut y) = (x0 as i32, y0 as i32);
+        loop {
+            tiles.push(self.index(x as u32, y as u32));
+            if x == x1 as i32 && y == y1 as i32 {
+                break;
+            }
+            if x != x1 as i32 {
+                x += (x1 as i32 - x).signum();
+            } else {
+                y += (y1 as i32 - y).signum();
+            }
+        }
+        tiles
+    }
+
+    /// Lay road along a straight leg between two tiles. Returns the tiles that
+    /// became road (the set the caller must read back later to validate).
+    pub fn lay_road(&mut self, from: u32, to: u32) -> Vec<u32> {
+        let mut laid = Vec::new();
+        for tile in self.leg_tiles(from, to) {
+            let t = &mut self.tiles[tile as usize];
+            if t.terrain == Terrain::Ground && !t.road {
+                t.road = true;
+                laid.push(tile);
+            }
+        }
+        self.rebuild_derived();
+        laid
+    }
+
+    /// Zone a tile. Returns true when the zone actually changed.
+    pub fn set_zone(&mut self, tile: u32, zone: Zone) -> bool {
+        let t = &mut self.tiles[tile as usize];
+        if t.terrain != Terrain::Ground || t.road || t.building.is_some() {
+            return false;
+        }
+        if t.zone == zone {
+            return false;
+        }
+        t.zone = zone;
+        true
+    }
+
+    /// Demolish whatever stands on a tile. The building is **retired**, not
+    /// deleted, and the reason is recorded.
+    pub fn demolish(&mut self, tile: u32, reason: RetirementReason) -> Option<u32> {
+        let t = self.tiles[tile as usize];
+        if let Some(building) = t.building {
+            let b = &mut self.buildings[building as usize];
+            b.retired = Some(reason);
+            b.retired_tick = Some(self.clock.tick);
+            let id = b.id;
+            // Residents of a retired home leave rather than vanish silently.
+            for citizen in self.citizens.iter_mut() {
+                if citizen.home == Some(building) || citizen.work == Some(building) {
+                    citizen.state = CitizenState::Unemployed;
+                    citizen.path.clear();
+                }
+            }
+            self.tiles[tile as usize].building = None;
+            self.recount();
+            return Some(id);
+        }
+        if t.road {
+            self.tiles[tile as usize].road = false;
+            self.rebuild_derived();
+            return None;
+        }
+        if t.zone != Zone::None {
+            self.tiles[tile as usize].zone = Zone::None;
+            return None;
+        }
+        None
+    }
+
+    /// Place a structure directly (power plants are placed, not grown).
+    pub fn place_building(&mut self, tile: u32, kind: BuildingKind) -> Option<u32> {
+        let t = self.tiles[tile as usize];
+        if t.terrain != Terrain::Ground || t.road || t.building.is_some() {
+            return None;
+        }
+        if kind == BuildingKind::PowerPlant && !self.has_road_access(tile) {
+            return None;
+        }
+        let id = self.next_building_id;
+        self.next_building_id += 1;
+        let index = self.buildings.len() as u32;
+        self.buildings.push(Building {
+            id,
+            kind,
+            tile,
+            level: 1,
+            built_tick: self.clock.tick,
+            ready_tick: self.clock.tick + BUILD_TICKS,
+            retired: None,
+            retired_tick: None,
+            powered: false,
+            occupants: 0,
+        });
+        self.tiles[tile as usize].building = Some(index);
+        self.tiles[tile as usize].zone = Zone::None;
+        self.recount();
+        Some(id)
+    }
+
+    pub fn set_tax(&mut self, zone: Zone, rate: f32) -> f32 {
+        let clamped = rate.clamp(0.0, 0.20);
+        match zone {
+            Zone::Residential => self.economy.tax_residential = clamped,
+            Zone::Commercial => self.economy.tax_commercial = clamped,
+            Zone::Industrial => self.economy.tax_industrial = clamped,
+            Zone::None => {}
+        }
+        clamped
+    }
+
+    // ---------------------------------------------------------------------
+    // The tick.
+    // ---------------------------------------------------------------------
+
+    pub fn tick(&mut self) {
+        self.clock.tick += 1;
+
+        if self.clock.tick.is_multiple_of(4) {
+            self.recompute_power();
+        }
+        if self.clock.tick.is_multiple_of(8) {
+            self.recompute_demand();
+            self.grow();
+        }
+        if self.clock.tick.is_multiple_of(16) {
+            self.assign_jobs();
+            self.recount();
+        }
+        if self.clock.closes_month() {
+            self.post_month();
+        }
+
+        self.step_citizens();
+    }
+
+    fn recompute_power(&mut self) {
+        let plants: Vec<u32> = self
+            .buildings
+            .iter()
+            .filter(|b| b.kind == BuildingKind::PowerPlant && b.retired.is_none())
+            .map(|b| b.tile)
+            .collect();
+
+        for tile in self.tiles.iter_mut() {
+            tile.powered = false;
+        }
+        for building in self.buildings.iter_mut() {
+            building.powered = false;
+        }
+
+        let capacity = plants.len() as u32 * POWER_PER_PLANT;
+        let consumers = self
+            .buildings
+            .iter()
+            .filter(|b| b.retired.is_none() && b.kind != BuildingKind::PowerPlant)
+            .count() as u32;
+        let brownout = consumers > capacity;
+        self.stats.brownout = brownout;
+
+        if !brownout {
+            // Flood outwards from each plant along the road network, then light
+            // the tiles that touch a lit road. Power follows streets, which is
+            // what makes a plant's placement a real decision.
+            let mut lit: Vec<u32> = Vec::new();
+            for tile in plants {
+                if let Some(node) = self
+                    .roads
+                    .nearest_node_within(self.width, self.height, tile, 3)
+                {
+                    let mut frontier = vec![(node, 0u32)];
+                    let mut seen = std::collections::HashSet::new();
+                    while let Some((current, depth)) = frontier.pop() {
+                        if !seen.insert(current) || depth > POWER_RADIUS {
+                            continue;
+                        }
+                        let road_tile = self.roads.nodes[current as usize].tile;
+                        lit.push(road_tile);
+                        for &next in self.roads.neighbours(current) {
+                            frontier.push((next, depth + 1));
+                        }
+                    }
+                }
+            }
+            for road_tile in lit {
+                let (x, y) = self.coords(road_tile);
+                for dy in -1i32..=1 {
+                    for dx in -1i32..=1 {
+                        let nx = x as i32 + dx;
+                        let ny = y as i32 + dy;
+                        if self.in_bounds(nx, ny) {
+                            let tile = self.index(nx as u32, ny as u32);
+                            self.tiles[tile as usize].powered = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        for building in self.buildings.iter_mut() {
+            building.powered = self.tiles[building.tile as usize].powered;
+        }
+    }
+
+    fn recount(&mut self) {
+        let mut stats = Stats::default();
+        stats.road_tiles = self.tiles.iter().filter(|t| t.road).count() as u32;
+        stats.powered_tiles = self.tiles.iter().filter(|t| t.powered).count() as u32;
+        stats.brownout = self.stats.brownout;
+
+        for building in &self.buildings {
+            if building.retired.is_some() {
+                stats.retired_buildings += 1;
+                continue;
+            }
+            match building.kind {
+                BuildingKind::Home => stats.homes += 1,
+                BuildingKind::Shop => stats.shops += 1,
+                BuildingKind::Factory => stats.factories += 1,
+                BuildingKind::PowerPlant => stats.power_plants += 1,
+            }
+            if building.kind != BuildingKind::PowerPlant {
+                stats.jobs += building.capacity();
+            }
+        }
+
+        stats.population = self.citizens.len() as u32;
+        stats.employed = self
+            .citizens
+            .iter()
+            .filter(|c| c.work.is_some() && c.state != CitizenState::Unemployed)
+            .count() as u32;
+        stats.unemployed = stats.population.saturating_sub(stats.employed);
+        stats.unpowered_zoned = self
+            .tiles
+            .iter()
+            .filter(|t| t.zone != Zone::None && !t.powered)
+            .count() as u32;
+        stats.commute_failures = self.stats.commute_failures;
+        self.stats = stats;
+    }
+
+    fn recompute_demand(&mut self) {
+        let jobs = self.stats.jobs as f32;
+        let population = self.stats.population as f32;
+        let shops = self.stats.shops as f32;
+        let factories = self.stats.factories as f32;
+        let commercial_capacity = shops * 10.0;
+
+        // Tuned against the C1 playtest, not asserted as correct: the numbers
+        // here are a starting point and the record says so.
+        self.demand.residential =
+            ((jobs - population * 0.55) / 40.0 + 0.25).clamp(0.0, 1.0);
+        self.demand.commercial =
+            ((population * 0.28 - commercial_capacity) / 40.0 + 0.05).clamp(0.0, 1.0);
+        self.demand.industrial =
+            ((commercial_capacity * 0.6 + 30.0 - factories * 14.0) / 40.0).clamp(0.0, 1.0);
+    }
+
+    /// Let zoned, road-connected, powered tiles grow. Growth is simulation, not
+    /// a player action, so it files no ticket -- but the buildings it creates
+    /// are the population the cases are sampled from.
+    fn grow(&mut self) {
+        if self.stats.brownout {
+            // No power, no growth. Silently building anyway would be a lie the
+            // player has no way to see.
+            return;
+        }
+        let mut created = 0;
+        for tile in 0..self.tiles.len() as u32 {
+            if created >= 4 {
+                break;
+            }
+            let t = self.tiles[tile as usize];
+            if t.zone == Zone::None || t.building.is_some() || t.road || !t.powered {
+                continue;
+            }
+            if !self.has_road_access(tile) {
+                continue;
+            }
+            let demand = self.demand.for_zone(t.zone);
+            if demand < 0.20 {
+                continue;
+            }
+            let kind = match t.zone {
+                Zone::Residential => BuildingKind::Home,
+                Zone::Commercial => BuildingKind::Shop,
+                Zone::Industrial => BuildingKind::Factory,
+                Zone::None => continue,
+            };
+            if self.place_building(tile, kind).is_some() {
+                created += 1;
+                // Spending the demand is what stops one busy tick from zoning
+                // an entire map at once.
+                match t.zone {
+                    Zone::Residential => self.demand.residential = (self.demand.residential - 0.12).max(0.0),
+                    Zone::Commercial => self.demand.commercial = (self.demand.commercial - 0.12).max(0.0),
+                    Zone::Industrial => self.demand.industrial = (self.demand.industrial - 0.12).max(0.0),
+                    Zone::None => {}
+                }
+            }
+        }
+    }
+
+    /// Settle new residents into ready homes, then find work for the jobless.
+    fn assign_jobs(&mut self) {
+        let tick = self.clock.tick;
+
+        // Counts are gathered first and spawns applied afterwards: a building
+        // list borrowed immutably cannot be spawning citizens into the same
+        // world, and letting the compiler enforce that is cheaper than
+        // remembering it.
+        let mut residents: Vec<u32> = vec![0; self.buildings.len()];
+        let mut workers: Vec<u32> = vec![0; self.buildings.len()];
+        for citizen in &self.citizens {
+            if let Some(home) = citizen.home {
+                if let Some(slot) = residents.get_mut(home as usize) {
+                    *slot += 1;
+                }
+            }
+            if let Some(work) = citizen.work {
+                if let Some(slot) = workers.get_mut(work as usize) {
+                    *slot += 1;
+                }
+            }
+        }
+
+        let homes: Vec<(u32, u32)> = self
+            .buildings
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| b.is_ready(tick) && b.kind == BuildingKind::Home)
+            .map(|(index, b)| (index as u32, b.capacity()))
+            .collect();
+        for (index, capacity) in homes {
+            let have = residents.get(index as usize).copied().unwrap_or(0);
+            for _ in have..capacity {
+                self.spawn_citizen(index);
+            }
+        }
+
+        let mut openings: Vec<(u32, u32)> = Vec::new();
+        for (index, building) in self.buildings.iter().enumerate() {
+            if !building.is_ready(tick)
+                || building.kind == BuildingKind::PowerPlant
+                || building.kind == BuildingKind::Home
+            {
+                continue;
+            }
+            let capacity = building.capacity();
+            let have = workers.get(index).copied().unwrap_or(0);
+            if have < capacity {
+                openings.push((index as u32, capacity - have));
+            }
+        }
+
+        for opening in openings {
+            let (building, mut slots) = opening;
+            while slots > 0 {
+                match self
+                    .citizens
+                    .iter()
+                    .position(|c| c.work.is_none() && c.ready)
+                {
+                    Some(index) => {
+                        self.citizens[index].work = Some(building);
+                        self.citizens[index].state = CitizenState::AtHome;
+                        self.citizens[index].path.clear();
+                        self.citizens[index].path_cursor = 0;
+                        self.citizens[index].step_work = 0.0;
+                    }
+                    None => break,
+                }
+                slots -= 1;
+            }
+        }
+
+        for citizen in self.citizens.iter_mut() {
+            citizen.ready = true;
+        }
+    }
+
+    fn spawn_citizen(&mut self, home: u32) {
+        let id = self.next_citizen_id;
+        self.next_citizen_id += 1;
+        self.citizens.push(Citizen::new(id, home, self.clock.tick));
+    }
+
+    fn post_month(&mut self) {
+        let mut income = 0i64;
+        let mut expense = self.stats.road_tiles as i64 * 2;
+
+        for building in &self.buildings {
+            if building.retired.is_some() || !building.powered {
+                continue;
+            }
+            let rate = match building.kind {
+                BuildingKind::Home => self.economy.tax_residential,
+                BuildingKind::Shop => self.economy.tax_commercial,
+                BuildingKind::Factory => self.economy.tax_industrial,
+                BuildingKind::PowerPlant => 0.0,
+            };
+            income += (building.capacity() as f32 * rate * 12.0) as i64;
+        }
+
+        expense += self.stats.power_plants as i64 * 120;
+        expense += self.economy.loan_balance / 40;
+
+        self.economy.month_income = income;
+        self.economy.month_expense = expense;
+        self.economy.credits += income - expense;
+        self.economy.lifetime_income += income;
+        self.economy.lifetime_expense += expense;
+
+        if self.economy.credits < 0 {
+            self.economy.months_in_debt += 1;
+        } else {
+            self.economy.months_in_debt = 0;
+        }
+    }
+
+    fn step_citizens(&mut self) {
+        let tick = self.clock.tick;
+        let focus = self.focus;
+        let mut full = 0u32;
+        let mut failures = self.stats.commute_failures;
+        // Tiles are copied out before the loop: updating an agent must not need
+        // a whole-`self` borrow while the citizen list is borrowed mutably.
+        let building_tiles: Vec<u32> = self.buildings.iter().map(|b| b.tile).collect();
+        let mut arrivals: Vec<u32> = Vec::new();
+
+        for citizen in self.citizens.iter_mut() {
+            let Some(home) = citizen.home else { continue };
+            let Some(&home_tile) = building_tiles.get(home as usize) else {
+                continue;
+            };
+            let (hx, hy) = (home_tile % self.width, home_tile / self.width);
+            let distance = (hx as i32 - focus.0).abs() + (hy as i32 - focus.1).abs();
+            let is_full = distance <= LOD_RADIUS;
+            if is_full {
+                full += 1;
+            }
+
+            // A parked agent carries a one-tile path and has nothing to walk.
+            if citizen.path.len() <= 1 {
+                continue;
+            }
+
+            // Full agents walk a step at a time; offscreen agents advance a
+            // tile per tick. Both are functions of the world, never the clock.
+            let speed = if is_full { 0.25 } else { 1.0 };
+            citizen.step_work += speed;
+            if citizen.step_work < 1.0 {
+                continue;
+            }
+            citizen.step_work -= 1.0;
+            if citizen.step_work < 0.0 {
+                citizen.step_work = 0.0;
+            }
+            citizen.path_cursor += 1;
+            if citizen.path_cursor + 1 >= citizen.path.len() {
+                // Arrived. The agent parks on its destination instead of
+                // vanishing: a citizen at work is still a citizen.
+                let arrived = citizen.path[citizen.path.len() - 1];
+                citizen.path = vec![arrived];
+                citizen.path_cursor = 0;
+                citizen.step_work = 0.0;
+                citizen.state = match citizen.state {
+                    CitizenState::ToWork => CitizenState::AtWork,
+                    CitizenState::ToHome => CitizenState::AtHome,
+                    other => other,
+                };
+                if citizen.state == CitizenState::AtWork {
+                    if let Some(work) = citizen.work {
+                        arrivals.push(work);
+                    }
+                }
+            }
+        }
+
+        for work in arrivals {
+            if let Some(building) = self.buildings.get_mut(work as usize) {
+                building.occupants += 1;
+            }
+        }
+
+        // Route planning happens in a second pass, because it borrows the
+        // road graph and cannot run while the citizens are borrowed mutably.
+        let tick_budget = if tick.is_multiple_of(4) { 64 } else { 0 };
+        let mut planned = 0;
+        for index in 0..self.citizens.len() {
+            if planned >= tick_budget {
+                break;
+            }
+            let (state, work, home, needs_plan, ready) = {
+                let c = &self.citizens[index];
+                // A parked agent (a one-tile path) is due a new plan; an agent
+                // mid-route is not.
+                (c.state, c.work, c.home, c.path.len() <= 1, c.ready)
+            };
+            if !needs_plan || !ready {
+                continue;
+            }
+            let Some(work) = work else { continue };
+            let (Some(home), Some(job)) = (home, Some(work)) else {
+                continue;
+            };
+            let from_tile = self.buildings[home as usize].tile;
+            let to_tile = self.buildings[job as usize].tile;
+            let route = match state {
+                CitizenState::AtHome => {
+                    self.roads.route_between_tiles(self.width, self.height, from_tile, to_tile, 3)
+                }
+                CitizenState::AtWork => {
+                    self.roads.route_between_tiles(self.width, self.height, to_tile, from_tile, 3)
+                }
+                _ => None,
+            };
+            planned += 1;
+            match route {
+                Some(path) => {
+                    let citizen = &mut self.citizens[index];
+                    citizen.path = path;
+                    citizen.path_cursor = 0;
+                    citizen.step_work = 0.0;
+                    citizen.state = match state {
+                        CitizenState::AtHome => CitizenState::ToWork,
+                        CitizenState::AtWork => CitizenState::ToHome,
+                        other => other,
+                    };
+                }
+                None => {
+                    // A commute with no route is a refusal, counted and
+                    // surfaced as a case -- never a silent teleport.
+                    failures += 1;
+                    let citizen = &mut self.citizens[index];
+                    citizen.path.clear();
+                    citizen.path_cursor = 0;
+                    citizen.step_work = 0.0;
+                }
+            }
+        }
+
+        self.stats.commute_failures = failures;
+        self.stats.full_agents = full;
+    }
+
+    /// A save. `ron` rather than JSON because a 65k-tile world in JSON is a
+    /// text file nobody wants to open.
+    pub fn save(&self, path: &std::path::Path) -> std::io::Result<()> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let text = ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default())
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
+        std::fs::write(path, text)
+    }
+
+    pub fn load(path: &std::path::Path) -> std::io::Result<Self> {
+        let text = std::fs::read_to_string(path)?;
+        let mut world: World =
+            ron::from_str(&text).map_err(|e| std::io::Error::other(e.to_string()))?;
+        world.rebuild_derived();
+        Ok(world)
+    }
+}
+
+#[cfg(test)]
+pub mod tests_support {
+    use super::{Terrain, Tile};
+
+    /// Ground tiles, no water, no roads. Used by tests that need a clean grid.
+    pub fn blank_tiles(width: u32, height: u32) -> Vec<Tile> {
+        (0..width * height)
+            .map(|_| Tile {
+                terrain: Terrain::Ground,
+                ..Default::default()
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn small_city() -> World {
+        let mut world = World::new(32, 32, 7);
+        // Fill the water in, so tests exercise the city rather than the sea.
+        for tile in world.tiles.iter_mut() {
+            tile.terrain = Terrain::Ground;
+        }
+        for y in 0..32u32 {
+            world.tiles[(y * 32) as usize].road = true;
+        }
+        world.rebuild_derived();
+        world
+    }
+
+    #[test]
+    fn a_new_world_has_a_seed_road_and_credits() {
+        let world = small_city();
+        assert!(world.stats.road_tiles >= 32);
+        assert_eq!(world.economy.credits, 25_000);
+        assert_eq!(world.stats.population, 0);
+    }
+
+    #[test]
+    fn the_same_seed_builds_the_same_terrain() {
+        let a = World::new(64, 64, 1234);
+        let b = World::new(64, 64, 1234);
+        for (x, y) in [(0u32, 0u32), (10, 10), (63, 63), (5, 40)] {
+            let i = (y * 64 + x) as usize;
+            assert_eq!(a.tiles[i].terrain, b.tiles[i].terrain);
+        }
+    }
+
+    #[test]
+    fn a_road_leg_lays_the_tiles_between_its_ends() {
+        let mut world = small_city();
+        let from = world.index(4, 4);
+        let to = world.index(8, 4);
+        let laid = world.lay_road(from, to);
+        assert_eq!(laid.len(), 5, "expected five tiles from x=4 to x=8");
+        for x in 4..=8u32 {
+            assert!(world.tiles[world.index(x, 4) as usize].road);
+        }
+        assert!(world.roads.len() >= 5);
+    }
+
+    #[test]
+    fn zoning_is_refused_on_roads_and_buildings() {
+        let mut world = small_city();
+        let road_tile = world.index(0, 5);
+        assert!(!world.set_zone(road_tile, Zone::Residential));
+        let free = world.index(4, 20);
+        assert!(world.set_zone(free, Zone::Residential));
+        assert_eq!(world.tiles[free as usize].zone, Zone::Residential);
+    }
+
+    #[test]
+    fn a_demolished_building_is_retired_not_deleted() {
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        let id = world.place_building(tile, BuildingKind::Home).expect("placed");
+        assert_eq!(world.buildings.len(), 1);
+        let retired = world.demolish(tile, RetirementReason::Superseded);
+        assert_eq!(retired, Some(id));
+        assert_eq!(
+            world.buildings.len(),
+            1,
+            "retirement must not remove the building from the record"
+        );
+        assert_eq!(
+            world.buildings[0].retired,
+            Some(RetirementReason::Superseded)
+        );
+        assert!(world.tiles[tile as usize].building.is_none());
+        assert_eq!(world.stats.retired_buildings, 1);
+    }
+
+    #[test]
+    fn power_follows_the_road_network() {
+        let mut world = small_city();
+        // A plant near the seed road, and a home far from it.
+        let plant_tile = world.index(1, 3);
+        world.place_building(plant_tile, BuildingKind::PowerPlant).expect("plant");
+        let near = world.index(0, 3);
+        let far = world.index(30, 30);
+        world.buildings[0].ready_tick = 0;
+        world.recompute_power();
+        assert!(world.tiles[near as usize].powered, "tile beside the plant's road should be lit");
+        assert!(
+            !world.tiles[far as usize].powered,
+            "a tile with no road within the radius must stay dark"
+        );
+    }
+
+    #[test]
+    fn zoned_tiles_grow_only_with_power_and_a_road() {
+        let mut world = small_city();
+        world.place_building(world.index(1, 3), BuildingKind::PowerPlant).expect("plant");
+        world.buildings[0].ready_tick = 0;
+        // Beside the seed road: growth expected.
+        let near = world.index(1, 6);
+        world.set_zone(near, Zone::Residential);
+        // In the far corner with no road: growth must not happen.
+        let far = world.index(31, 31);
+        world.set_zone(far, Zone::Residential);
+        world.recompute_power();
+        for _ in 0..40 {
+            world.clock.tick += 1;
+            world.recompute_demand();
+            world.grow();
+        }
+        assert!(
+            world.tiles[near as usize].building.is_some(),
+            "a powered, road-connected zoned tile should grow"
+        );
+        assert!(
+            world.tiles[far as usize].building.is_none(),
+            "an unpowered tile with no road must not grow"
+        );
+    }
+
+    #[test]
+    fn construction_finishes_before_a_home_is_occupied() {
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        world.place_building(tile, BuildingKind::Home).expect("home");
+        world.buildings[0].ready_tick = 100;
+        world.clock.tick = 50;
+        world.assign_jobs();
+        assert_eq!(world.citizens.len(), 0, "no residents before the building is ready");
+        world.clock.tick = 120;
+        world.assign_jobs();
+        assert!(!world.citizens.is_empty(), "residents move in once it is ready");
+    }
+
+    #[test]
+    fn income_posts_once_a_month() {
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        world.place_building(tile, BuildingKind::Home).expect("home");
+        world.buildings[0].ready_tick = 0;
+        world.recompute_power();
+        world.buildings[0].powered = true;
+        world.tiles[tile as usize].powered = true;
+        let before = world.economy.credits;
+        world.clock.tick = TICKS_PER_DAY * DAYS_PER_MONTH;
+        world.post_month();
+        assert!(
+            world.economy.month_income > 0,
+            "an occupied, powered home pays tax"
+        );
+        // One home does not cover thirty-two tiles of road upkeep. This asserted
+        // the opposite before the test was corrected: it was checking a feeling
+        // about empty cities rather than the arithmetic.
+        assert!(
+            world.economy.month_expense > world.economy.month_income,
+            "road upkeep on a nearly empty city should exceed its tax take"
+        );
+        assert_eq!(
+            world.economy.credits,
+            before + world.economy.month_income - world.economy.month_expense
+        );
+    }
+
+    #[test]
+    fn a_save_round_trips_and_rebuilds_the_graph() {
+        let mut world = small_city();
+        world.lay_road(world.index(3, 3), world.index(9, 3));
+        world.place_building(world.index(3, 4), BuildingKind::PowerPlant).expect("plant");
+        let dir = std::env::temp_dir().join("ala-cities-test-save");
+        let path = dir.join("world.ron");
+        world.save(&path).expect("save");
+        let loaded = World::load(&path).expect("load");
+        assert_eq!(loaded.buildings.len(), world.buildings.len());
+        assert_eq!(
+            loaded.roads.len(),
+            world.roads.len(),
+            "the road graph must be rebuilt on load, not serialised"
+        );
+        assert!(loaded.has_road_access(loaded.index(3, 5)));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn the_tick_is_deterministic_from_a_seed() {
+        let mut a = small_city();
+        let mut b = small_city();
+        for world in [&mut a, &mut b] {
+            world.place_building(world.index(1, 3), BuildingKind::PowerPlant);
+            world.set_zone(world.index(1, 5), Zone::Residential);
+            world.set_zone(world.index(1, 7), Zone::Commercial);
+            world.buildings[0].ready_tick = 0;
+        }
+        for _ in 0..600 {
+            a.tick();
+            b.tick();
+        }
+        assert_eq!(a.stats.population, b.stats.population);
+        assert_eq!(a.buildings.len(), b.buildings.len());
+        assert_eq!(a.economy.credits, b.economy.credits);
+        assert_eq!(a.stats.jobs, b.stats.jobs);
+    }
+}

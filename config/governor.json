@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "profile": "default",
+  "allowed_ops": ["build_road", "zone", "place_service", "demolish", "set_tax", "take_loan"],
+  "max_road_leg": 64,
+  "max_loan": 50000,
+  "notes": "C1 default profile. A profile narrows the operation set; nothing in this file widens it. An operation named here that this build does not know is dropped, and a file that will not parse is refused outright rather than falling back to permissive defaults."
+}

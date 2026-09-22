@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "profile": "read_only",
+  "allowed_ops": ["look", "inspect"],
+  "max_road_leg": 0,
+  "max_loan": 0,
+  "notes": "A worked example of the narrowing rule, not the default. Run the game with ALA_GOVERNOR=config/governor.read_only.json to see every build operation refused by name -- including the vocabulary it would have accepted, so the refusal is actionable rather than a dead end. A read-only profile can still hold a conversation; it just cannot pour concrete."
+}

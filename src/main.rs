@@ -1,0 +1,1750 @@
+//! ala-cities — the client.
+//!
+//! The window, the input, and the interface. Every action the player takes goes
+//! through the governor before it touches the world, and every action that lands
+//! files a ticket first and is validated afterwards by reading the world back.
+//!
+//! The simulation runs at a fixed 20 Hz regardless of the display, and the
+//! renderer runs uncapped so a 240 Hz panel is actually fed. Agents are drawn by
+//! the *work they have completed*, never by a frame clock.
+
+mod hud;
+mod render;
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
+
+use winit::application::ApplicationHandler;
+use winit::event::{ElementState, MouseButton, MouseScrollDelta, WindowEvent};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::window::{Window, WindowId};
+
+use ala_cities::gov::{Expectation, Government, Op, TicketKind, ALL_OPS};
+use ala_cities::session::{write_feedback, Interaction, Session};
+use ala_cities::sim::citizen::CitizenState;
+use ala_cities::sim::{BuildingKind, Terrain, World, Zone, SIM_HZ};
+
+use hud::{Token, SIZE_BODY, SIZE_DISPLAY, SIZE_SMALL};
+use render::{Batcher, Camera, Face, Gpu, Screen, Text, TILE};
+
+const STAGE: &str = "C1";
+const MAP: u32 = 256;
+const SEED: u64 = 0xC117_2026;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Tool {
+    Road,
+    Zone,
+    Power,
+    Demolish,
+    Inspect,
+}
+
+impl Tool {
+    fn name(self) -> &'static str {
+        match self {
+            Tool::Road => "Road",
+            Tool::Zone => "Zone",
+            Tool::Power => "Power",
+            Tool::Demolish => "Demolish",
+            Tool::Inspect => "Inspect",
+        }
+    }
+
+    fn hint(self) -> &'static str {
+        match self {
+            Tool::Road => "1 · drag",
+            Tool::Zone => "2 · drag",
+            Tool::Power => "3 · click",
+            Tool::Demolish => "4 · click",
+            Tool::Inspect => "5 · click",
+        }
+    }
+
+    fn all() -> [Tool; 5] {
+        [Tool::Road, Tool::Zone, Tool::Power, Tool::Demolish, Tool::Inspect]
+    }
+}
+
+struct Rect {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+
+struct App {
+    gpu: Option<Gpu>,
+    text: Text,
+    batch: Batcher,
+    camera: Camera,
+    atlas_dirty: bool,
+
+    world: World,
+    gov: Government,
+    session: Session,
+
+    tool: Tool,
+    zone: Zone,
+    cursor: (f32, f32),
+    press_tile: Option<(i32, i32)>,
+    panning: bool,
+    last_cursor: (f32, f32),
+
+    last_frame: Instant,
+    accumulator: f32,
+    speed: u8,
+    ticks_run: u64,
+
+    show_ledger: bool,
+    show_help: bool,
+    menu_open: bool,
+    feedback: String,
+    feedback_focus: bool,
+
+    /// The most recent refusal, shown as its own tier rather than as an error.
+    refusal: Option<String>,
+    /// The most recent governed action, so the session chrome can name it.
+    last_ticket: Option<String>,
+    last_verdict: Option<String>,
+    toast: Option<(String, u64)>,
+}
+
+impl App {
+    fn new() -> std::io::Result<Self> {
+        let world = World::new(MAP, MAP, SEED);
+        let governor_path: PathBuf = std::env::var("ALA_GOVERNOR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("config/governor.json"));
+        let gov = Government::open("saves", "season_2026_s1", &governor_path)?;
+        let session = Session::open(STAGE, &format!("{}-dev", env!("CARGO_PKG_VERSION")))?;
+        let screen = Screen { w: 1600.0, h: 900.0 };
+
+        Ok(Self {
+            gpu: None,
+            text: Text::new(),
+            batch: Batcher::default(),
+            camera: Camera::new(screen, MAP, MAP),
+            atlas_dirty: true,
+            world,
+            gov,
+            session,
+            tool: Tool::Road,
+            zone: Zone::Residential,
+            cursor: (0.0, 0.0),
+            press_tile: None,
+            panning: false,
+            last_cursor: (0.0, 0.0),
+            last_frame: Instant::now(),
+            accumulator: 0.0,
+            speed: 1,
+            ticks_run: 0,
+            show_ledger: false,
+            show_help: false,
+            menu_open: false,
+            feedback: String::new(),
+            feedback_focus: false,
+            refusal: None,
+            last_ticket: None,
+            last_verdict: None,
+            toast: None,
+        })
+    }
+
+    fn screen(&self) -> Screen {
+        match self.gpu.as_ref() {
+            Some(gpu) => gpu.screen(),
+            None => self.camera.screen,
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Simulation
+    // -----------------------------------------------------------------
+
+    fn advance(&mut self, real_seconds: f32) {
+        let sim_dt = 1.0 / SIM_HZ as f32;
+        if self.speed == 0 || self.menu_open {
+            return;
+        }
+        self.accumulator += real_seconds.min(0.25) * self.speed as f32;
+
+        // A fixed number of steps per frame, so a stalled frame catches up
+        // rather than spiralling into an ever-growing backlog.
+        let mut steps = 0;
+        while self.accumulator >= sim_dt && steps < 8 {
+            self.world.tick();
+            self.accumulator -= sim_dt;
+            steps += 1;
+            self.ticks_run += 1;
+            self.govern();
+        }
+        if steps == 8 {
+            // Dropping the remainder is honest: the city falls behind in real
+            // time rather than the record gaining ticks that never simulated.
+            self.accumulator = 0.0;
+        }
+    }
+
+    /// Governance work, on cadences that do not need to run every tick.
+    fn govern(&mut self) {
+        let tick = self.world.clock.tick;
+
+        if tick.is_multiple_of(4) {
+            if let Ok(closed) = self.gov.validate(&self.world, tick) {
+                if let Some(id) = closed.last() {
+                    self.toast = Some((format!("{id} validated by reading the world back"), tick));
+                }
+            }
+        }
+        if tick.is_multiple_of(40) {
+            let _ = self.gov.sample(&self.world, tick);
+        }
+        if tick.is_multiple_of(20) {
+            let _ = self.gov.enforce_bound(tick);
+        }
+        if tick.is_multiple_of(200) {
+            let _ = self.gov.reconcile(&self.world, tick);
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Actions. The governor decides first; the world changes second; the
+    // ticket is filed before either.
+    // -----------------------------------------------------------------
+
+    fn act_road(&mut self, from: (i32, i32), to: (i32, i32)) {
+        if !self.world.in_bounds(from.0, from.1) || !self.world.in_bounds(to.0, to.1) {
+            return;
+        }
+        let from_tile = self.world.index(from.0 as u32, from.1 as u32);
+        let to_tile = self.world.index(to.0 as u32, to.1 as u32);
+        let legs = self.world.leg_tiles(from_tile, to_tile);
+        let distance = legs.len() as u32;
+
+        let op = Op::BuildRoad { distance };
+        let verdict = self.gov.authorize_or_record(self.world.clock.tick, &op);
+        if !verdict.allowed {
+            self.refuse(&op, &verdict.reason);
+            return;
+        }
+
+        // What existed before, so a change that breaks something already there
+        // is recorded as a regression rather than quietly absorbed.
+        let roads_before: Vec<u32> = legs
+            .iter()
+            .copied()
+            .filter(|&tile| self.world.tile(tile).road)
+            .collect();
+
+        let laid = self.world.lay_road(from_tile, to_tile);
+        if laid.is_empty() {
+            self.refusal = Some("that leg is already built; nothing changed".to_string());
+            return;
+        }
+
+        let id = self
+            .gov
+            .file(
+                self.world.clock.tick,
+                TicketKind::Build,
+                format!("lay {distance} tiles of road"),
+                format!("all {distance} tiles are road", ),
+                Expectation::RoadTiles(laid.clone()),
+                roads_before,
+                verdict.governor_version,
+            )
+            .unwrap_or_else(|err| format!("unfiled ({err})"));
+
+        self.last_ticket = Some(id.clone());
+        self.last_verdict = Some(verdict.reason.clone());
+        self.refusal = None;
+        self.capture(
+            "build_road",
+            Some((from.0, from.1)),
+            format!("{distance} tiles, filed as {id}"),
+        );
+    }
+
+    fn act_zone(&mut self, tiles: &[u32]) {
+        let targets: Vec<u32> = tiles
+            .iter()
+            .copied()
+            .filter(|&tile| {
+                let t = self.world.tile(tile);
+                t.terrain == Terrain::Ground && !t.road && t.building.is_none() && t.zone != self.zone
+            })
+            .collect();
+        if targets.is_empty() {
+            return;
+        }
+
+        let op = Op::Zone {
+            tiles: targets.len() as u32,
+        };
+        let verdict = self.gov.authorize_or_record(self.world.clock.tick, &op);
+        if !verdict.allowed {
+            self.refuse(&op, &verdict.reason);
+            return;
+        }
+
+        let mut applied = Vec::new();
+        for tile in &targets {
+            if self.world.set_zone(*tile, self.zone) {
+                applied.push((*tile, self.zone));
+            }
+        }
+        if applied.is_empty() {
+            return;
+        }
+
+        let id = self
+            .gov
+            .file(
+                self.world.clock.tick,
+                TicketKind::Build,
+                format!("zone {} tiles {}", applied.len(), self.zone.name()),
+                format!("all {} tiles carry the zone set", applied.len()),
+                Expectation::ZonedTiles(applied),
+                Vec::new(),
+                verdict.governor_version,
+            )
+            .unwrap_or_else(|err| format!("unfiled ({err})"));
+
+        self.last_ticket = Some(id.clone());
+        self.last_verdict = Some(verdict.reason.clone());
+        self.refusal = None;
+        let (cx, cy) = self.world.coords(targets[0]);
+        self.capture(
+            "zone",
+            Some((cx as i32, cy as i32)),
+            format!("{} tiles as {}, filed as {id}", targets.len(), self.zone.name()),
+        );
+    }
+
+    fn act_power(&mut self, tile: u32) {
+        let op = Op::PlaceService {
+            kind: BuildingKind::PowerPlant,
+        };
+        let verdict = self.gov.authorize_or_record(self.world.clock.tick, &op);
+        if !verdict.allowed {
+            self.refuse(&op, &verdict.reason);
+            return;
+        }
+        if !self.world.has_road_access(tile) {
+            self.refusal =
+                Some("a power plant needs a road within two tiles to connect to".to_string());
+            return;
+        }
+        if self.world.economy.credits < BuildingKind::PowerPlant.build_cost() {
+            self.refusal = Some(format!(
+                "the city has {} credits and a plant costs {}",
+                self.world.economy.credits,
+                BuildingKind::PowerPlant.build_cost()
+            ));
+            return;
+        }
+
+        match self.world.place_building(tile, BuildingKind::PowerPlant) {
+            Some(id) => {
+                self.world.economy.credits -= BuildingKind::PowerPlant.build_cost();
+                let ticket = self
+                    .gov
+                    .file(
+                        self.world.clock.tick,
+                        TicketKind::Build,
+                        format!("place power plant {id}"),
+                        "a structure stands on the tile".to_string(),
+                        Expectation::BuildingAt(tile),
+                        Vec::new(),
+                        verdict.governor_version,
+                    )
+                    .unwrap_or_else(|err| format!("unfiled ({err})"));
+                self.last_ticket = Some(ticket.clone());
+                self.last_verdict = Some(verdict.reason.clone());
+                self.refusal = None;
+                let (x, y) = self.world.coords(tile);
+                self.capture(
+                    "place_service",
+                    Some((x as i32, y as i32)),
+                    format!("power plant {id}, filed as {ticket}"),
+                );
+            }
+            None => {
+                self.refusal = Some("something already stands there".to_string());
+            }
+        }
+    }
+
+    fn act_demolish(&mut self, tile: u32) {
+        let op = Op::Demolish { tiles: 1 };
+        let verdict = self.gov.authorize_or_record(self.world.clock.tick, &op);
+        if !verdict.allowed {
+            self.refuse(&op, &verdict.reason);
+            return;
+        }
+
+        let had = self.world.tile(tile).building.is_some() || self.world.tile(tile).road;
+        if !had {
+            return;
+        }
+        // Demolition retires; it never deletes. The reason is recorded, and the
+        // building stays in the city's history.
+        let retired = self
+            .world
+            .demolish(tile, ala_cities::gov::RetirementReason::Superseded);
+        let id = self
+            .gov
+            .file(
+                self.world.clock.tick,
+                TicketKind::Intervention,
+                format!(
+                    "clear the tile{}",
+                    retired
+                        .map(|id| format!(" (retiring structure {id})"))
+                        .unwrap_or_default()
+                ),
+                "nothing stands on the tile".to_string(),
+                Expectation::Demolished(tile),
+                Vec::new(),
+                verdict.governor_version,
+            )
+            .unwrap_or_else(|err| format!("unfiled ({err})"));
+
+        self.last_ticket = Some(id.clone());
+        self.last_verdict = Some(verdict.reason.clone());
+        self.refusal = None;
+        let (x, y) = self.world.coords(tile);
+        self.capture(
+            "demolish",
+            Some((x as i32, y as i32)),
+            format!("retired rather than deleted, filed as {id}"),
+        );
+    }
+
+    fn refuse(&mut self, op: &Op, reason: &str) {
+        // A refusal is a distinct state from an error, and it names the
+        // operation and the vocabulary that would have been accepted.
+        self.refusal = Some(format!(
+            "refused: {} — {reason}. Known operations: {}",
+            op.name(),
+            ALL_OPS.join(", ")
+        ));
+        self.gov.record_refusal(self.world.clock.tick, op.name(), reason);
+        self.last_verdict = Some(reason.to_string());
+        self.capture("refused", None, format!("{} — {reason}", op.name()));
+    }
+
+    fn capture(&mut self, kind: &str, tile: Option<(i32, i32)>, detail: String) {
+        let interaction = Interaction {
+            tick: self.world.clock.tick,
+            wall_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0),
+            kind: kind.to_string(),
+            tool: Some(self.tool.name().to_string()),
+            screen: Some(self.cursor),
+            tile,
+            ticket: self.last_ticket.clone(),
+            detail,
+        };
+        self.session.record(interaction);
+    }
+
+    // -----------------------------------------------------------------
+    // Input
+    // -----------------------------------------------------------------
+
+    fn on_key(&mut self, code: KeyCode, pressed: bool, text: Option<String>) {
+        if !pressed {
+            return;
+        }
+
+        if self.feedback_focus {
+            match code {
+                KeyCode::Enter => {
+                    let body = self.feedback.trim().to_string();
+                    if !body.is_empty() {
+                        match write_feedback(
+                            STAGE,
+                            &self.session,
+                            &body,
+                            &[format!(
+                                "at {} with {} tickets filed, {} retired",
+                                self.world.clock.label(),
+                                self.gov.tickets.len(),
+                                self.gov.retirements.len()
+                            )],
+                        ) {
+                            Ok(path) => {
+                                self.toast = Some((
+                                    format!("feedback written to {}", path.display()),
+                                    self.world.clock.tick,
+                                ));
+                            }
+                            Err(err) => {
+                                self.toast =
+                                    Some((format!("feedback not written: {err}"), self.world.clock.tick));
+                            }
+                        }
+                        self.feedback.clear();
+                    }
+                    self.feedback_focus = false;
+                }
+                KeyCode::Escape => self.feedback_focus = false,
+                KeyCode::Backspace => {
+                    self.feedback.pop();
+                }
+                KeyCode::Space => self.feedback.push(' '),
+                _ => {
+                    if let Some(ch) = text {
+                        if ch.chars().all(|c| !c.is_control()) {
+                            self.feedback.push_str(&ch);
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
+        match code {
+            KeyCode::Escape => {
+                if self.menu_open {
+                    self.menu_open = false;
+                } else {
+                    self.menu_open = true;
+                    self.speed = 0;
+                }
+            }
+            KeyCode::Space => {
+                self.speed = if self.speed == 0 { 1 } else { 0 };
+            }
+            KeyCode::Tab => {
+                self.speed = match self.speed {
+                    0 => 1,
+                    1 => 2,
+                    2 => 3,
+                    _ => 1,
+                };
+            }
+            KeyCode::Digit1 => self.tool = Tool::Road,
+            KeyCode::Digit2 => self.tool = Tool::Zone,
+            KeyCode::Digit3 => self.tool = Tool::Power,
+            KeyCode::Digit4 => self.tool = Tool::Demolish,
+            KeyCode::Digit5 => self.tool = Tool::Inspect,
+            KeyCode::KeyR if self.tool == Tool::Zone => self.zone = Zone::Residential,
+            KeyCode::KeyC if self.tool == Tool::Zone => self.zone = Zone::Commercial,
+            KeyCode::KeyI if self.tool == Tool::Zone => self.zone = Zone::Industrial,
+            KeyCode::KeyL => self.show_ledger = !self.show_ledger,
+            KeyCode::KeyH => self.show_help = !self.show_help,
+            KeyCode::KeyF if self.menu_open => self.feedback_focus = true,
+            KeyCode::KeyS if self.menu_open => {
+                let path = PathBuf::from("saves/world.ron");
+                match self.world.save(&path) {
+                    Ok(()) => {
+                        self.toast = Some((
+                            format!("saved to {}", path.display()),
+                            self.world.clock.tick,
+                        ))
+                    }
+                    Err(err) => {
+                        self.toast = Some((format!("save failed: {err}"), self.world.clock.tick))
+                    }
+                }
+            }
+            KeyCode::KeyO if self.menu_open => {
+                let path = PathBuf::from("saves/world.ron");
+                match World::load(&path) {
+                    Ok(world) => {
+                        self.world = world;
+                        self.toast = Some((
+                            format!("loaded {}", path.display()),
+                            self.world.clock.tick,
+                        ));
+                    }
+                    Err(err) => {
+                        self.toast = Some((format!("load failed: {err}"), self.world.clock.tick))
+                    }
+                }
+            }
+            KeyCode::KeyQ if self.menu_open => {
+                let _ = self.session.flush();
+            }
+            _ => {}
+        }
+    }
+
+    fn on_click(&mut self, pressed: bool, button: MouseButton) {
+        if self.menu_open {
+            return;
+        }
+        match button {
+            MouseButton::Left if pressed => {
+                let (tx, ty) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+                if !self.world.in_bounds(tx, ty) {
+                    return;
+                }
+                let screen = self.screen();
+                if toolbar_hit(&screen, self.cursor.0, self.cursor.1).is_some() {
+                    return;
+                }
+                self.press_tile = Some((tx, ty));
+                if self.tool == Tool::Power {
+                    let tile = self.world.index(tx as u32, ty as u32);
+                    self.act_power(tile);
+                    self.press_tile = None;
+                } else if self.tool == Tool::Demolish {
+                    let tile = self.world.index(tx as u32, ty as u32);
+                    self.act_demolish(tile);
+                    self.press_tile = None;
+                }
+            }
+            MouseButton::Left => {
+                if let Some(from) = self.press_tile.take() {
+                    let (tx, ty) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+                    match self.tool {
+                        Tool::Road => self.act_road(from, (tx, ty)),
+                        Tool::Zone => {
+                            // Zoning paints over the tiles the drag covered: a
+                            // brush, not a line, because a district is a shape.
+                            let tiles = self.tiles_between(from, (tx, ty));
+                            self.act_zone(&tiles);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            MouseButton::Right if pressed => {
+                self.panning = true;
+                self.last_cursor = self.cursor;
+            }
+            MouseButton::Right => self.panning = false,
+            MouseButton::Middle if pressed => {
+                self.panning = true;
+                self.last_cursor = self.cursor;
+            }
+            MouseButton::Middle => self.panning = false,
+            _ => {}
+        }
+    }
+
+    /// Every tile inside the rectangle a drag covered.
+    fn tiles_between(&self, from: (i32, i32), to: (i32, i32)) -> Vec<u32> {
+        let (x0, x1) = (from.0.min(to.0), from.0.max(to.0));
+        let (y0, y1) = (from.1.min(to.1), from.1.max(to.1));
+        let mut tiles = Vec::new();
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                if self.world.in_bounds(x, y) {
+                    tiles.push(self.world.index(x as u32, y as u32));
+                }
+            }
+        }
+        tiles
+    }
+
+    // -----------------------------------------------------------------
+    // Drawing
+    // -----------------------------------------------------------------
+
+    fn draw_world(&mut self) {
+        let (left, top, right, bottom) = self.camera.visible_tiles(MAP, MAP);
+        let tick = self.world.clock.tick;
+
+        for y in top..bottom {
+            for x in left..right {
+                let tile = self.world.index(x, y);
+                let t = self.world.tile(tile);
+                let (wx, wy) = (x as f32 * TILE, y as f32 * TILE);
+
+                let ground = match t.terrain {
+                    Terrain::Water => Token::Water,
+                    Terrain::Ground => Token::Ground,
+                };
+                let ground_color = hud::style(ground).fill.unwrap_or([0.2, 0.3, 0.2, 1.0]);
+                self.camera.world_rect(&mut self.batch, wx, wy, TILE, TILE, ground_color);
+
+                if t.zone != Zone::None && t.building.is_none() {
+                    let token = match t.zone {
+                        Zone::Residential => Token::ZoneResidential,
+                        Zone::Commercial => Token::ZoneCommercial,
+                        Zone::Industrial => Token::ZoneIndustrial,
+                        Zone::None => Token::Ground,
+                    };
+                    let color = hud::style(token).fill.unwrap_or([0.5, 0.5, 0.5, 1.0]);
+                    self.camera
+                        .world_rect(&mut self.batch, wx + 1.0, wy + 1.0, TILE - 2.0, TILE - 2.0, hud::with_alpha(color, 0.45));
+                    if !t.powered {
+                        // Unpowered and zoned is the condition the cases are
+                        // sampled from, so it is visible rather than reported.
+                        let brown = hud::style(Token::Brownout).text.unwrap_or([1.0, 0.6, 0.0, 1.0]);
+                        self.camera.world_rect(&mut self.batch, wx + 4.0, wy + 4.0, TILE - 8.0, TILE - 8.0, brown);
+                    }
+                }
+
+                if t.road {
+                    let color = hud::style(Token::Road).fill.unwrap_or([0.3, 0.3, 0.3, 1.0]);
+                    self.camera.world_rect(&mut self.batch, wx, wy, TILE, TILE, color);
+                }
+
+                if let Some(index) = t.building {
+                    let b = self.world.building(index);
+                    let color = if tick < b.ready_tick {
+                        hud::style(Token::Scaffold).fill.unwrap_or([0.6, 0.5, 0.2, 1.0])
+                    } else {
+                        match b.kind {
+                            BuildingKind::Home => hud::style(Token::ZoneResidential).fill.unwrap_or([0.4, 0.7, 0.4, 1.0]),
+                            BuildingKind::Shop => hud::style(Token::ZoneCommercial).fill.unwrap_or([0.4, 0.5, 0.8, 1.0]),
+                            BuildingKind::Factory => hud::style(Token::ZoneIndustrial).fill.unwrap_or([0.8, 0.6, 0.3, 1.0]),
+                            BuildingKind::PowerPlant => hud::style(Token::Powered).text.unwrap_or([0.5, 0.9, 0.6, 1.0]),
+                        }
+                    };
+                    self.camera.world_rect(&mut self.batch, wx + 1.5, wy + 1.5, TILE - 3.0, TILE - 3.0, color);
+                }
+            }
+        }
+
+        // Retired structures are drawn, faintly. The city shows what it used to
+        // be rather than pretending those buildings never existed.
+        let retired_color = hud::style(Token::Retired).text.unwrap_or([0.6, 0.6, 0.6, 0.5]);
+        for building in &self.world.buildings {
+            if building.retired.is_none() {
+                continue;
+            }
+            let (x, y) = self.world.coords(building.tile);
+            if x < left || x >= right || y < top || y >= bottom {
+                continue;
+            }
+            self.camera.world_rect(
+                &mut self.batch,
+                x as f32 * TILE + 2.0,
+                y as f32 * TILE + 2.0,
+                TILE - 4.0,
+                TILE - 4.0,
+                retired_color,
+            );
+        }
+
+        // Agents. Position comes from the work an agent has completed, so a
+        // congested citizen stands still rather than gliding forward.
+        let agent = hud::style(Token::Agent).fill.unwrap_or([1.0, 1.0, 1.0, 1.0]);
+        let stuck = hud::style(Token::AgentStuck).fill.unwrap_or([1.0, 0.3, 0.3, 1.0]);
+        for citizen in &self.world.citizens {
+            let Some(tile) = citizen.current_tile() else {
+                continue;
+            };
+            let (x, y) = self.world.coords(tile);
+            if x < left || x >= right || y < top || y >= bottom {
+                continue;
+            }
+            // Only full-detail agents are drawn; offscreen cohorts are counted,
+            // not rendered, which is what keeps the frame budget honest.
+            let distance = (x as i32 - self.camera.screen_to_tile(
+                self.camera.screen.w / 2.0,
+                self.camera.screen.h / 2.0,
+            ).0)
+                .abs()
+                + (y as i32
+                    - self.camera
+                        .screen_to_tile(self.camera.screen.w / 2.0, self.camera.screen.h / 2.0)
+                        .1)
+                    .abs();
+            if distance > ala_cities::sim::LOD_RADIUS {
+                continue;
+            }
+
+            let (fx, fy) = match citizen.interpolated_tiles() {
+                Some((from, to, work)) => {
+                    let (ax, ay) = self.world.coords(from);
+                    let (bx, by) = self.world.coords(to);
+                    (
+                        (ax as f32 + (bx as f32 - ax as f32) * work) * TILE + TILE * 0.3,
+                        (ay as f32 + (by as f32 - ay as f32) * work) * TILE + TILE * 0.3,
+                    )
+                }
+                None => (x as f32 * TILE + TILE * 0.3, y as f32 * TILE + TILE * 0.3),
+            };
+            let color = if citizen.state == CitizenState::Unemployed {
+                stuck
+            } else {
+                agent
+            };
+            self.camera
+                .world_rect(&mut self.batch, fx, fy, TILE * 0.4, TILE * 0.4, color);
+        }
+
+        // A preview of the leg the drag would build, so the action is visible
+        // before it is taken rather than only afterwards.
+        if let Some(from) = self.press_tile {
+            if self.tool == Tool::Road {
+                let (tx, ty) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+                if self.world.in_bounds(tx, ty) {
+                    let from_tile = self.world.index(from.0 as u32, from.1 as u32);
+                    let to_tile = self.world.index(tx as u32, ty as u32);
+                    let legs = self.world.leg_tiles(from_tile, to_tile);
+                    let allowed = self
+                        .gov
+                        .governor
+                        .authorize(&Op::BuildRoad {
+                            distance: legs.len() as u32,
+                        })
+                        .allowed;
+                    let color = if allowed {
+                        hud::style(Token::Nature).fill.unwrap_or([0.4, 0.9, 0.5, 1.0])
+                    } else {
+                        hud::style(Token::Refused).text.unwrap_or([0.9, 0.3, 0.3, 1.0])
+                    };
+                    for tile in legs {
+                        let (x, y) = self.world.coords(tile);
+                        self.camera.world_rect(
+                            &mut self.batch,
+                            x as f32 * TILE,
+                            y as f32 * TILE,
+                            TILE,
+                            TILE,
+                            hud::with_alpha(color, 0.5),
+                        );
+                    }
+                }
+            }
+        }
+
+        // The tile under the cursor, so a click is never a guess.
+        let (hx, hy) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+        if self.world.in_bounds(hx, hy) {
+            let color = hud::style(Token::TextBody).text.unwrap_or([1.0, 1.0, 1.0, 1.0]);
+            self.camera.world_rect(
+                &mut self.batch,
+                hx as f32 * TILE,
+                hy as f32 * TILE,
+                TILE,
+                TILE,
+                hud::with_alpha(color, 0.18),
+            );
+        }
+    }
+
+    fn draw_hud(&mut self) {
+        let screen = self.screen();
+        let tick = self.world.clock.tick;
+
+        // ---- governed-session chrome -------------------------------------
+        hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, 30.0, Token::Panel);
+        let mut x = 12.0;
+        x += hud::label_mono(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            x,
+            9.0,
+            SIZE_SMALL,
+            Token::TextMuted,
+            &self.gov.contract,
+        ) + 14.0;
+        x += hud::label_mono(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            x,
+            9.0,
+            SIZE_SMALL,
+            Token::TextMuted,
+            &self.gov.governor_banner(),
+        ) + 14.0;
+        x += hud::label(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            x,
+            9.0,
+            SIZE_SMALL,
+            Token::Procedural,
+            "identity: PROCEDURAL",
+        ) + 14.0;
+        if let Some(ticket) = &self.last_ticket {
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x,
+                9.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                ticket,
+            );
+        }
+        // A missing font is stated rather than discovered: the interface looks
+        // broken when it cannot draw a string, and that is not something to
+        // leave the player to work out.
+        if self.text.missing_font {
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                screen.w / 2.0 - 150.0,
+                screen.h - 90.0,
+                SIZE_SMALL,
+                Token::Warning,
+                "no system font found: text is not being drawn",
+            );
+        }
+
+        let clock = self.world.clock.label();
+        let speed = match self.speed {
+            0 => "paused",
+            1 => "1x",
+            2 => "2x",
+            _ => "3x",
+        };
+        let centre = format!("{clock}   {speed}");
+        let width = self.text.measure(Face::Mono, &centre, SIZE_SMALL);
+        hud::label_mono(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            screen.w / 2.0 - width / 2.0,
+            9.0,
+            SIZE_SMALL,
+            Token::TextBody,
+            &centre,
+        );
+
+        let mut right = screen.w - 12.0;
+        let fps = format!("{:.0} fps", self.gpu.as_ref().map(|g| g.stats.reported_fps).unwrap_or(0.0));
+        let fps_width = self.text.measure(Face::Mono, &fps, SIZE_SMALL);
+        hud::label_mono(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            right - fps_width,
+            9.0,
+            SIZE_SMALL,
+            Token::TextMuted,
+            &fps,
+        );
+        right -= fps_width + 16.0;
+
+        let rec = "● RECORDING";
+        let rec_width = self.text.measure(Face::Body, rec, SIZE_SMALL);
+        hud::label(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            right - rec_width,
+            9.0,
+            SIZE_SMALL,
+            if self.session.recording {
+                Token::Recording
+            } else {
+                Token::NotObtained
+            },
+            rec,
+        );
+
+        // ---- left column: demand, state, what to do next ------------------
+        let panel_x = 12.0;
+        let mut panel_y = 42.0;
+        let panel_w = 250.0;
+        hud::panel(&mut self.batch, &screen, panel_x, panel_y, panel_w, 226.0, Token::Panel);
+        panel_y += 10.0;
+        hud::label(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            panel_x + 12.0,
+            panel_y,
+            SIZE_BODY,
+            Token::TextBody,
+            "Demand",
+        );
+        panel_y += 22.0;
+        for (token, name, value) in [
+            (Token::ZoneResidential, "residential", self.world.demand.residential),
+            (Token::ZoneCommercial, "commercial", self.world.demand.commercial),
+            (Token::ZoneIndustrial, "industrial", self.world.demand.industrial),
+        ] {
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                panel_x + 12.0,
+                panel_y,
+                SIZE_SMALL,
+                Token::TextMuted,
+                name,
+            );
+            hud::bar(
+                &mut self.batch,
+                &screen,
+                panel_x + 96.0,
+                panel_y + 2.0,
+                142.0,
+                9.0,
+                token,
+                value,
+            );
+            panel_y += 18.0;
+        }
+        panel_y += 8.0;
+        hud::rule(&mut self.batch, &screen, panel_x + 12.0, panel_y, panel_w - 24.0, Token::TextMuted);
+        panel_y += 10.0;
+
+        let stats = [
+            ("credits", format!("{}", self.world.economy.credits)),
+            ("population", format!("{}", self.world.stats.population)),
+            ("jobs", format!("{}", self.world.stats.jobs)),
+            ("out of work", format!("{}", self.world.stats.unemployed)),
+            ("road tiles", format!("{}", self.world.stats.road_tiles)),
+            (
+                "power",
+                if self.world.stats.brownout {
+                    "BROWNOUT".to_string()
+                } else {
+                    format!("{} plants", self.world.stats.power_plants)
+                },
+            ),
+            ("retired", format!("{}", self.world.stats.retired_buildings)),
+            ("no route", format!("{}", self.world.stats.commute_failures)),
+        ];
+        for (name, value) in stats {
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                panel_x + 12.0,
+                panel_y,
+                SIZE_SMALL,
+                Token::TextMuted,
+                name,
+            );
+            let width = self.text.measure(Face::Mono, &value, SIZE_SMALL);
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                panel_x + panel_w - 12.0 - width,
+                panel_y,
+                SIZE_SMALL,
+                if name == "power" && self.world.stats.brownout {
+                    Token::Brownout
+                } else {
+                    Token::TextBody
+                },
+                &value,
+            );
+            panel_y += 16.0;
+        }
+
+        // What to do next, derived from stored state. An empty list would be a
+        // bug, not a quiet moment.
+        let suggestions = self.gov.suggestions(&self.world);
+        let mut next_y = 42.0 + 226.0 + 10.0;
+        let panel_height = 26.0 + suggestions.len().min(4) as f32 * 18.0;
+        hud::panel(&mut self.batch, &screen, panel_x, next_y, panel_w, panel_height, Token::Panel);
+        hud::label(
+            &mut self.text,
+            &mut self.batch,
+            &screen,
+            panel_x + 12.0,
+            next_y + 8.0,
+            SIZE_BODY,
+            Token::TextBody,
+            "What to do next",
+        );
+        next_y += 26.0;
+        for line in suggestions.iter().take(4) {
+            let clipped = hud::truncate(&mut self.text, Face::Body, line, SIZE_SMALL, panel_w - 24.0);
+            let is_case = line.starts_with("CSE-");
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                panel_x + 12.0,
+                next_y,
+                SIZE_SMALL,
+                if is_case { Token::CaseOpen } else { Token::TextMuted },
+                &clipped,
+            );
+            next_y += 18.0;
+        }
+
+        // ---- ledger -------------------------------------------------------
+        if self.show_ledger {
+            let width = 470.0;
+            let lx = screen.w - width - 12.0;
+            let ly = 42.0;
+            let lh = screen.bottom_anchor(160.0, 12.0) - ly;
+            hud::panel(&mut self.batch, &screen, lx, ly, width, lh, Token::Panel);
+            let (open, closed) = self.gov.counts();
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                lx + 12.0,
+                ly + 8.0,
+                SIZE_BODY,
+                Token::TextBody,
+                "Ticket ledger",
+            );
+            let counts = format!(
+                "open {open}   terminal {closed}   evidence {}   corrections {}   refusals {}",
+                self.gov.evidence.len(),
+                self.gov.corrections.len(),
+                self.gov.denials
+            );
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                lx + 12.0,
+                ly + 28.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                &counts,
+            );
+            hud::rule(&mut self.batch, &screen, lx + 12.0, ly + 46.0, width - 24.0, Token::TextMuted);
+
+            let mut row = ly + 54.0;
+            for ticket in self.gov.ledger(22) {
+                let line = format!("{}  {}", ticket.id, ticket.objective);
+                let clipped = hud::truncate(&mut self.text, Face::Body, &line, SIZE_SMALL, width - 118.0);
+                let token = if ticket.is_closed() {
+                    match ticket.terminal {
+                        Some(reason) if reason.is_validated() => Token::Verified,
+                        Some(ala_cities::gov::RetirementReason::CompletedButUnverified) => Token::Warning,
+                        Some(ala_cities::gov::RetirementReason::CompletedWithKnownRegression) => Token::Refused,
+                        Some(ala_cities::gov::RetirementReason::BlockedAndClosed) => Token::CaseOpen,
+                        _ => Token::NotObtained,
+                    }
+                } else {
+                    Token::TextBody
+                };
+                hud::label(&mut self.text, &mut self.batch, &screen, lx + 12.0, row, SIZE_SMALL, token, &clipped);
+                let closing = ticket.closing_line();
+                let closing_width = self.text.measure(Face::Mono, &closing, SIZE_SMALL);
+                // Truncated first: the text atlas is borrowed mutably to build
+                // the string, and again to draw it, which cannot overlap.
+                let clipped_closing =
+                    hud::truncate(&mut self.text, Face::Mono, &closing, SIZE_SMALL, 160.0);
+                hud::label_mono(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    lx + width - 12.0 - closing_width.min(width - 130.0),
+                    row,
+                    SIZE_SMALL,
+                    Token::TextMuted,
+                    &clipped_closing,
+                );
+                row += 16.0;
+                if row > ly + lh - 20.0 {
+                    break;
+                }
+            }
+        }
+
+        // ---- per-object page ----------------------------------------------
+        if self.tool == Tool::Inspect {
+            let (hx, hy) = self.camera.screen_to_tile(self.cursor.0, self.cursor.1);
+            if self.world.in_bounds(hx, hy) {
+                let tile = self.world.index(hx as u32, hy as u32);
+                if let Some(index) = self.world.tile(tile).building {
+                    let b = self.world.building(index);
+                    let width = 240.0;
+                    let height = 116.0;
+                    let px = (self.cursor.0 + 16.0).min(screen.w - width - 8.0);
+                    let py = (self.cursor.1 + 8.0).min(screen.h - height - 8.0);
+                    hud::panel(&mut self.batch, &screen, px, py, width, height, Token::PanelRaised);
+                    hud::label(
+                        &mut self.text,
+                        &mut self.batch,
+                        &screen,
+                        px + 10.0,
+                        py + 8.0,
+                        SIZE_BODY,
+                        Token::TextBody,
+                        &format!("{} #{}", b.kind.name(), b.id),
+                    );
+                    // Only fields the store already admits. Nothing is invented
+                    // for the panel to have something to show.
+                    let fields = [
+                        ("tile", format!("{tile}")),
+                        ("level", format!("{}", b.level)),
+                        ("powered", if b.powered { "yes".into() } else { "no".into() }),
+                        ("occupants", format!("{}", b.occupants)),
+                        ("built at tick", format!("{}", b.built_tick)),
+                        (
+                            "state",
+                            if b.retired.is_some() {
+                                "retired".to_string()
+                            } else if tick < b.ready_tick {
+                                "under construction".to_string()
+                            } else {
+                                "in use".to_string()
+                            },
+                        ),
+                    ];
+                    let mut fy = py + 30.0;
+                    for (name, value) in fields {
+                        hud::label(
+                            &mut self.text,
+                            &mut self.batch,
+                            &screen,
+                            px + 10.0,
+                            fy,
+                            SIZE_SMALL,
+                            Token::TextMuted,
+                            name,
+                        );
+                        let w = self.text.measure(Face::Mono, &value, SIZE_SMALL);
+                        hud::label_mono(
+                            &mut self.text,
+                            &mut self.batch,
+                            &screen,
+                            px + width - 10.0 - w,
+                            fy,
+                            SIZE_SMALL,
+                            Token::TextBody,
+                            &value,
+                        );
+                        fy += 14.0;
+                    }
+                }
+            }
+        }
+
+        // ---- refusal banner ------------------------------------------------
+        if let Some(refusal) = self.refusal.clone() {
+            let width = (screen.w - 80.0).min(900.0);
+            let x = (screen.w - width) / 2.0;
+            let y = screen.bottom_anchor(150.0, 12.0);
+            hud::panel(&mut self.batch, &screen, x, y, width, 46.0, Token::Panel);
+            hud::style(Token::Warning);
+            hud::panel(&mut self.batch, &screen, x, y, 3.0, 46.0, Token::Warning);
+            let clipped = hud::truncate(&mut self.text, Face::Body, &refusal, SIZE_SMALL, width - 24.0);
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 12.0,
+                y + 8.0,
+                SIZE_SMALL,
+                Token::Warning,
+                &clipped,
+            );
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 12.0,
+                y + 24.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                "this is a refusal, not an error: the city is unchanged",
+            );
+        }
+
+        // ---- toast ---------------------------------------------------------
+        if let Some((message, at)) = self.toast.clone() {
+            if tick.saturating_sub(at) < 120 {
+                let width = self.text.measure(Face::Body, &message, SIZE_SMALL) + 24.0;
+                let x = (screen.w - width) / 2.0;
+                let y = 40.0;
+                hud::panel(&mut self.batch, &screen, x, y, width, 24.0, Token::PanelRaised);
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 12.0,
+                    y + 5.0,
+                    SIZE_SMALL,
+                    Token::TextBody,
+                    &message,
+                );
+            } else {
+                self.toast = None;
+            }
+        }
+
+        // ---- toolbar --------------------------------------------------------
+        for (tool, rect) in toolbar_layout(&screen, self.tool, self.zone) {
+            let active = tool == self.tool;
+            hud::panel(
+                &mut self.batch,
+                &screen,
+                rect.x,
+                rect.y,
+                rect.w,
+                rect.h,
+                if active { Token::Ink } else { Token::PanelRaised },
+            );
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                rect.x + 10.0,
+                rect.y + 7.0,
+                SIZE_BODY,
+                if active { Token::TextOnInk } else { Token::TextBody },
+                tool.name(),
+            );
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                rect.x + 10.0,
+                rect.y + 25.0,
+                SIZE_SMALL,
+                if active { Token::TextOnInk } else { Token::TextMuted },
+                tool.hint(),
+            );
+        }
+
+        // The zone sub-selector appears only under the tool that uses it, which
+        // is mode scope rather than a control that is always there but disabled.
+        if self.tool == Tool::Zone {
+            let base = screen.bottom_anchor(56.0, 12.0);
+            for (index, (zone, key)) in [
+                (Zone::Residential, "R"),
+                (Zone::Commercial, "C"),
+                (Zone::Industrial, "I"),
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                let x = 12.0 + index as f32 * 150.0;
+                let active = zone == self.zone;
+                hud::panel(
+                    &mut self.batch,
+                    &screen,
+                    x,
+                    base - 34.0,
+                    142.0,
+                    30.0,
+                    if active { Token::PanelRaised } else { Token::Panel },
+                );
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 10.0,
+                    base - 29.0,
+                    SIZE_BODY,
+                    if active { Token::TextBody } else { Token::TextMuted },
+                    &format!("{}  ({key})", zone.name()),
+                );
+            }
+        }
+
+        // ---- pause menu -----------------------------------------------------
+        if self.menu_open {
+            let width = 620.0;
+            let height = 300.0;
+            let x = (screen.w - width) / 2.0;
+            let y = (screen.h - height) / 2.0;
+            hud::panel(&mut self.batch, &screen, 0.0, 0.0, screen.w, screen.h, Token::Desk);
+            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                y + 16.0,
+                SIZE_DISPLAY,
+                Token::TextBody,
+                "Paused",
+            );
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                y + 44.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                &format!(
+                    "{} · {} · {} interactions recorded · {} ticks simulated",
+                    self.gov.contract,
+                    self.world.clock.label(),
+                    self.session.count(),
+                    self.ticks_run
+                ),
+            );
+
+            let items = [
+                "Esc   resume",
+                "F     leave feedback",
+                "S     save the city",
+                "O     load the last save",
+                "Q     flush the capture",
+            ];
+            let mut iy = y + 78.0;
+            for item in items {
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 20.0,
+                    iy,
+                    SIZE_BODY,
+                    Token::TextBody,
+                    item,
+                );
+                iy += 22.0;
+            }
+
+            // Feedback is its own tier, always available, and its record says
+            // what it is: one playtest, at tentative confidence.
+            let field_y = y + 200.0;
+            hud::panel(
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                field_y,
+                width - 40.0,
+                30.0,
+                if self.feedback_focus { Token::Ink } else { Token::Panel },
+            );
+            if self.feedback.is_empty() && !self.feedback_focus {
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 30.0,
+                    field_y + 8.0,
+                    SIZE_SMALL,
+                    Token::TextMuted,
+                    "press F to type feedback; Enter saves it into playtest/ with this session attached",
+                );
+            } else {
+                let shown = hud::truncate(
+                    &mut self.text,
+                    Face::Body,
+                    &self.feedback,
+                    SIZE_BODY,
+                    width - 60.0,
+                );
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 30.0,
+                    field_y + 7.0,
+                    SIZE_BODY,
+                    if self.feedback_focus { Token::TextOnInk } else { Token::TextBody },
+                    &shown,
+                );
+            }
+            if self.feedback_focus {
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 20.0,
+                    field_y + 38.0,
+                    SIZE_SMALL,
+                    Token::TextMuted,
+                    "Enter writes the record · Esc backs out without writing",
+                );
+            }
+        }
+
+        // ---- help / the stage's own test script -----------------------------
+        if self.show_help {
+            let width = 700.0;
+            let height = 300.0;
+            let x = (screen.w - width) / 2.0;
+            let y = (screen.h - height) / 2.0;
+            hud::panel(&mut self.batch, &screen, x, y, width, height, Token::PanelRaised);
+            let lines = [
+                ("H", "close this panel"),
+                ("1 / 2 / 3 / 4 / 5", "road · zone · power · demolish · inspect"),
+                ("R / C / I", "zone type while the zone tool is active"),
+                ("drag", "lay a road leg, or paint a zone block"),
+                ("right-drag", "pan   ·   wheel: zoom"),
+                ("space / tab", "pause   ·   cycle 1x 2x 3x"),
+                ("L / H", "ledger   ·   this panel"),
+                ("Esc then F", "leave feedback at any time; Enter writes it to playtest/C1/"),
+            ];
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                y + 16.0,
+                SIZE_DISPLAY,
+                Token::TextBody,
+                "C1 — sim core",
+            );
+            let mut ly = y + 48.0;
+            for (keys, what) in lines {
+                hud::label_mono(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 20.0,
+                    ly,
+                    SIZE_SMALL,
+                    Token::TextMuted,
+                    keys,
+                );
+                hud::label(
+                    &mut self.text,
+                    &mut self.batch,
+                    &screen,
+                    x + 160.0,
+                    ly,
+                    SIZE_SMALL,
+                    Token::TextBody,
+                    what,
+                );
+                ly += 20.0;
+            }
+            hud::rule(&mut self.batch, &screen, x + 20.0, ly, width - 40.0, Token::TextMuted);
+            ly += 10.0;
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                ly,
+                SIZE_SMALL,
+                Token::TextMuted,
+                "Everything you place files a ticket. The ticket closes only when the world",
+            );
+            hud::label(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                ly + 16.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                "shows what it promised, or honestly as unverified when it does not.",
+            );
+            let adapter = self
+                .gpu
+                .as_ref()
+                .map(|gpu| gpu.adapter_name.clone())
+                .unwrap_or_else(|| "no device".to_string());
+            let measured = format!(
+                "body text on panels measures {:.2}:1 — measured, not asserted",
+                hud::measured_body_on_panel()
+            );
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                ly + 58.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                &format!("rendering on {adapter}"),
+            );
+            hud::label_mono(
+                &mut self.text,
+                &mut self.batch,
+                &screen,
+                x + 20.0,
+                ly + 40.0,
+                SIZE_SMALL,
+                Token::TextMuted,
+                &measured,
+            );
+        }
+    }
+
+    fn draw(&mut self) {
+        self.batch.clear();
+        self.world.focus = self.camera.screen_to_tile(self.camera.screen.w / 2.0, self.camera.screen.h / 2.0);
+        self.draw_world();
+        self.draw_hud();
+
+        if self.atlas_dirty {
+            if let Some(gpu) = self.gpu.as_mut() {
+                gpu.upload_atlas(&self.text);
+            }
+            self.atlas_dirty = false;
+        }
+
+        let clear = hud::style(Token::Desk).fill.unwrap_or([0.1, 0.1, 0.1, 1.0]);
+        let now = Instant::now();
+        let seconds = now.duration_since(self.last_frame).as_secs_f32();
+        self.last_frame = now;
+        if let Some(gpu) = self.gpu.as_mut() {
+            gpu.render(&self.batch, clear, seconds);
+        }
+    }
+}
+
+/// Where the tool buttons live. One function, used by both the drawing code and
+/// the hit test, so a button cannot be drawn in one place and clickable in
+/// another.
+fn toolbar_layout(screen: &Screen, _active: Tool, _zone: Zone) -> Vec<(Tool, Rect)> {
+    let width = 150.0;
+    let gap = 6.0;
+    let tools = Tool::all();
+    let total = tools.len() as f32 * width + (tools.len() as f32 - 1.0) * gap;
+    let start = (screen.w - total) / 2.0;
+    let y = screen.bottom_anchor(56.0, 12.0);
+    tools
+        .iter()
+        .enumerate()
+        .map(|(index, tool)| {
+            (
+                *tool,
+                Rect {
+                    x: start + index as f32 * (width + gap),
+                    y,
+                    w: width,
+                    h: 56.0,
+                },
+            )
+        })
+        .collect()
+}
+
+fn toolbar_hit(screen: &Screen, px: f32, py: f32) -> Option<Tool> {
+    toolbar_layout(screen, Tool::Road, Zone::Residential)
+        .into_iter()
+        .find(|(_, rect)| hud::hit(rect.x, rect.y, rect.w, rect.h, px, py))
+        .map(|(tool, _)| tool)
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if self.gpu.is_some() {
+            return;
+        }
+        let attributes = Window::default_attributes()
+            .with_title("ala-cities — C1")
+            .with_inner_size(winit::dpi::LogicalSize::new(1600.0, 900.0));
+        let window = Arc::new(
+            event_loop
+                .create_window(attributes)
+                .expect("a window"),
+        );
+        let gpu = Gpu::new(window, &self.text);
+        self.camera.screen = gpu.screen();
+        self.camera.zoom = (gpu.screen().h / (MAP as f32 * TILE) * 2.4).max(0.2);
+        self.gpu = Some(gpu);
+        self.atlas_dirty = true;
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        if self.gpu.is_none() {
+            return;
+        }
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(size) => {
+                if let Some(gpu) = self.gpu.as_mut() {
+                    gpu.resize(size.width, size.height);
+                    self.camera.screen = gpu.screen();
+                }
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.cursor = (position.x as f32, position.y as f32);
+                if self.panning {
+                    self.camera
+                        .pan(self.cursor.0 - self.last_cursor.0, self.cursor.1 - self.last_cursor.1);
+                    self.last_cursor = self.cursor;
+                }
+            }
+            WindowEvent::MouseInput { state, button, .. } => {
+                // Toolbar clicks are handled before anything reaches the world.
+                if button == MouseButton::Left
+                    && state == ElementState::Pressed
+                    && !self.menu_open
+                {
+                    if let Some(tool) = toolbar_hit(&self.screen(), self.cursor.0, self.cursor.1) {
+                        self.tool = tool;
+                        return;
+                    }
+                }
+                self.on_click(state == ElementState::Pressed, button);
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                let factor = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => 1.0 + y * 0.1,
+                    MouseScrollDelta::PixelDelta(pos) => 1.0 + pos.y as f32 * 0.01,
+                };
+                self.camera.zoom_by(factor, self.cursor);
+            }
+            WindowEvent::KeyboardInput { event, .. } => {
+                let text = event.text.as_ref().map(|t| t.to_string());
+                if let PhysicalKey::Code(code) = event.physical_key {
+                    self.on_key(code, event.state == ElementState::Pressed, text);
+                }
+            }
+            WindowEvent::RedrawRequested => {
+                let now = Instant::now();
+                let seconds = now.duration_since(self.last_frame).as_secs_f32();
+                self.advance(seconds);
+                self.camera.clamp_to(MAP, MAP);
+                self.draw();
+            }
+            _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(gpu) = self.gpu.as_ref() {
+            gpu.window.request_redraw();
+        }
+    }
+
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Ok(count) = self.session.flush() {
+            tracing::info!(events = count, path = %self.session.path().display(), "capture written");
+        }
+        let (open, closed) = self.gov.counts();
+        tracing::info!(
+            tickets = self.gov.tickets.len(),
+            open,
+            closed,
+            evidence = self.gov.evidence.len(),
+            corrections = self.gov.corrections.len(),
+            refusals = self.gov.denials,
+            "ledger on exit"
+        );
+    }
+}
+
+fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .init();
+
+    let mut app = match App::new() {
+        Ok(app) => app,
+        Err(err) => {
+            eprintln!("could not start: {err}");
+            std::process::exit(1);
+        }
+    };
+
+    // The mechanical half of the design check, logged at startup. Judgement
+    // items are named as open rather than folded in with it.
+    for line in hud::audit() {
+        tracing::info!("design: {line}");
+    }
+
+    if app.gov.governor.load_state == ala_cities::gov::LoadState::FailedClosed {
+        eprintln!(
+            "the governor failed closed: {}\nno build operations will be permitted. Fix {} and restart.",
+            app.gov.governor.reason,
+            app.gov.governor.path.display()
+        );
+    }
+
+    let event_loop = EventLoop::new().expect("an event loop");
+    event_loop.set_control_flow(ControlFlow::Poll);
+    event_loop.run_app(&mut app).expect("the event loop ran");
+}

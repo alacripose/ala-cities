@@ -1,0 +1,21 @@
+# Normalise line endings in the repository, and leave them alone in the working
+# tree per platform. Without this, a Windows checkout rewrites every source file
+# on the first touch and the history fills up with whitespace-only commits.
+* text=auto
+
+# The season record is read back by the verifier and by people. Keep it LF
+# everywhere so a record written on one machine diffs cleanly against a record
+# written on another.
+*.json  text eol=lf
+*.jsonl text eol=lf
+*.ron   text eol=lf
+*.md    text eol=lf
+*.rs    text eol=lf
+*.wgsl  text eol=lf
+
+# Nothing binary is shipped — no textures, no audio — but if that changes, this
+# is the line that has to be right.
+*.png  binary
+*.ttf  binary
+*.otf  binary
+*.wav  binary
