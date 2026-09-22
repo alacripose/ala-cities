@@ -589,15 +589,19 @@ impl Picker {
     }
 
     fn on_key(&mut self, key: KeyCode, screen: &Screen) {
+        // While the comment field holds focus, only editing and submission
+        // keys reach it: every other branch is guarded, because a comment
+        // like "3 too flat" must not silently re-target candidate 3, and a
+        // letter n inside a sentence must not record the review.
         match key {
             KeyCode::Tab => self.focus_comment = !self.focus_comment,
-            KeyCode::ArrowLeft => {
+            KeyCode::ArrowLeft if !self.focus_comment => {
                 let len = self.icon().generations.len();
                 if let Some(current) = self.checked {
                     self.checked = Some((current + len - 1) % len);
                 }
             }
-            KeyCode::ArrowRight => {
+            KeyCode::ArrowRight if !self.focus_comment => {
                 let len = self.icon().generations.len();
                 if let Some(current) = self.checked {
                     self.checked = Some((current + 1) % len);
@@ -605,10 +609,12 @@ impl Picker {
             }
             KeyCode::PageUp => self.scroll_detail(-design::MIN_TARGET_PX * 4.0 * self.ui.0, screen),
             KeyCode::PageDown => self.scroll_detail(design::MIN_TARGET_PX * 4.0 * self.ui.0, screen),
-            KeyCode::KeyN => self.record_and_advance(),
+            KeyCode::KeyN if !self.focus_comment => self.record_and_advance(),
             KeyCode::Enter => self.record_and_advance(),
             KeyCode::Digit1 | KeyCode::Digit2 | KeyCode::Digit3 | KeyCode::Digit4
-            | KeyCode::Digit5 | KeyCode::Digit6 => {
+            | KeyCode::Digit5 | KeyCode::Digit6
+                if !self.focus_comment =>
+            {
                 let index = match key {
                     KeyCode::Digit1 => 0,
                     KeyCode::Digit2 => 1,
