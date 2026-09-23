@@ -45,13 +45,10 @@ pub const DEFERRED: &[(&str, &str)] = &[
          through, and power still reaches a building by plant count rather than along a \
          path",
     ),
-    (
-        "surface speed",
-        "it reads a tile's surface family and the world has no such thing yet: \
-         `RoadGraph::rebuild` inserts only tiles where `road` is true, so every graph \
-         node is already the table's own `road: 1.0` and every other entry is \
-         unreachable. It lands with the per-tile surface layer",
-    ),
+    // `surface speed` was deferred here with this reason: "it reads a tile's surface family
+    // and the world has no such thing yet". C9 phase 1 landed the surface family, so
+    // `World::surface_speed` reads this table now and the entry moved out of DEFERRED —
+    // which is the only correct way for a deferred item to leave this list.
 ];
 
 /// The declared price of one part. Panics naming the part when the table is short.

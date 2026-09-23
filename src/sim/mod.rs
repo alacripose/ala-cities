@@ -16,6 +16,7 @@ use crate::gov::RetirementReason;
 use crate::materials::effects as material_effects;
 use crate::materials::geology as material_geology;
 use crate::materials::generated::REPAIR_CEILING;
+use crate::materials::generated as material_generated;
 use crate::materials::world::{self as material_world, Level};
 use citizen::{Citizen, CitizenState};
 use rng::Pcg32;
@@ -188,6 +189,22 @@ pub struct Tile {
     /// would be a lie needs a migration, and this one would not be.
     #[serde(default)]
     pub extracted_g: i64,
+}
+
+impl Tile {
+    /// The family this tile's surface presents as (C9 phase 1).
+    ///
+    /// Derived rather than stored, like the deposit: a tile's surface is a reading of what is
+    /// already on it, so there is no second copy to drift. `soil` for bare ground is the
+    /// declared reading — `DEFERRED_SURFACES` says *"`soil` is the road shoulder today"*, so a
+    /// plausible unpaved surface is a shoulder rather than an invention.
+    pub fn surface_family(&self) -> &'static str {
+        match self.terrain {
+            Terrain::Water => "water",
+            Terrain::Ground if self.road => "road",
+            Terrain::Ground => "soil",
+        }
+    }
 }
 
 impl Default for Tile {
@@ -627,6 +644,26 @@ impl World {
     // The ground's material (C9 phase 1). What a tile holds is derived; what
     // has been taken out is stored. Nothing else about a deposit is state.
     // ---------------------------------------------------------------------
+
+    /// Travel speed over a tile's surface, as a factor on the road graph's own step cost.
+    ///
+    /// This is §8.24's deferred `SURFACE_SPEED`, which had **no consumer** until a tile could
+    /// say what it presents as: the graph only ever inserted tiles where `road` was true, so
+    /// every node was already the table's own `road: 1.0` and every other entry was
+    /// unreachable. Now a bare tile presents as soil (0.6) and water as itself (0.0) —
+    /// *impassable rather than slow*, which is what the declaration says.
+    ///
+    /// It panics on an undeclared family rather than defaulting, for the same reason
+    /// `effects::part_price` does: a speed that silently becomes zero is a road nobody can
+    /// drive on, and a speed that silently becomes one is a swamp nobody can feel.
+    pub fn surface_speed(&self, tile: u32) -> f32 {
+        let family = self.tiles[tile as usize].surface_family();
+        material_generated::SURFACE_SPEED
+            .iter()
+            .find(|(name, _)| *name == family)
+            .map(|(_, speed)| *speed)
+            .unwrap_or_else(|| panic!("`{family}` has no declared surface speed"))
+    }
 
     /// What this tile still holds, in grams — derived from the seed and net of what has
     /// been taken out. `None` where the ground is barren or worked out.
@@ -1530,6 +1567,31 @@ mod tests {
             (0..256u32 * 256)
                 .find(|tile| *tile != skip && world.deposit_at(*tile).is_some())
                 .expect("a second deposit exists")
+        }
+    }
+
+    /// §8.24 deferred `SURFACE_SPEED` for want of a consumer. This is the consumer, and the
+    /// three readings a driver feels: a road at full speed, bare ground slower, water not slow
+    /// but *impassable*.
+    #[test]
+    fn a_surface_reads_at_its_own_declared_speed() {
+        let world = small_city();
+        let road = world.index(0, 5);
+        assert_eq!(world.tiles[road as usize].surface_family(), "road");
+        assert_eq!(world.surface_speed(road), 1.0);
+
+        let bare = world.index(4, 20);
+        assert_eq!(world.tiles[bare as usize].surface_family(), "soil");
+        assert_eq!(world.surface_speed(bare), 0.6);
+
+        if let Some(water) = (0..world.tiles.len() as u32)
+            .find(|tile| world.tiles[*tile as usize].terrain == Terrain::Water)
+        {
+            assert_eq!(
+                world.surface_speed(water),
+                0.0,
+                "water is impassable rather than slow"
+            );
         }
     }
 
