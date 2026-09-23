@@ -13,7 +13,7 @@
   },
   "candidate_count": 6,
   "catalogue_stage": "pilot-six",
-  "concept_set": "pilot-six-c3-v1",
+  "concept_set": "pilot-six-c8-v1",
   "context_size_px": 24,
   "decided": {},
   "decision_size_px": 96,
@@ -172,7 +172,7 @@
         "size_read": "silhouette at 32px; the mark alone at 24px"
       },
       "chosen_generation": null,
-      "concept_set": "pilot-six-c3-v1",
+      "concept_set": "pilot-six-c8-v1",
       "directives": [],
       "forbidden_readings": [
         "authority grant",
@@ -217,10 +217,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 2.76,
+              "chromaticity_drift_degrees": 2.3,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 0.671,
-              "swatch_to_albedo": 0.459
+              "icon_to_swatch": 0.74,
+              "swatch_to_albedo": 0.461
             },
             "character": {
               "anchor": {
@@ -238,9 +238,9 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.5076,
-                "gloss": 0.0588,
-                "holes": 1,
+                "fill": 0.5428,
+                "gloss": 0.0364,
+                "holes": 0,
                 "pieces": 2
               },
               "topography_judged": false,
@@ -248,16 +248,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.04
+                "ink": 4.05
               },
               "PanelRaised": {
-                "ink": 3.32
+                "ink": 3.33
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.3235 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures gloss 0.0588 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0364 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -272,34 +271,34 @@
           "label": "silhouette-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 54.32,
+              "chromaticity_degrees": 54.29,
               "clip_fraction": 0.0,
-              "coverage": 0.3212,
-              "fill": 0.571,
-              "gloss": 0.2973,
-              "mean_luminance": 0.1274,
-              "p75_luminance": 0.208,
-              "peak_luminance": 0.4191
+              "coverage": 0.3906,
+              "fill": 0.6233,
+              "gloss": 0.0711,
+              "mean_luminance": 0.1429,
+              "p75_luminance": 0.2086,
+              "peak_luminance": 0.4116
             },
             "32": {
-              "chromaticity_degrees": 54.65,
+              "chromaticity_degrees": 54.28,
               "clip_fraction": 0.0,
-              "coverage": 0.2852,
-              "fill": 0.5069,
-              "gloss": 0.4658,
-              "mean_luminance": 0.1301,
-              "p75_luminance": 0.2149,
-              "peak_luminance": 0.4357
+              "coverage": 0.3818,
+              "fill": 0.6256,
+              "gloss": 0.0588,
+              "mean_luminance": 0.147,
+              "p75_luminance": 0.2113,
+              "peak_luminance": 0.4867
             },
             "96": {
-              "chromaticity_degrees": 53.9,
-              "clip_fraction": 0.0133,
-              "coverage": 0.2935,
-              "fill": 0.5076,
-              "gloss": 0.0588,
-              "holes": 1,
-              "mean_luminance": 0.1468,
-              "p75_luminance": 0.2152,
+              "chromaticity_degrees": 54.36,
+              "clip_fraction": 0.0115,
+              "coverage": 0.3313,
+              "fill": 0.5428,
+              "gloss": 0.0364,
+              "holes": 0,
+              "mean_luminance": 0.1626,
+              "p75_luminance": 0.2155,
               "peak_luminance": 1.0,
               "pieces": 2
             }
@@ -312,8 +311,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.3235 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures gloss 0.0588 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0364 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -365,10 +363,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.07,
+              "chromaticity_drift_degrees": 0.23,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 1.074,
-              "swatch_to_albedo": 0.459
+              "icon_to_swatch": 1.057,
+              "swatch_to_albedo": 0.461
             },
             "character": {
               "anchor": {
@@ -386,8 +384,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.362,
-                "gloss": 0.0648,
+                "fill": 0.4254,
+                "gloss": 0.0602,
                 "holes": 0,
                 "pieces": 6
               },
@@ -396,17 +394,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.21
+                "ink": 4.15
               },
               "PanelRaised": {
-                "ink": 3.46
+                "ink": 3.41
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.3824 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.362 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0648 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0602 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -421,34 +417,34 @@
           "label": "silhouette-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 58.64,
+              "chromaticity_degrees": 56.81,
               "clip_fraction": 0.0,
-              "coverage": 0.2344,
-              "fill": 0.4167,
-              "gloss": 0.0593,
-              "mean_luminance": 0.196,
-              "p75_luminance": 0.2182,
-              "peak_luminance": 0.3859
+              "coverage": 0.3229,
+              "fill": 0.5152,
+              "gloss": 0.0591,
+              "mean_luminance": 0.1928,
+              "p75_luminance": 0.2149,
+              "peak_luminance": 0.4116
             },
             "32": {
-              "chromaticity_degrees": 58.31,
+              "chromaticity_degrees": 56.83,
               "clip_fraction": 0.0,
-              "coverage": 0.1924,
-              "fill": 0.342,
-              "gloss": 0.0609,
-              "mean_luminance": 0.2128,
-              "p75_luminance": 0.2188,
-              "peak_luminance": 0.4483
+              "coverage": 0.3047,
+              "fill": 0.4992,
+              "gloss": 0.0673,
+              "mean_luminance": 0.2029,
+              "p75_luminance": 0.2155,
+              "peak_luminance": 0.4867
             },
             "96": {
-              "chromaticity_degrees": 57.73,
-              "clip_fraction": 0.0228,
-              "coverage": 0.2093,
-              "fill": 0.362,
-              "gloss": 0.0648,
+              "chromaticity_degrees": 56.89,
+              "clip_fraction": 0.0209,
+              "coverage": 0.2597,
+              "fill": 0.4254,
+              "gloss": 0.0602,
               "holes": 0,
-              "mean_luminance": 0.235,
-              "p75_luminance": 0.2263,
+              "mean_luminance": 0.2323,
+              "p75_luminance": 0.2222,
               "peak_luminance": 1.0,
               "pieces": 6
             }
@@ -461,9 +457,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.3824 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.362 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0648 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0602 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -515,10 +509,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 3.24,
+              "chromaticity_drift_degrees": 2.7,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 0.842,
-              "swatch_to_albedo": 0.459
+              "icon_to_swatch": 0.897,
+              "swatch_to_albedo": 0.461
             },
             "character": {
               "anchor": {
@@ -536,8 +530,8 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.4262,
-                "gloss": 0.0661,
+                "fill": 0.4741,
+                "gloss": 0.0619,
                 "holes": 1,
                 "pieces": 2
               },
@@ -554,9 +548,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.3529 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.4262 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0661 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.4741 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0619 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -571,34 +564,34 @@
           "label": "material-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 53.55,
+              "chromaticity_degrees": 53.69,
               "clip_fraction": 0.0,
-              "coverage": 0.2951,
-              "fill": 0.5247,
-              "gloss": 0.1529,
-              "mean_luminance": 0.1507,
+              "coverage": 0.3646,
+              "fill": 0.5817,
+              "gloss": 0.0857,
+              "mean_luminance": 0.1648,
               "p75_luminance": 0.2149,
-              "peak_luminance": 0.4089
+              "peak_luminance": 0.4506
             },
             "32": {
-              "chromaticity_degrees": 54.09,
+              "chromaticity_degrees": 53.75,
               "clip_fraction": 0.0,
-              "coverage": 0.2451,
-              "fill": 0.4358,
-              "gloss": 0.0558,
-              "mean_luminance": 0.1588,
-              "p75_luminance": 0.2225,
-              "peak_luminance": 0.5494
+              "coverage": 0.3516,
+              "fill": 0.576,
+              "gloss": 0.0667,
+              "mean_luminance": 0.1703,
+              "p75_luminance": 0.2152,
+              "peak_luminance": 0.6223
             },
             "96": {
-              "chromaticity_degrees": 53.42,
-              "clip_fraction": 0.0189,
-              "coverage": 0.2464,
-              "fill": 0.4262,
-              "gloss": 0.0661,
+              "chromaticity_degrees": 53.96,
+              "clip_fraction": 0.018,
+              "coverage": 0.2894,
+              "fill": 0.4741,
+              "gloss": 0.0619,
               "holes": 1,
-              "mean_luminance": 0.1844,
-              "p75_luminance": 0.2188,
+              "mean_luminance": 0.197,
+              "p75_luminance": 0.2192,
               "peak_luminance": 1.0,
               "pieces": 2
             }
@@ -611,9 +604,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.3529 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.4262 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0661 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.4741 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0619 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -665,10 +657,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.63,
+              "chromaticity_drift_degrees": 0.41,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 0.862,
-              "swatch_to_albedo": 0.459
+              "icon_to_swatch": 0.881,
+              "swatch_to_albedo": 0.461
             },
             "character": {
               "anchor": {
@@ -686,27 +678,26 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.4868,
-                "gloss": 0.0694,
-                "holes": 2,
-                "pieces": 4
+                "fill": 0.5497,
+                "gloss": 0.0595,
+                "holes": 1,
+                "pieces": 3
               },
               "topography_judged": false,
               "topography_why_recorded": "recorded, not judged: an icon is a mark plus an accent piece, so its piece count is the mark's plus the composition's and cannot equal a bare glyph's"
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.21
+                "ink": 4.15
               },
               "PanelRaised": {
-                "ink": 3.46
+                "ink": 3.41
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.4412 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.4868 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0694 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.5497 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0595 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -721,36 +712,36 @@
           "label": "material-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 56.43,
+              "chromaticity_degrees": 56.06,
               "clip_fraction": 0.0,
-              "coverage": 0.3281,
-              "fill": 0.5833,
-              "gloss": 0.0952,
-              "mean_luminance": 0.1627,
-              "p75_luminance": 0.2205,
-              "peak_luminance": 0.4319
+              "coverage": 0.4201,
+              "fill": 0.6704,
+              "gloss": 0.095,
+              "mean_luminance": 0.1639,
+              "p75_luminance": 0.2149,
+              "peak_luminance": 0.4506
             },
             "32": {
-              "chromaticity_degrees": 56.82,
+              "chromaticity_degrees": 56.19,
               "clip_fraction": 0.0,
-              "coverage": 0.2832,
-              "fill": 0.5035,
-              "gloss": 0.0517,
-              "mean_luminance": 0.1724,
-              "p75_luminance": 0.2262,
-              "peak_luminance": 0.5821
+              "coverage": 0.4004,
+              "fill": 0.656,
+              "gloss": 0.0634,
+              "mean_luminance": 0.1712,
+              "p75_luminance": 0.2152,
+              "peak_luminance": 0.6223
             },
             "96": {
-              "chromaticity_degrees": 56.03,
-              "clip_fraction": 0.0166,
-              "coverage": 0.2815,
-              "fill": 0.4868,
-              "gloss": 0.0694,
-              "holes": 2,
-              "mean_luminance": 0.1887,
-              "p75_luminance": 0.2262,
+              "chromaticity_degrees": 56.25,
+              "clip_fraction": 0.0126,
+              "coverage": 0.3355,
+              "fill": 0.5497,
+              "gloss": 0.0595,
+              "holes": 1,
+              "mean_luminance": 0.1936,
+              "p75_luminance": 0.2222,
               "peak_luminance": 1.0,
-              "pieces": 4
+              "pieces": 3
             }
           },
           "part_count": 5,
@@ -761,9 +752,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.4412 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.4868 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0694 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.5497 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0595 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -815,10 +805,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.78,
+              "chromaticity_drift_degrees": 0.96,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 1.099,
-              "swatch_to_albedo": 0.459
+              "icon_to_swatch": 1.086,
+              "swatch_to_albedo": 0.461
             },
             "character": {
               "anchor": {
@@ -836,8 +826,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.4554,
-                "gloss": 0.1434,
+                "fill": 0.4988,
+                "gloss": 0.1105,
                 "holes": 1,
                 "pieces": 2
               },
@@ -846,17 +836,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 5.07
+                "ink": 4.67
               },
               "PanelRaised": {
-                "ink": 4.17
+                "ink": 3.84
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.2353 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.4554 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1434 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.4988 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.1105 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -871,34 +860,34 @@
           "label": "accent-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 58.38,
+              "chromaticity_degrees": 57.25,
               "clip_fraction": 0.0,
-              "coverage": 0.3108,
-              "fill": 0.5525,
-              "gloss": 0.1788,
-              "mean_luminance": 0.2088,
-              "p75_luminance": 0.245,
-              "peak_luminance": 0.7129
+              "coverage": 0.3872,
+              "fill": 0.6177,
+              "gloss": 0.139,
+              "mean_luminance": 0.2055,
+              "p75_luminance": 0.2366,
+              "peak_luminance": 0.6971
             },
             "32": {
-              "chromaticity_degrees": 59.16,
+              "chromaticity_degrees": 57.28,
               "clip_fraction": 0.0,
-              "coverage": 0.2637,
-              "fill": 0.4688,
-              "gloss": 0.1593,
-              "mean_luminance": 0.2265,
-              "p75_luminance": 0.2685,
+              "coverage": 0.3721,
+              "fill": 0.6096,
+              "gloss": 0.1365,
+              "mean_luminance": 0.2132,
+              "p75_luminance": 0.2222,
               "peak_luminance": 0.6707
             },
             "96": {
-              "chromaticity_degrees": 58.44,
-              "clip_fraction": 0.0301,
-              "coverage": 0.2633,
-              "fill": 0.4554,
-              "gloss": 0.1434,
+              "chromaticity_degrees": 57.62,
+              "clip_fraction": 0.0278,
+              "coverage": 0.3045,
+              "fill": 0.4988,
+              "gloss": 0.1105,
               "holes": 1,
-              "mean_luminance": 0.2406,
-              "p75_luminance": 0.2825,
+              "mean_luminance": 0.2386,
+              "p75_luminance": 0.2566,
               "peak_luminance": 1.0,
               "pieces": 2
             }
@@ -911,9 +900,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.2353 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.4554 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1434 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.4988 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.1105 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -965,10 +953,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 3.13,
+              "chromaticity_drift_degrees": 2.34,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 1.181,
-              "swatch_to_albedo": 0.459
+              "icon_to_swatch": 1.135,
+              "swatch_to_albedo": 0.461
             },
             "character": {
               "anchor": {
@@ -986,27 +974,26 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.4588,
-                "gloss": 0.1317,
+                "fill": 0.5092,
+                "gloss": 0.1037,
                 "holes": 1,
-                "pieces": 2
+                "pieces": 1
               },
               "topography_judged": false,
               "topography_why_recorded": "recorded, not judged: an icon is a mark plus an accent piece, so its piece count is the mark's plus the composition's and cannot equal a bare glyph's"
             },
             "contrasts": {
               "Panel": {
-                "ink": 5.1
+                "ink": 4.66
               },
               "PanelRaised": {
-                "ink": 4.19
+                "ink": 3.83
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.4118 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.4588 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1317 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.5092 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.1037 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1021,36 +1008,36 @@
           "label": "accent-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 59.96,
+              "chromaticity_degrees": 58.46,
               "clip_fraction": 0.0,
-              "coverage": 0.2899,
-              "fill": 0.5154,
-              "gloss": 0.1737,
-              "mean_luminance": 0.2311,
-              "p75_luminance": 0.2736,
-              "peak_luminance": 0.694
+              "coverage": 0.3785,
+              "fill": 0.6039,
+              "gloss": 0.1147,
+              "mean_luminance": 0.2111,
+              "p75_luminance": 0.2477,
+              "peak_luminance": 0.6417
             },
             "32": {
-              "chromaticity_degrees": 59.89,
+              "chromaticity_degrees": 58.55,
               "clip_fraction": 0.0,
-              "coverage": 0.2666,
-              "fill": 0.474,
-              "gloss": 0.1722,
-              "mean_luminance": 0.2471,
-              "p75_luminance": 0.2828,
+              "coverage": 0.3662,
+              "fill": 0.6,
+              "gloss": 0.136,
+              "mean_luminance": 0.2265,
+              "p75_luminance": 0.2381,
               "peak_luminance": 0.6707
             },
             "96": {
-              "chromaticity_degrees": 59.79,
-              "clip_fraction": 0.0299,
-              "coverage": 0.2653,
-              "fill": 0.4588,
-              "gloss": 0.1317,
+              "chromaticity_degrees": 59.0,
+              "clip_fraction": 0.0258,
+              "coverage": 0.3108,
+              "fill": 0.5092,
+              "gloss": 0.1037,
               "holes": 1,
-              "mean_luminance": 0.2586,
-              "p75_luminance": 0.2847,
+              "mean_luminance": 0.2494,
+              "p75_luminance": 0.256,
               "peak_luminance": 1.0,
-              "pieces": 2
+              "pieces": 1
             }
           },
           "part_count": 6,
@@ -1061,9 +1048,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.4118 of the declared `maps/add_road` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.4588 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1317 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.5092 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.1037 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -1138,7 +1124,7 @@
         "size_read": "silhouette at 32px; the mark alone at 24px"
       },
       "chosen_generation": null,
-      "concept_set": "pilot-six-c3-v1",
+      "concept_set": "pilot-six-c8-v1",
       "directives": [],
       "forbidden_readings": [
         "authority grant",
@@ -1183,10 +1169,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 2.4,
+              "chromaticity_drift_degrees": 2.0,
               "declared_albedo_luminance": 0.4685,
-              "icon_to_swatch": 0.69,
-              "swatch_to_albedo": 0.454
+              "icon_to_swatch": 0.739,
+              "swatch_to_albedo": 0.456
             },
             "character": {
               "anchor": {
@@ -1204,8 +1190,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.5618,
-                "gloss": 0.0384,
+                "fill": 0.6156,
+                "gloss": 0.0312,
                 "holes": 0,
                 "pieces": 1
               },
@@ -1214,16 +1200,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 3.97
+                "ink": 3.98
               },
               "PanelRaised": {
-                "ink": 3.27
+                "ink": 3.28
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.8571 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures gloss 0.0384 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0312 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1238,34 +1223,34 @@
           "label": "silhouette-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 35.58,
+              "chromaticity_degrees": 35.17,
               "clip_fraction": 0.0,
-              "coverage": 0.3611,
-              "fill": 0.642,
-              "gloss": 0.2981,
-              "mean_luminance": 0.132,
-              "p75_luminance": 0.2108,
-              "peak_luminance": 0.4025
+              "coverage": 0.4132,
+              "fill": 0.6593,
+              "gloss": 0.042,
+              "mean_luminance": 0.1415,
+              "p75_luminance": 0.2082,
+              "peak_luminance": 0.4178
             },
             "32": {
-              "chromaticity_degrees": 35.48,
+              "chromaticity_degrees": 35.12,
               "clip_fraction": 0.0,
-              "coverage": 0.3467,
-              "fill": 0.6163,
-              "gloss": 0.138,
-              "mean_luminance": 0.1373,
-              "p75_luminance": 0.2082,
-              "peak_luminance": 0.5217
+              "coverage": 0.3936,
+              "fill": 0.6448,
+              "gloss": 0.0372,
+              "mean_luminance": 0.1484,
+              "p75_luminance": 0.2106,
+              "peak_luminance": 0.5458
             },
             "96": {
-              "chromaticity_degrees": 35.61,
-              "clip_fraction": 0.0107,
-              "coverage": 0.3249,
-              "fill": 0.5618,
-              "gloss": 0.0384,
+              "chromaticity_degrees": 35.21,
+              "clip_fraction": 0.0098,
+              "coverage": 0.3758,
+              "fill": 0.6156,
+              "gloss": 0.0312,
               "holes": 0,
-              "mean_luminance": 0.1467,
-              "p75_luminance": 0.2106,
+              "mean_luminance": 0.158,
+              "p75_luminance": 0.2115,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -1278,8 +1263,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.8571 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures gloss 0.0384 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0312 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -1331,10 +1315,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.33,
+              "chromaticity_drift_degrees": 0.7,
               "declared_albedo_luminance": 0.4685,
-              "icon_to_swatch": 1.048,
-              "swatch_to_albedo": 0.454
+              "icon_to_swatch": 1.038,
+              "swatch_to_albedo": 0.456
             },
             "character": {
               "anchor": {
@@ -1352,8 +1336,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.4006,
-                "gloss": 0.0642,
+                "fill": 0.4676,
+                "gloss": 0.057,
                 "holes": 0,
                 "pieces": 2
               },
@@ -1362,16 +1346,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.2
+                "ink": 4.04
               },
               "PanelRaised": {
-                "ink": 3.45
+                "ink": 3.32
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.8571 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures gloss 0.0642 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.057 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1386,34 +1369,34 @@
           "label": "silhouette-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 32.18,
+              "chromaticity_degrees": 32.5,
               "clip_fraction": 0.0,
-              "coverage": 0.2483,
-              "fill": 0.4414,
-              "gloss": 0.021,
-              "mean_luminance": 0.2063,
-              "p75_luminance": 0.2262,
-              "peak_luminance": 0.3654
+              "coverage": 0.316,
+              "fill": 0.5042,
+              "gloss": 0.0275,
+              "mean_luminance": 0.2013,
+              "p75_luminance": 0.2137,
+              "peak_luminance": 0.4178
             },
             "32": {
-              "chromaticity_degrees": 32.07,
+              "chromaticity_degrees": 32.54,
               "clip_fraction": 0.0,
-              "coverage": 0.249,
-              "fill": 0.4427,
-              "gloss": 0.0627,
-              "mean_luminance": 0.2074,
-              "p75_luminance": 0.2282,
-              "peak_luminance": 0.5217
+              "coverage": 0.3057,
+              "fill": 0.5008,
+              "gloss": 0.0671,
+              "mean_luminance": 0.2094,
+              "p75_luminance": 0.2127,
+              "peak_luminance": 0.5458
             },
             "96": {
-              "chromaticity_degrees": 31.88,
-              "clip_fraction": 0.008,
-              "coverage": 0.2317,
-              "fill": 0.4006,
-              "gloss": 0.0642,
+              "chromaticity_degrees": 32.51,
+              "clip_fraction": 0.0099,
+              "coverage": 0.2854,
+              "fill": 0.4676,
+              "gloss": 0.057,
               "holes": 0,
-              "mean_luminance": 0.223,
-              "p75_luminance": 0.2254,
+              "mean_luminance": 0.2218,
+              "p75_luminance": 0.2151,
               "peak_luminance": 1.0,
               "pieces": 2
             }
@@ -1426,8 +1409,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.8571 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures gloss 0.0642 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.057 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -1479,10 +1461,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.58,
+              "chromaticity_drift_degrees": 1.45,
               "declared_albedo_luminance": 0.4685,
-              "icon_to_swatch": 0.979,
-              "swatch_to_albedo": 0.454
+              "icon_to_swatch": 0.999,
+              "swatch_to_albedo": 0.456
             },
             "character": {
               "anchor": {
@@ -1500,8 +1482,8 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.3847,
-                "gloss": 0.0815,
+                "fill": 0.4484,
+                "gloss": 0.0646,
                 "holes": 1,
                 "pieces": 1
               },
@@ -1510,16 +1492,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.04
+                "ink": 4.02
               },
               "PanelRaised": {
-                "ink": 3.32
+                "ink": 3.31
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.8571 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.3847 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be"
+              "measures fill 0.4484 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0646 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1534,34 +1516,34 @@
           "label": "material-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 35.06,
+              "chromaticity_degrees": 34.72,
               "clip_fraction": 0.0,
-              "coverage": 0.25,
-              "fill": 0.4444,
-              "gloss": 0.0486,
-              "mean_luminance": 0.1869,
-              "p75_luminance": 0.2299,
-              "peak_luminance": 0.4095
+              "coverage": 0.3056,
+              "fill": 0.4875,
+              "gloss": 0.0568,
+              "mean_luminance": 0.189,
+              "p75_luminance": 0.2127,
+              "peak_luminance": 0.4622
             },
             "32": {
-              "chromaticity_degrees": 34.96,
+              "chromaticity_degrees": 34.82,
               "clip_fraction": 0.0,
-              "coverage": 0.248,
-              "fill": 0.441,
-              "gloss": 0.0906,
-              "mean_luminance": 0.1896,
-              "p75_luminance": 0.2168,
-              "peak_luminance": 0.5082
+              "coverage": 0.2969,
+              "fill": 0.4864,
+              "gloss": 0.0757,
+              "mean_luminance": 0.1973,
+              "p75_luminance": 0.2142,
+              "peak_luminance": 0.6526
             },
             "96": {
-              "chromaticity_degrees": 34.79,
-              "clip_fraction": 0.0166,
-              "coverage": 0.2224,
-              "fill": 0.3847,
-              "gloss": 0.0815,
+              "chromaticity_degrees": 34.66,
+              "clip_fraction": 0.0159,
+              "coverage": 0.2737,
+              "fill": 0.4484,
+              "gloss": 0.0646,
               "holes": 1,
-              "mean_luminance": 0.2083,
-              "p75_luminance": 0.2153,
+              "mean_luminance": 0.2134,
+              "p75_luminance": 0.214,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -1574,8 +1556,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.8571 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.3847 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be"
+            "measures fill 0.4484 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0646 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -1627,10 +1609,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.45,
+              "chromaticity_drift_degrees": 0.87,
               "declared_albedo_luminance": 0.4685,
-              "icon_to_swatch": 0.908,
-              "swatch_to_albedo": 0.454
+              "icon_to_swatch": 0.913,
+              "swatch_to_albedo": 0.456
             },
             "character": {
               "anchor": {
@@ -1648,9 +1630,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.4978,
-                "gloss": 0.0701,
-                "holes": 20,
+                "fill": 0.5797,
+                "gloss": 0.0573,
+                "holes": 1,
                 "pieces": 2
               },
               "topography_judged": false,
@@ -1658,17 +1640,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.11
+                "ink": 4.04
               },
               "PanelRaised": {
-                "ink": 3.38
+                "ink": 3.32
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.8929 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-              "measures fill 0.4978 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0701 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.5797 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0573 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1683,34 +1664,34 @@
           "label": "material-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 33.31,
+              "chromaticity_degrees": 32.58,
               "clip_fraction": 0.0,
-              "coverage": 0.3247,
-              "fill": 0.5772,
-              "gloss": 0.0374,
-              "mean_luminance": 0.1743,
-              "p75_luminance": 0.226,
-              "peak_luminance": 0.4095
+              "coverage": 0.4115,
+              "fill": 0.6565,
+              "gloss": 0.0295,
+              "mean_luminance": 0.1771,
+              "p75_luminance": 0.2119,
+              "peak_luminance": 0.4622
             },
             "32": {
-              "chromaticity_degrees": 33.19,
+              "chromaticity_degrees": 32.58,
               "clip_fraction": 0.0,
-              "coverage": 0.3184,
-              "fill": 0.566,
-              "gloss": 0.0706,
-              "mean_luminance": 0.1804,
-              "p75_luminance": 0.2262,
-              "peak_luminance": 0.5082
+              "coverage": 0.3818,
+              "fill": 0.6256,
+              "gloss": 0.0486,
+              "mean_luminance": 0.1824,
+              "p75_luminance": 0.2151,
+              "peak_luminance": 0.6526
             },
             "96": {
-              "chromaticity_degrees": 32.76,
-              "clip_fraction": 0.0117,
-              "coverage": 0.2879,
-              "fill": 0.4978,
-              "gloss": 0.0701,
-              "holes": 20,
-              "mean_luminance": 0.1931,
-              "p75_luminance": 0.2197,
+              "chromaticity_degrees": 32.34,
+              "clip_fraction": 0.0064,
+              "coverage": 0.3538,
+              "fill": 0.5797,
+              "gloss": 0.0573,
+              "holes": 1,
+              "mean_luminance": 0.1952,
+              "p75_luminance": 0.2153,
               "peak_luminance": 1.0,
               "pieces": 2
             }
@@ -1723,9 +1704,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.8929 of the declared `action/power_settings_new` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
-            "measures fill 0.4978 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0701 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.5797 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0573 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -1777,10 +1757,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.14,
+              "chromaticity_drift_degrees": 0.84,
               "declared_albedo_luminance": 0.4685,
-              "icon_to_swatch": 1.134,
-              "swatch_to_albedo": 0.454
+              "icon_to_swatch": 1.102,
+              "swatch_to_albedo": 0.456
             },
             "character": {
               "anchor": {
@@ -1798,9 +1778,9 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.514,
-                "gloss": 0.1457,
-                "holes": 2,
+                "fill": 0.5691,
+                "gloss": 0.1181,
+                "holes": 10,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -1808,16 +1788,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.86
+                "ink": 4.33
               },
               "PanelRaised": {
-                "ink": 4.0
+                "ink": 3.56
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.514 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1457 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.5691 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.1181 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1832,34 +1812,34 @@
           "label": "accent-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 32.94,
+              "chromaticity_degrees": 32.99,
               "clip_fraction": 0.0,
-              "coverage": 0.3559,
-              "fill": 0.6327,
-              "gloss": 0.1756,
-              "mean_luminance": 0.2224,
-              "p75_luminance": 0.2838,
+              "coverage": 0.3993,
+              "fill": 0.6371,
+              "gloss": 0.1478,
+              "mean_luminance": 0.223,
+              "p75_luminance": 0.2539,
               "peak_luminance": 0.6917
             },
             "32": {
-              "chromaticity_degrees": 32.53,
+              "chromaticity_degrees": 32.87,
               "clip_fraction": 0.0,
-              "coverage": 0.334,
-              "fill": 0.5938,
-              "gloss": 0.1842,
-              "mean_luminance": 0.2275,
-              "p75_luminance": 0.2694,
-              "peak_luminance": 0.6624
+              "coverage": 0.3799,
+              "fill": 0.6224,
+              "gloss": 0.1697,
+              "mean_luminance": 0.2312,
+              "p75_luminance": 0.2539,
+              "peak_luminance": 0.7767
             },
             "96": {
-              "chromaticity_degrees": 32.07,
-              "clip_fraction": 0.0325,
-              "coverage": 0.2972,
-              "fill": 0.514,
-              "gloss": 0.1457,
-              "holes": 2,
-              "mean_luminance": 0.2413,
-              "p75_luminance": 0.2689,
+              "chromaticity_degrees": 32.37,
+              "clip_fraction": 0.0294,
+              "coverage": 0.3473,
+              "fill": 0.5691,
+              "gloss": 0.1181,
+              "holes": 10,
+              "mean_luminance": 0.2356,
+              "p75_luminance": 0.2339,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -1872,8 +1852,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.514 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1457 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.5691 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.1181 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -1925,10 +1905,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 2.83,
+              "chromaticity_drift_degrees": 2.38,
               "declared_albedo_luminance": 0.4685,
-              "icon_to_swatch": 1.201,
-              "swatch_to_albedo": 0.454
+              "icon_to_swatch": 1.161,
+              "swatch_to_albedo": 0.456
             },
             "character": {
               "anchor": {
@@ -1946,8 +1926,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.5001,
-                "gloss": 0.1463,
+                "fill": 0.5516,
+                "gloss": 0.1099,
                 "holes": 1,
                 "pieces": 1
               },
@@ -1956,16 +1936,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.77
+                "ink": 4.26
               },
               "PanelRaised": {
-                "ink": 3.92
+                "ink": 3.5
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.5001 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1463 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.5516 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.1099 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -1980,34 +1960,34 @@
           "label": "accent-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 30.7,
+              "chromaticity_degrees": 31.1,
               "clip_fraction": 0.0,
-              "coverage": 0.309,
-              "fill": 0.5494,
-              "gloss": 0.1517,
-              "mean_luminance": 0.2399,
-              "p75_luminance": 0.2714,
-              "peak_luminance": 0.6917
+              "coverage": 0.3611,
+              "fill": 0.5762,
+              "gloss": 0.149,
+              "mean_luminance": 0.231,
+              "p75_luminance": 0.2399,
+              "peak_luminance": 0.69
             },
             "32": {
-              "chromaticity_degrees": 30.57,
+              "chromaticity_degrees": 31.05,
               "clip_fraction": 0.0,
-              "coverage": 0.3115,
-              "fill": 0.5538,
-              "gloss": 0.1693,
-              "mean_luminance": 0.2433,
-              "p75_luminance": 0.2694,
-              "peak_luminance": 0.6624
+              "coverage": 0.3594,
+              "fill": 0.5888,
+              "gloss": 0.1522,
+              "mean_luminance": 0.2383,
+              "p75_luminance": 0.2461,
+              "peak_luminance": 0.6466
             },
             "96": {
-              "chromaticity_degrees": 30.38,
-              "clip_fraction": 0.0214,
-              "coverage": 0.2892,
-              "fill": 0.5001,
-              "gloss": 0.1463,
+              "chromaticity_degrees": 30.83,
+              "clip_fraction": 0.0177,
+              "coverage": 0.3367,
+              "fill": 0.5516,
+              "gloss": 0.1099,
               "holes": 1,
-              "mean_luminance": 0.2555,
-              "p75_luminance": 0.2628,
+              "mean_luminance": 0.2481,
+              "p75_luminance": 0.2297,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -2020,8 +2000,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.5001 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1463 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.5516 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.1099 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -2096,7 +2076,7 @@
         "size_read": "silhouette at 32px; the mark alone at 24px"
       },
       "chosen_generation": null,
-      "concept_set": "pilot-six-c3-v1",
+      "concept_set": "pilot-six-c8-v1",
       "directives": [],
       "forbidden_readings": [
         "authority grant",
@@ -2141,10 +2121,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.22,
+              "chromaticity_drift_degrees": 4.13,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 0.726,
-              "swatch_to_albedo": 0.457
+              "icon_to_swatch": 0.757,
+              "swatch_to_albedo": 0.458
             },
             "character": {
               "anchor": {
@@ -2162,8 +2142,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.5035,
-                "gloss": 0.042,
+                "fill": 0.5014,
+                "gloss": 0.0423,
                 "holes": 1,
                 "pieces": 1
               },
@@ -2172,15 +2152,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.1
+                "ink": 4.11
               },
               "PanelRaised": {
-                "ink": 3.37
+                "ink": 3.38
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures gloss 0.042 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "4 of 21 declared cells of `action/search` are under half covered (worst carries 0.65 of its own ink): the mark is carried on average but not cell for cell",
+              "measures gloss 0.0423 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -2195,34 +2176,34 @@
           "label": "silhouette-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 61.19,
+              "chromaticity_degrees": 60.8,
               "clip_fraction": 0.0,
-              "coverage": 0.3003,
-              "fill": 0.534,
-              "gloss": 0.0809,
-              "mean_luminance": 0.1498,
-              "p75_luminance": 0.216,
-              "peak_luminance": 0.447
+              "coverage": 0.3333,
+              "fill": 0.5319,
+              "gloss": 0.0625,
+              "mean_luminance": 0.1575,
+              "p75_luminance": 0.2193,
+              "peak_luminance": 0.4524
             },
             "32": {
-              "chromaticity_degrees": 61.2,
+              "chromaticity_degrees": 61.24,
               "clip_fraction": 0.0,
-              "coverage": 0.2988,
-              "fill": 0.5312,
-              "gloss": 0.0621,
-              "mean_luminance": 0.1554,
+              "coverage": 0.3115,
+              "fill": 0.5104,
+              "gloss": 0.047,
+              "mean_luminance": 0.1598,
               "p75_luminance": 0.2193,
-              "peak_luminance": 0.5383
+              "peak_luminance": 0.5618
             },
             "96": {
-              "chromaticity_degrees": 61.15,
-              "clip_fraction": 0.0101,
-              "coverage": 0.2793,
-              "fill": 0.5035,
-              "gloss": 0.042,
+              "chromaticity_degrees": 61.24,
+              "clip_fraction": 0.0102,
+              "coverage": 0.2979,
+              "fill": 0.5014,
+              "gloss": 0.0423,
               "holes": 1,
-              "mean_luminance": 0.1615,
-              "p75_luminance": 0.2193,
+              "mean_luminance": 0.1688,
+              "p75_luminance": 0.2196,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -2235,7 +2216,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures gloss 0.042 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "4 of 21 declared cells of `action/search` are under half covered (worst carries 0.65 of its own ink): the mark is carried on average but not cell for cell",
+            "measures gloss 0.0423 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -2287,10 +2269,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.05,
+              "chromaticity_drift_degrees": 3.84,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.081,
-              "swatch_to_albedo": 0.457
+              "icon_to_swatch": 1.078,
+              "swatch_to_albedo": 0.458
             },
             "character": {
               "anchor": {
@@ -2308,8 +2290,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.359,
-                "gloss": 0.0812,
+                "fill": 0.3779,
+                "gloss": 0.0735,
                 "holes": 1,
                 "pieces": 1
               },
@@ -2318,16 +2300,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.15
+                "ink": 4.12
               },
               "PanelRaised": {
-                "ink": 3.42
+                "ink": 3.38
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.359 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0812 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0735 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -2342,34 +2323,34 @@
           "label": "silhouette-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 61.36,
+              "chromaticity_degrees": 61.06,
               "clip_fraction": 0.0,
-              "coverage": 0.2101,
-              "fill": 0.3735,
-              "gloss": 0.0744,
-              "mean_luminance": 0.2239,
-              "p75_luminance": 0.2386,
-              "peak_luminance": 0.447
+              "coverage": 0.2517,
+              "fill": 0.4017,
+              "gloss": 0.0966,
+              "mean_luminance": 0.2206,
+              "p75_luminance": 0.227,
+              "peak_luminance": 0.4524
             },
             "32": {
-              "chromaticity_degrees": 61.2,
+              "chromaticity_degrees": 61.51,
               "clip_fraction": 0.0,
-              "coverage": 0.2188,
-              "fill": 0.3889,
-              "gloss": 0.0893,
-              "mean_luminance": 0.229,
-              "p75_luminance": 0.2275,
-              "peak_luminance": 0.5466
+              "coverage": 0.2324,
+              "fill": 0.3808,
+              "gloss": 0.0798,
+              "mean_luminance": 0.2293,
+              "p75_luminance": 0.2251,
+              "peak_luminance": 0.5618
             },
             "96": {
-              "chromaticity_degrees": 61.32,
-              "clip_fraction": 0.0191,
-              "coverage": 0.1991,
-              "fill": 0.359,
-              "gloss": 0.0812,
+              "chromaticity_degrees": 61.53,
+              "clip_fraction": 0.0203,
+              "coverage": 0.2245,
+              "fill": 0.3779,
+              "gloss": 0.0735,
               "holes": 1,
-              "mean_luminance": 0.2404,
-              "p75_luminance": 0.2227,
+              "mean_luminance": 0.2403,
+              "p75_luminance": 0.2201,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -2382,8 +2363,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.359 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0812 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0735 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -2435,10 +2415,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.71,
+              "chromaticity_drift_degrees": 4.72,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 0.836,
-              "swatch_to_albedo": 0.457
+              "icon_to_swatch": 0.845,
+              "swatch_to_albedo": 0.458
             },
             "character": {
               "anchor": {
@@ -2456,9 +2436,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.4474,
-                "gloss": 0.056,
-                "holes": 3,
+                "fill": 0.4597,
+                "gloss": 0.0513,
+                "holes": 4,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -2474,8 +2454,9 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.4474 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.056 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "2 of 21 declared cells of `action/search` are under half covered (worst carries 0.7229 of its own ink): the mark is carried on average but not cell for cell",
+              "measures fill 0.4597 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0513 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -2490,33 +2471,33 @@
           "label": "material-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 60.55,
+              "chromaticity_degrees": 60.19,
               "clip_fraction": 0.0,
-              "coverage": 0.2847,
-              "fill": 0.5062,
-              "gloss": 0.0732,
-              "mean_luminance": 0.1651,
+              "coverage": 0.3229,
+              "fill": 0.5152,
+              "gloss": 0.086,
+              "mean_luminance": 0.168,
               "p75_luminance": 0.2196,
-              "peak_luminance": 0.447
+              "peak_luminance": 0.4752
             },
             "32": {
-              "chromaticity_degrees": 60.48,
+              "chromaticity_degrees": 60.6,
               "clip_fraction": 0.0,
-              "coverage": 0.2793,
-              "fill": 0.4965,
-              "gloss": 0.0664,
-              "mean_luminance": 0.1743,
+              "coverage": 0.2969,
+              "fill": 0.4864,
+              "gloss": 0.0658,
+              "mean_luminance": 0.1738,
               "p75_luminance": 0.2196,
-              "peak_luminance": 0.5338
+              "peak_luminance": 0.5618
             },
             "96": {
-              "chromaticity_degrees": 60.66,
-              "clip_fraction": 0.0127,
-              "coverage": 0.2482,
-              "fill": 0.4474,
-              "gloss": 0.056,
-              "holes": 3,
-              "mean_luminance": 0.186,
+              "chromaticity_degrees": 60.65,
+              "clip_fraction": 0.0139,
+              "coverage": 0.2731,
+              "fill": 0.4597,
+              "gloss": 0.0513,
+              "holes": 4,
+              "mean_luminance": 0.1883,
               "p75_luminance": 0.2196,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -2530,8 +2511,9 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.4474 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.056 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "2 of 21 declared cells of `action/search` are under half covered (worst carries 0.7229 of its own ink): the mark is carried on average but not cell for cell",
+            "measures fill 0.4597 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0513 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -2583,10 +2565,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.55,
+              "chromaticity_drift_degrees": 4.53,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 0.842,
-              "swatch_to_albedo": 0.457
+              "icon_to_swatch": 0.86,
+              "swatch_to_albedo": 0.458
             },
             "character": {
               "anchor": {
@@ -2604,9 +2586,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.5027,
-                "gloss": 0.0576,
-                "holes": 4,
+                "fill": 0.512,
+                "gloss": 0.0542,
+                "holes": 5,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -2622,8 +2604,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.5027 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0576 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.512 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0542 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -2638,33 +2620,33 @@
           "label": "material-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 60.52,
+              "chromaticity_degrees": 60.25,
               "clip_fraction": 0.0,
-              "coverage": 0.3194,
-              "fill": 0.5679,
-              "gloss": 0.0761,
-              "mean_luminance": 0.1686,
+              "coverage": 0.3576,
+              "fill": 0.5706,
+              "gloss": 0.0631,
+              "mean_luminance": 0.1723,
               "p75_luminance": 0.2196,
-              "peak_luminance": 0.447
+              "peak_luminance": 0.4752
             },
             "32": {
-              "chromaticity_degrees": 60.72,
+              "chromaticity_degrees": 60.8,
               "clip_fraction": 0.0,
-              "coverage": 0.3066,
-              "fill": 0.5451,
-              "gloss": 0.0605,
-              "mean_luminance": 0.1774,
-              "p75_luminance": 0.2204,
-              "peak_luminance": 0.5338
+              "coverage": 0.3232,
+              "fill": 0.5296,
+              "gloss": 0.0604,
+              "mean_luminance": 0.179,
+              "p75_luminance": 0.2196,
+              "peak_luminance": 0.5618
             },
             "96": {
-              "chromaticity_degrees": 60.82,
-              "clip_fraction": 0.0109,
-              "coverage": 0.2789,
-              "fill": 0.5027,
-              "gloss": 0.0576,
-              "holes": 4,
-              "mean_luminance": 0.1872,
+              "chromaticity_degrees": 60.84,
+              "clip_fraction": 0.0121,
+              "coverage": 0.3041,
+              "fill": 0.512,
+              "gloss": 0.0542,
+              "holes": 5,
+              "mean_luminance": 0.1916,
               "p75_luminance": 0.2196,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -2678,8 +2660,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.5027 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0576 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.512 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0542 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -2731,10 +2713,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.63,
+              "chromaticity_drift_degrees": 4.55,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.07,
-              "swatch_to_albedo": 0.457
+              "icon_to_swatch": 1.064,
+              "swatch_to_albedo": 0.458
             },
             "character": {
               "anchor": {
@@ -2752,9 +2734,9 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.4783,
-                "gloss": 0.1153,
-                "holes": 5,
+                "fill": 0.4822,
+                "gloss": 0.1076,
+                "holes": 4,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -2762,16 +2744,17 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.32
+                "ink": 4.21
               },
               "PanelRaised": {
-                "ink": 3.55
+                "ink": 3.46
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.4783 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1153 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "2 of 21 declared cells of `action/search` are under half covered (worst carries 0.676 of its own ink): the mark is carried on average but not cell for cell",
+              "measures fill 0.4822 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.1076 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -2786,34 +2769,34 @@
           "label": "accent-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 60.14,
+              "chromaticity_degrees": 60.06,
               "clip_fraction": 0.0,
-              "coverage": 0.3038,
-              "fill": 0.5401,
-              "gloss": 0.12,
-              "mean_luminance": 0.2207,
-              "p75_luminance": 0.2757,
-              "peak_luminance": 0.5467
+              "coverage": 0.3385,
+              "fill": 0.5402,
+              "gloss": 0.1282,
+              "mean_luminance": 0.2164,
+              "p75_luminance": 0.2566,
+              "peak_luminance": 0.5174
             },
             "32": {
-              "chromaticity_degrees": 60.18,
+              "chromaticity_degrees": 60.28,
               "clip_fraction": 0.0,
-              "coverage": 0.2979,
-              "fill": 0.5295,
-              "gloss": 0.1443,
-              "mean_luminance": 0.2304,
-              "p75_luminance": 0.2704,
-              "peak_luminance": 0.7463
+              "coverage": 0.3125,
+              "fill": 0.512,
+              "gloss": 0.1313,
+              "mean_luminance": 0.2277,
+              "p75_luminance": 0.2646,
+              "peak_luminance": 0.6487
             },
             "96": {
-              "chromaticity_degrees": 60.74,
-              "clip_fraction": 0.0213,
-              "coverage": 0.2653,
-              "fill": 0.4783,
-              "gloss": 0.1153,
-              "holes": 5,
-              "mean_luminance": 0.2379,
-              "p75_luminance": 0.2337,
+              "chromaticity_degrees": 60.82,
+              "clip_fraction": 0.0182,
+              "coverage": 0.2865,
+              "fill": 0.4822,
+              "gloss": 0.1076,
+              "holes": 4,
+              "mean_luminance": 0.2371,
+              "p75_luminance": 0.2264,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -2826,8 +2809,9 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.4783 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1153 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "2 of 21 declared cells of `action/search` are under half covered (worst carries 0.676 of its own ink): the mark is carried on average but not cell for cell",
+            "measures fill 0.4822 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.1076 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -2879,10 +2863,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.4,
+              "chromaticity_drift_degrees": 4.15,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.117,
-              "swatch_to_albedo": 0.457
+              "icon_to_swatch": 1.092,
+              "swatch_to_albedo": 0.458
             },
             "character": {
               "anchor": {
@@ -2900,8 +2884,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.4556,
-                "gloss": 0.1091,
+                "fill": 0.4676,
+                "gloss": 0.0945,
                 "holes": 3,
                 "pieces": 1
               },
@@ -2910,16 +2894,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.27
+                "ink": 4.19
               },
               "PanelRaised": {
-                "ink": 3.51
+                "ink": 3.44
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.4556 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1091 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.4676 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0945 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -2934,34 +2918,34 @@
           "label": "accent-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 60.53,
+              "chromaticity_degrees": 60.58,
               "clip_fraction": 0.0,
-              "coverage": 0.2795,
-              "fill": 0.4969,
-              "gloss": 0.118,
-              "mean_luminance": 0.231,
-              "p75_luminance": 0.2609,
-              "peak_luminance": 0.5467
+              "coverage": 0.316,
+              "fill": 0.5042,
+              "gloss": 0.1154,
+              "mean_luminance": 0.2239,
+              "p75_luminance": 0.2394,
+              "peak_luminance": 0.4917
             },
             "32": {
-              "chromaticity_degrees": 60.5,
+              "chromaticity_degrees": 60.9,
               "clip_fraction": 0.0,
-              "coverage": 0.2812,
-              "fill": 0.5,
-              "gloss": 0.1354,
-              "mean_luminance": 0.2414,
-              "p75_luminance": 0.2729,
-              "peak_luminance": 0.7463
+              "coverage": 0.2949,
+              "fill": 0.4832,
+              "gloss": 0.1026,
+              "mean_luminance": 0.2345,
+              "p75_luminance": 0.246,
+              "peak_luminance": 0.6247
             },
             "96": {
-              "chromaticity_degrees": 60.97,
-              "clip_fraction": 0.0198,
-              "coverage": 0.2527,
-              "fill": 0.4556,
-              "gloss": 0.1091,
+              "chromaticity_degrees": 61.22,
+              "clip_fraction": 0.0164,
+              "coverage": 0.2778,
+              "fill": 0.4676,
+              "gloss": 0.0945,
               "holes": 3,
-              "mean_luminance": 0.2485,
-              "p75_luminance": 0.2301,
+              "mean_luminance": 0.2434,
+              "p75_luminance": 0.2247,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -2974,8 +2958,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.4556 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1091 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.4676 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0945 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -3050,7 +3034,7 @@
         "size_read": "silhouette at 32px; the mark alone at 24px"
       },
       "chosen_generation": null,
-      "concept_set": "pilot-six-c3-v1",
+      "concept_set": "pilot-six-c8-v1",
       "directives": [],
       "forbidden_readings": [
         "authority grant",
@@ -3095,9 +3079,9 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.66,
+              "chromaticity_drift_degrees": 1.26,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 1.076,
+              "icon_to_swatch": 1.061,
               "swatch_to_albedo": 0.467
             },
             "character": {
@@ -3116,8 +3100,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.8029,
-                "gloss": 0.0479,
+                "fill": 0.8312,
+                "gloss": 0.043,
                 "holes": 0,
                 "pieces": 2
               },
@@ -3134,8 +3118,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.8029 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0479 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.8312 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.043 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -3150,33 +3134,33 @@
           "label": "silhouette-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 29.82,
+              "chromaticity_degrees": 30.6,
               "clip_fraction": 0.0,
-              "coverage": 0.3594,
-              "fill": 0.8214,
-              "gloss": 0.0048,
-              "mean_luminance": 0.2073,
-              "p75_luminance": 0.2109,
-              "peak_luminance": 0.3885
+              "coverage": 0.4219,
+              "fill": 0.8526,
+              "gloss": 0.037,
+              "mean_luminance": 0.2133,
+              "p75_luminance": 0.2073,
+              "peak_luminance": 0.4488
             },
             "32": {
-              "chromaticity_degrees": 30.61,
+              "chromaticity_degrees": 29.99,
               "clip_fraction": 0.0,
-              "coverage": 0.3613,
-              "fill": 0.8114,
-              "gloss": 0.0541,
-              "mean_luminance": 0.2208,
-              "p75_luminance": 0.2106,
-              "peak_luminance": 0.5211
+              "coverage": 0.3955,
+              "fill": 0.81,
+              "gloss": 0.0247,
+              "mean_luminance": 0.2139,
+              "p75_luminance": 0.2073,
+              "peak_luminance": 0.574
             },
             "96": {
-              "chromaticity_degrees": 30.84,
+              "chromaticity_degrees": 30.44,
               "clip_fraction": 0.0198,
-              "coverage": 0.3625,
-              "fill": 0.8029,
-              "gloss": 0.0479,
+              "coverage": 0.3991,
+              "fill": 0.8312,
+              "gloss": 0.043,
               "holes": 0,
-              "mean_luminance": 0.2323,
+              "mean_luminance": 0.2291,
               "p75_luminance": 0.2097,
               "peak_luminance": 1.0,
               "pieces": 2
@@ -3190,8 +3174,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.8029 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0479 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.8312 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.043 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -3243,9 +3227,9 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.76,
+              "chromaticity_drift_degrees": 1.19,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 1.034,
+              "icon_to_swatch": 1.005,
               "swatch_to_albedo": 0.467
             },
             "character": {
@@ -3264,8 +3248,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.8433,
-                "gloss": 0.0353,
+                "fill": 0.8533,
+                "gloss": 0.0334,
                 "holes": 0,
                 "pieces": 1
               },
@@ -3282,8 +3266,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.8433 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0353 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.8533 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0334 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -3298,33 +3282,33 @@
           "label": "silhouette-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 30.31,
+              "chromaticity_degrees": 30.51,
               "clip_fraction": 0.0,
-              "coverage": 0.3733,
-              "fill": 0.8532,
-              "gloss": 0.0279,
-              "mean_luminance": 0.2094,
-              "p75_luminance": 0.2106,
-              "peak_luminance": 0.3885
+              "coverage": 0.4236,
+              "fill": 0.8561,
+              "gloss": 0.0369,
+              "mean_luminance": 0.2065,
+              "p75_luminance": 0.2061,
+              "peak_luminance": 0.4488
             },
             "32": {
-              "chromaticity_degrees": 30.7,
+              "chromaticity_degrees": 30.1,
               "clip_fraction": 0.0,
-              "coverage": 0.373,
-              "fill": 0.8377,
-              "gloss": 0.0681,
-              "mean_luminance": 0.2161,
-              "p75_luminance": 0.2073,
-              "peak_luminance": 0.5211
+              "coverage": 0.4092,
+              "fill": 0.838,
+              "gloss": 0.0239,
+              "mean_luminance": 0.2076,
+              "p75_luminance": 0.2064,
+              "peak_luminance": 0.574
             },
             "96": {
-              "chromaticity_degrees": 30.94,
-              "clip_fraction": 0.0185,
-              "coverage": 0.3808,
-              "fill": 0.8433,
-              "gloss": 0.0353,
+              "chromaticity_degrees": 30.37,
+              "clip_fraction": 0.014,
+              "coverage": 0.4097,
+              "fill": 0.8533,
+              "gloss": 0.0334,
               "holes": 0,
-              "mean_luminance": 0.2232,
+              "mean_luminance": 0.217,
               "p75_luminance": 0.2097,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -3338,8 +3322,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.8433 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0353 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.8533 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0334 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -3391,9 +3375,9 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 2.26,
+              "chromaticity_drift_degrees": 1.53,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 1.034,
+              "icon_to_swatch": 1.007,
               "swatch_to_albedo": 0.467
             },
             "character": {
@@ -3412,8 +3396,8 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.7574,
-                "gloss": 0.0567,
+                "fill": 0.8004,
+                "gloss": 0.0442,
                 "holes": 3,
                 "pieces": 1
               },
@@ -3430,8 +3414,7 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.7574 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0567 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0442 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -3446,33 +3429,33 @@
           "label": "material-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 30.47,
+              "chromaticity_degrees": 30.88,
               "clip_fraction": 0.0,
-              "coverage": 0.408,
-              "fill": 0.7253,
-              "gloss": 0.017,
-              "mean_luminance": 0.194,
+              "coverage": 0.4653,
+              "fill": 0.7836,
+              "gloss": 0.0522,
+              "mean_luminance": 0.2,
               "p75_luminance": 0.2073,
-              "peak_luminance": 0.5367
+              "peak_luminance": 0.5737
             },
             "32": {
-              "chromaticity_degrees": 31.2,
+              "chromaticity_degrees": 30.34,
               "clip_fraction": 0.0,
-              "coverage": 0.4023,
-              "fill": 0.7803,
-              "gloss": 0.085,
-              "mean_luminance": 0.2108,
+              "coverage": 0.4326,
+              "fill": 0.8055,
+              "gloss": 0.0429,
+              "mean_luminance": 0.2022,
               "p75_luminance": 0.2073,
-              "peak_luminance": 0.6966
+              "peak_luminance": 0.6711
             },
             "96": {
-              "chromaticity_degrees": 31.44,
-              "clip_fraction": 0.0293,
-              "coverage": 0.3959,
-              "fill": 0.7574,
-              "gloss": 0.0567,
+              "chromaticity_degrees": 30.71,
+              "clip_fraction": 0.0202,
+              "coverage": 0.4299,
+              "fill": 0.8004,
+              "gloss": 0.0442,
               "holes": 3,
-              "mean_luminance": 0.2231,
+              "mean_luminance": 0.2175,
               "p75_luminance": 0.2097,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -3486,8 +3469,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.7574 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0567 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0442 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -3539,9 +3521,9 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.88,
+              "chromaticity_drift_degrees": 1.64,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 0.942,
+              "icon_to_swatch": 0.961,
               "swatch_to_albedo": 0.467
             },
             "character": {
@@ -3560,8 +3542,8 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.7885,
-                "gloss": 0.0413,
+                "fill": 0.8154,
+                "gloss": 0.0347,
                 "holes": 2,
                 "pieces": 1
               },
@@ -3578,7 +3560,7 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures gloss 0.0413 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0347 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -3593,33 +3575,33 @@
           "label": "material-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 30.42,
+              "chromaticity_degrees": 31.01,
               "clip_fraction": 0.0,
-              "coverage": 0.4253,
-              "fill": 0.7562,
-              "gloss": 0.0163,
-              "mean_luminance": 0.1838,
+              "coverage": 0.4653,
+              "fill": 0.7836,
+              "gloss": 0.0522,
+              "mean_luminance": 0.1943,
               "p75_luminance": 0.2061,
-              "peak_luminance": 0.5367
+              "peak_luminance": 0.5737
             },
             "32": {
-              "chromaticity_degrees": 30.81,
+              "chromaticity_degrees": 30.62,
               "clip_fraction": 0.0,
-              "coverage": 0.4141,
-              "fill": 0.803,
-              "gloss": 0.0401,
-              "mean_luminance": 0.1939,
-              "p75_luminance": 0.2064,
-              "peak_luminance": 0.6966
+              "coverage": 0.4443,
+              "fill": 0.8273,
+              "gloss": 0.0418,
+              "mean_luminance": 0.1974,
+              "p75_luminance": 0.2061,
+              "peak_luminance": 0.6711
             },
             "96": {
-              "chromaticity_degrees": 31.06,
-              "clip_fraction": 0.015,
-              "coverage": 0.4122,
-              "fill": 0.7885,
-              "gloss": 0.0413,
+              "chromaticity_degrees": 30.82,
+              "clip_fraction": 0.0141,
+              "coverage": 0.4379,
+              "fill": 0.8154,
+              "gloss": 0.0347,
               "holes": 2,
-              "mean_luminance": 0.2033,
+              "mean_luminance": 0.2076,
               "p75_luminance": 0.2073,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -3633,7 +3615,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures gloss 0.0413 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0347 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -3685,9 +3667,9 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.45,
+              "chromaticity_drift_degrees": 1.05,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 1.116,
+              "icon_to_swatch": 1.065,
               "swatch_to_albedo": 0.467
             },
             "character": {
@@ -3706,9 +3688,9 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.8344,
-                "gloss": 0.0685,
-                "holes": 2,
+                "fill": 0.8461,
+                "gloss": 0.0433,
+                "holes": 1,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -3716,16 +3698,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 3.97
+                "ink": 3.96
               },
               "PanelRaised": {
-                "ink": 3.27
+                "ink": 3.25
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.8344 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0685 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.8461 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0433 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -3740,34 +3722,34 @@
           "label": "accent-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 30.24,
+              "chromaticity_degrees": 30.47,
               "clip_fraction": 0.0,
-              "coverage": 0.3802,
-              "fill": 0.869,
-              "gloss": 0.0457,
-              "mean_luminance": 0.224,
-              "p75_luminance": 0.2152,
-              "peak_luminance": 0.6226
+              "coverage": 0.4288,
+              "fill": 0.8667,
+              "gloss": 0.081,
+              "mean_luminance": 0.218,
+              "p75_luminance": 0.2081,
+              "peak_luminance": 0.4902
             },
             "32": {
-              "chromaticity_degrees": 30.61,
+              "chromaticity_degrees": 30.01,
               "clip_fraction": 0.0,
-              "coverage": 0.3799,
-              "fill": 0.8531,
-              "gloss": 0.0977,
-              "mean_luminance": 0.2332,
-              "p75_luminance": 0.2116,
-              "peak_luminance": 0.6012
+              "coverage": 0.4102,
+              "fill": 0.84,
+              "gloss": 0.0452,
+              "mean_luminance": 0.22,
+              "p75_luminance": 0.2097,
+              "peak_luminance": 0.6169
             },
             "96": {
-              "chromaticity_degrees": 30.63,
-              "clip_fraction": 0.0216,
-              "coverage": 0.3767,
-              "fill": 0.8344,
-              "gloss": 0.0685,
-              "holes": 2,
-              "mean_luminance": 0.2408,
-              "p75_luminance": 0.2106,
+              "chromaticity_degrees": 30.23,
+              "clip_fraction": 0.0171,
+              "coverage": 0.4062,
+              "fill": 0.8461,
+              "gloss": 0.0433,
+              "holes": 1,
+              "mean_luminance": 0.2301,
+              "p75_luminance": 0.2097,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -3780,8 +3762,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.8344 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0685 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.8461 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0433 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -3833,7 +3815,7 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.03,
+              "chromaticity_drift_degrees": 1.07,
               "declared_albedo_luminance": 0.4624,
               "icon_to_swatch": 1.007,
               "swatch_to_albedo": 0.467
@@ -3854,8 +3836,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.8529,
-                "gloss": 0.0409,
+                "fill": 0.8547,
+                "gloss": 0.0286,
                 "holes": 0,
                 "pieces": 1
               },
@@ -3872,8 +3854,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.8529 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0409 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.8547 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0286 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -3888,33 +3870,33 @@
           "label": "accent-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 29.57,
+              "chromaticity_degrees": 30.45,
               "clip_fraction": 0.0,
-              "coverage": 0.3837,
-              "fill": 0.877,
-              "gloss": 0.009,
-              "mean_luminance": 0.2014,
-              "p75_luminance": 0.2073,
-              "peak_luminance": 0.4493
+              "coverage": 0.4306,
+              "fill": 0.8702,
+              "gloss": 0.0565,
+              "mean_luminance": 0.2064,
+              "p75_luminance": 0.2061,
+              "peak_luminance": 0.4902
             },
             "32": {
-              "chromaticity_degrees": 29.95,
+              "chromaticity_degrees": 30.03,
               "clip_fraction": 0.0,
-              "coverage": 0.3828,
-              "fill": 0.8596,
-              "gloss": 0.0306,
-              "mean_luminance": 0.2093,
-              "p75_luminance": 0.2097,
-              "peak_luminance": 0.6012
+              "coverage": 0.4141,
+              "fill": 0.848,
+              "gloss": 0.0236,
+              "mean_luminance": 0.2085,
+              "p75_luminance": 0.2064,
+              "peak_luminance": 0.6169
             },
             "96": {
-              "chromaticity_degrees": 30.21,
-              "clip_fraction": 0.0144,
-              "coverage": 0.3851,
-              "fill": 0.8529,
-              "gloss": 0.0409,
+              "chromaticity_degrees": 30.25,
+              "clip_fraction": 0.0143,
+              "coverage": 0.4104,
+              "fill": 0.8547,
+              "gloss": 0.0286,
               "holes": 0,
-              "mean_luminance": 0.2174,
+              "mean_luminance": 0.2175,
               "p75_luminance": 0.2097,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -3928,8 +3910,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.8529 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0409 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.8547 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0286 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -4004,7 +3986,7 @@
         "size_read": "silhouette at 32px; the mark alone at 24px"
       },
       "chosen_generation": null,
-      "concept_set": "pilot-six-c3-v1",
+      "concept_set": "pilot-six-c8-v1",
       "directives": [],
       "forbidden_readings": [
         "authority grant",
@@ -4049,10 +4031,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 12.72,
+              "chromaticity_drift_degrees": 13.22,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.054,
-              "swatch_to_albedo": 0.918
+              "icon_to_swatch": 1.042,
+              "swatch_to_albedo": 0.928
             },
             "character": {
               "anchor": {
@@ -4070,8 +4052,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.6764,
-                "gloss": 0.0217,
+                "fill": 0.7032,
+                "gloss": 0.0203,
                 "holes": 0,
                 "pieces": 1
               },
@@ -4080,15 +4062,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.38
+                "ink": 4.4
               },
               "PanelRaised": {
-                "ink": 3.6
+                "ink": 3.62
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the rendered hue sits 12.7 degrees from the declared colour's, beyond the 12.0 degree tolerance"
+              "the rendered hue sits 13.2 degrees from the declared colour's, beyond the 12.0 degree tolerance"
             ]
           },
           "files": {
@@ -4103,35 +4085,35 @@
           "label": "silhouette-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 77.11,
+              "chromaticity_degrees": 76.3,
               "clip_fraction": 0.0,
-              "coverage": 0.3993,
-              "fill": 0.7099,
-              "gloss": 0.013,
-              "mean_luminance": 0.223,
-              "p75_luminance": 0.2373,
-              "peak_luminance": 0.4144
+              "coverage": 0.4375,
+              "fill": 0.7368,
+              "gloss": 0.0079,
+              "mean_luminance": 0.2237,
+              "p75_luminance": 0.2375,
+              "peak_luminance": 0.4135
             },
             "32": {
-              "chromaticity_degrees": 77.18,
+              "chromaticity_degrees": 76.35,
               "clip_fraction": 0.0,
-              "coverage": 0.3926,
-              "fill": 0.6979,
-              "gloss": 0.0299,
-              "mean_luminance": 0.2265,
+              "coverage": 0.4277,
+              "fill": 0.73,
+              "gloss": 0.0388,
+              "mean_luminance": 0.2284,
               "p75_luminance": 0.2375,
-              "peak_luminance": 0.4883
+              "peak_luminance": 0.4719
             },
             "96": {
-              "chromaticity_degrees": 77.26,
+              "chromaticity_degrees": 76.76,
               "clip_fraction": 0.0094,
-              "coverage": 0.3804,
-              "fill": 0.6764,
-              "gloss": 0.0217,
+              "coverage": 0.4178,
+              "fill": 0.7032,
+              "gloss": 0.0203,
               "holes": 0,
-              "mean_luminance": 0.2333,
-              "p75_luminance": 0.2375,
-              "peak_luminance": 0.9815,
+              "mean_luminance": 0.2331,
+              "p75_luminance": 0.2387,
+              "peak_luminance": 0.9925,
               "pieces": 1
             }
           },
@@ -4143,7 +4125,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the rendered hue sits 12.7 degrees from the declared colour's, beyond the 12.0 degree tolerance"
+            "the rendered hue sits 13.2 degrees from the declared colour's, beyond the 12.0 degree tolerance"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -4195,10 +4177,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 9.79,
+              "chromaticity_drift_degrees": 9.71,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.119,
-              "swatch_to_albedo": 0.918
+              "icon_to_swatch": 1.106,
+              "swatch_to_albedo": 0.928
             },
             "character": {
               "anchor": {
@@ -4216,8 +4198,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.6047,
-                "gloss": 0.0444,
+                "fill": 0.621,
+                "gloss": 0.0412,
                 "holes": 1,
                 "pieces": 1
               },
@@ -4234,7 +4216,7 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures gloss 0.0444 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures gloss 0.0412 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -4249,35 +4231,35 @@
           "label": "silhouette-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 79.79,
+              "chromaticity_degrees": 79.72,
               "clip_fraction": 0.0,
-              "coverage": 0.3646,
-              "fill": 0.6481,
-              "gloss": 0.0286,
-              "mean_luminance": 0.2336,
-              "p75_luminance": 0.2409,
-              "peak_luminance": 0.5056
+              "coverage": 0.3906,
+              "fill": 0.6579,
+              "gloss": 0.0267,
+              "mean_luminance": 0.2343,
+              "p75_luminance": 0.2412,
+              "peak_luminance": 0.4476
             },
             "32": {
-              "chromaticity_degrees": 79.97,
+              "chromaticity_degrees": 79.72,
               "clip_fraction": 0.0,
-              "coverage": 0.3545,
-              "fill": 0.6302,
-              "gloss": 0.0496,
-              "mean_luminance": 0.239,
+              "coverage": 0.3789,
+              "fill": 0.6467,
+              "gloss": 0.0644,
+              "mean_luminance": 0.2407,
               "p75_luminance": 0.2409,
-              "peak_luminance": 0.5647
+              "peak_luminance": 0.5232
             },
             "96": {
-              "chromaticity_degrees": 80.19,
-              "clip_fraction": 0.0105,
-              "coverage": 0.3401,
-              "fill": 0.6047,
-              "gloss": 0.0444,
+              "chromaticity_degrees": 80.27,
+              "clip_fraction": 0.0106,
+              "coverage": 0.3689,
+              "fill": 0.621,
+              "gloss": 0.0412,
               "holes": 1,
-              "mean_luminance": 0.2476,
+              "mean_luminance": 0.2472,
               "p75_luminance": 0.2409,
-              "peak_luminance": 0.9815,
+              "peak_luminance": 0.9925,
               "pieces": 1
             }
           },
@@ -4289,7 +4271,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures gloss 0.0444 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures gloss 0.0412 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -4341,10 +4323,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 14.57,
+              "chromaticity_drift_degrees": 13.95,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.072,
-              "swatch_to_albedo": 0.918
+              "icon_to_swatch": 1.067,
+              "swatch_to_albedo": 0.928
             },
             "character": {
               "anchor": {
@@ -4362,9 +4344,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.7202,
-                "gloss": 0.0421,
-                "holes": 12,
+                "fill": 0.7153,
+                "gloss": 0.0388,
+                "holes": 9,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -4380,9 +4362,9 @@
             },
             "internal_contrast": null,
             "notes": [
-              "the rendered hue sits 14.6 degrees from the declared colour's, beyond the 12.0 degree tolerance",
-              "measures fill 0.7202 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0421 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "the rendered hue sits 14.0 degrees from the declared colour's, beyond the 12.0 degree tolerance",
+              "measures fill 0.7153 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0388 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -4397,34 +4379,34 @@
           "label": "material-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 75.0,
+              "chromaticity_degrees": 75.12,
               "clip_fraction": 0.0,
-              "coverage": 0.4392,
-              "fill": 0.7809,
-              "gloss": 0.0514,
-              "mean_luminance": 0.2251,
+              "coverage": 0.4653,
+              "fill": 0.7836,
+              "gloss": 0.041,
+              "mean_luminance": 0.2253,
               "p75_luminance": 0.2378,
-              "peak_luminance": 0.6763
+              "peak_luminance": 0.7036
             },
             "32": {
-              "chromaticity_degrees": 75.34,
+              "chromaticity_degrees": 75.32,
               "clip_fraction": 0.0,
-              "coverage": 0.4229,
-              "fill": 0.7517,
-              "gloss": 0.0508,
-              "mean_luminance": 0.2306,
+              "coverage": 0.4443,
+              "fill": 0.7583,
+              "gloss": 0.0549,
+              "mean_luminance": 0.2328,
               "p75_luminance": 0.2404,
-              "peak_luminance": 0.7513
+              "peak_luminance": 0.7835
             },
             "96": {
-              "chromaticity_degrees": 75.41,
-              "clip_fraction": 0.019,
-              "coverage": 0.4051,
-              "fill": 0.7202,
-              "gloss": 0.0421,
-              "holes": 12,
-              "mean_luminance": 0.2373,
-              "p75_luminance": 0.2402,
+              "chromaticity_degrees": 76.03,
+              "clip_fraction": 0.0158,
+              "coverage": 0.4249,
+              "fill": 0.7153,
+              "gloss": 0.0388,
+              "holes": 9,
+              "mean_luminance": 0.2386,
+              "p75_luminance": 0.2404,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -4437,9 +4419,9 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the rendered hue sits 14.6 degrees from the declared colour's, beyond the 12.0 degree tolerance",
-            "measures fill 0.7202 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0421 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "the rendered hue sits 14.0 degrees from the declared colour's, beyond the 12.0 degree tolerance",
+            "measures fill 0.7153 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0388 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -4491,10 +4473,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 13.46,
+              "chromaticity_drift_degrees": 12.92,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.108,
-              "swatch_to_albedo": 0.918
+              "icon_to_swatch": 1.089,
+              "swatch_to_albedo": 0.928
             },
             "character": {
               "anchor": {
@@ -4512,9 +4494,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.7002,
-                "gloss": 0.0518,
-                "holes": 7,
+                "fill": 0.7087,
+                "gloss": 0.0443,
+                "holes": 8,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -4530,9 +4512,9 @@
             },
             "internal_contrast": null,
             "notes": [
-              "the rendered hue sits 13.5 degrees from the declared colour's, beyond the 12.0 degree tolerance",
-              "measures fill 0.7002 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0518 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+              "the rendered hue sits 12.9 degrees from the declared colour's, beyond the 12.0 degree tolerance",
+              "measures fill 0.7087 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0443 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -4547,33 +4529,33 @@
           "label": "material-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 76.1,
+              "chromaticity_degrees": 76.38,
               "clip_fraction": 0.0,
-              "coverage": 0.4219,
-              "fill": 0.75,
-              "gloss": 0.0535,
-              "mean_luminance": 0.2325,
-              "p75_luminance": 0.2412,
-              "peak_luminance": 0.6763
+              "coverage": 0.4462,
+              "fill": 0.7515,
+              "gloss": 0.0428,
+              "mean_luminance": 0.2326,
+              "p75_luminance": 0.2409,
+              "peak_luminance": 0.7036
             },
             "32": {
-              "chromaticity_degrees": 76.36,
+              "chromaticity_degrees": 76.31,
               "clip_fraction": 0.0,
-              "coverage": 0.4072,
-              "fill": 0.724,
-              "gloss": 0.0504,
-              "mean_luminance": 0.2397,
+              "coverage": 0.4375,
+              "fill": 0.7467,
+              "gloss": 0.0558,
+              "mean_luminance": 0.2401,
               "p75_luminance": 0.2412,
-              "peak_luminance": 0.7513
+              "peak_luminance": 0.7835
             },
             "96": {
-              "chromaticity_degrees": 76.52,
-              "clip_fraction": 0.0193,
-              "coverage": 0.3938,
-              "fill": 0.7002,
-              "gloss": 0.0518,
-              "holes": 7,
-              "mean_luminance": 0.2453,
+              "chromaticity_degrees": 77.06,
+              "clip_fraction": 0.016,
+              "coverage": 0.421,
+              "fill": 0.7087,
+              "gloss": 0.0443,
+              "holes": 8,
+              "mean_luminance": 0.2436,
               "p75_luminance": 0.2409,
               "peak_luminance": 1.0,
               "pieces": 1
@@ -4587,9 +4569,9 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the rendered hue sits 13.5 degrees from the declared colour's, beyond the 12.0 degree tolerance",
-            "measures fill 0.7002 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0518 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            "the rendered hue sits 12.9 degrees from the declared colour's, beyond the 12.0 degree tolerance",
+            "measures fill 0.7087 at 96px, outside the 0.784-0.997 the `touchwiz` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0443 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "touchwiz",
@@ -4641,10 +4623,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 12.65,
+              "chromaticity_drift_degrees": 13.1,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.056,
-              "swatch_to_albedo": 0.918
+              "icon_to_swatch": 1.04,
+              "swatch_to_albedo": 0.928
             },
             "character": {
               "anchor": {
@@ -4662,8 +4644,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.6786,
-                "gloss": 0.0245,
+                "fill": 0.7039,
+                "gloss": 0.0218,
                 "holes": 0,
                 "pieces": 1
               },
@@ -4672,17 +4654,17 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 4.39
+                "ink": 4.41
               },
               "PanelRaised": {
-                "ink": 3.61
+                "ink": 3.63
               }
             },
             "internal_contrast": null,
             "notes": [
-              "the rendered hue sits 12.7 degrees from the declared colour's, beyond the 12.0 degree tolerance",
-              "measures fill 0.6786 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0245 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "the rendered hue sits 13.1 degrees from the declared colour's, beyond the 12.0 degree tolerance",
+              "measures fill 0.7039 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0218 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -4697,35 +4679,35 @@
           "label": "accent-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 77.39,
+              "chromaticity_degrees": 76.54,
               "clip_fraction": 0.0,
-              "coverage": 0.3993,
-              "fill": 0.7099,
-              "gloss": 0.013,
-              "mean_luminance": 0.2223,
-              "p75_luminance": 0.2373,
-              "peak_luminance": 0.4149
+              "coverage": 0.4375,
+              "fill": 0.7368,
+              "gloss": 0.0079,
+              "mean_luminance": 0.2226,
+              "p75_luminance": 0.2375,
+              "peak_luminance": 0.4101
             },
             "32": {
-              "chromaticity_degrees": 77.45,
+              "chromaticity_degrees": 76.6,
               "clip_fraction": 0.0,
-              "coverage": 0.3926,
-              "fill": 0.6979,
-              "gloss": 0.0224,
-              "mean_luminance": 0.2257,
-              "p75_luminance": 0.2373,
-              "peak_luminance": 0.4883
+              "coverage": 0.4277,
+              "fill": 0.73,
+              "gloss": 0.0388,
+              "mean_luminance": 0.2271,
+              "p75_luminance": 0.2375,
+              "peak_luminance": 0.4719
             },
             "96": {
-              "chromaticity_degrees": 77.33,
-              "clip_fraction": 0.0094,
-              "coverage": 0.3816,
-              "fill": 0.6786,
-              "gloss": 0.0245,
+              "chromaticity_degrees": 76.88,
+              "clip_fraction": 0.0104,
+              "coverage": 0.4182,
+              "fill": 0.7039,
+              "gloss": 0.0218,
               "holes": 0,
-              "mean_luminance": 0.2337,
-              "p75_luminance": 0.2382,
-              "peak_luminance": 0.9815,
+              "mean_luminance": 0.2326,
+              "p75_luminance": 0.2397,
+              "peak_luminance": 0.9925,
               "pieces": 1
             }
           },
@@ -4737,9 +4719,9 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the rendered hue sits 12.7 degrees from the declared colour's, beyond the 12.0 degree tolerance",
-            "measures fill 0.6786 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0245 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "the rendered hue sits 13.1 degrees from the declared colour's, beyond the 12.0 degree tolerance",
+            "measures fill 0.7039 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0218 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -4791,10 +4773,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 10.32,
+              "chromaticity_drift_degrees": 10.5,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.11,
-              "swatch_to_albedo": 0.918
+              "icon_to_swatch": 1.098,
+              "swatch_to_albedo": 0.928
             },
             "character": {
               "anchor": {
@@ -4812,8 +4794,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.6282,
-                "gloss": 0.0415,
+                "fill": 0.6475,
+                "gloss": 0.0386,
                 "holes": 1,
                 "pieces": 1
               },
@@ -4830,8 +4812,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.6282 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0415 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.6475 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0386 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -4846,35 +4828,35 @@
           "label": "accent-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 79.66,
+              "chromaticity_degrees": 78.71,
               "clip_fraction": 0.0,
-              "coverage": 0.3733,
-              "fill": 0.6636,
-              "gloss": 0.0279,
-              "mean_luminance": 0.233,
-              "p75_luminance": 0.2409,
-              "peak_luminance": 0.4152
+              "coverage": 0.4097,
+              "fill": 0.6901,
+              "gloss": 0.0212,
+              "mean_luminance": 0.234,
+              "p75_luminance": 0.2412,
+              "peak_luminance": 0.4313
             },
             "32": {
-              "chromaticity_degrees": 79.9,
+              "chromaticity_degrees": 78.9,
               "clip_fraction": 0.0,
-              "coverage": 0.3633,
-              "fill": 0.6458,
-              "gloss": 0.0323,
-              "mean_luminance": 0.2359,
-              "p75_luminance": 0.2409,
-              "peak_luminance": 0.4883
+              "coverage": 0.3965,
+              "fill": 0.6767,
+              "gloss": 0.0542,
+              "mean_luminance": 0.2397,
+              "p75_luminance": 0.2412,
+              "peak_luminance": 0.4991
             },
             "96": {
-              "chromaticity_degrees": 79.66,
-              "clip_fraction": 0.0101,
-              "coverage": 0.3533,
-              "fill": 0.6282,
-              "gloss": 0.0415,
+              "chromaticity_degrees": 79.48,
+              "clip_fraction": 0.0113,
+              "coverage": 0.3847,
+              "fill": 0.6475,
+              "gloss": 0.0386,
               "holes": 1,
-              "mean_luminance": 0.2456,
+              "mean_luminance": 0.2455,
               "p75_luminance": 0.2409,
-              "peak_luminance": 0.9815,
+              "peak_luminance": 0.9925,
               "pieces": 1
             }
           },
@@ -4886,8 +4868,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.6282 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0415 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.6475 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0386 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -4962,7 +4944,7 @@
         "size_read": "silhouette at 32px; the mark alone at 24px"
       },
       "chosen_generation": null,
-      "concept_set": "pilot-six-c3-v1",
+      "concept_set": "pilot-six-c8-v1",
       "directives": [],
       "forbidden_readings": [
         "success",
@@ -5008,10 +4990,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.83,
+              "chromaticity_drift_degrees": 0.95,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 1.22,
-              "swatch_to_albedo": 0.69
+              "icon_to_swatch": 1.217,
+              "swatch_to_albedo": 0.691
             },
             "character": {
               "anchor": {
@@ -5029,8 +5011,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.9464,
-                "gloss": 0.0152,
+                "fill": 0.956,
+                "gloss": 0.0007,
                 "holes": 0,
                 "pieces": 1
               },
@@ -5039,15 +5021,15 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 11.86
+                "ink": 11.9
               },
               "PanelRaised": {
-                "ink": 9.75
+                "ink": 9.79
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.9464 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be"
+              "measures fill 0.956 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be"
             ]
           },
           "files": {
@@ -5062,35 +5044,35 @@
           "label": "silhouette-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 40.27,
+              "chromaticity_degrees": 40.28,
               "clip_fraction": 0.0,
-              "coverage": 0.4497,
-              "fill": 0.9593,
+              "coverage": 0.5035,
+              "fill": 0.9539,
               "gloss": 0.0,
-              "mean_luminance": 0.5483,
-              "p75_luminance": 0.6884,
-              "peak_luminance": 0.8133
+              "mean_luminance": 0.5396,
+              "p75_luminance": 0.6663,
+              "peak_luminance": 0.8026
             },
             "32": {
-              "chromaticity_degrees": 40.29,
+              "chromaticity_degrees": 40.15,
               "clip_fraction": 0.0,
-              "coverage": 0.4521,
-              "fill": 0.9646,
+              "coverage": 0.4717,
+              "fill": 0.966,
               "gloss": 0.0,
-              "mean_luminance": 0.5593,
+              "mean_luminance": 0.563,
               "p75_luminance": 0.7356,
-              "peak_luminance": 0.8431
+              "peak_luminance": 0.8555
             },
             "96": {
-              "chromaticity_degrees": 40.26,
-              "clip_fraction": 0.0172,
-              "coverage": 0.4423,
-              "fill": 0.9464,
-              "gloss": 0.0152,
+              "chromaticity_degrees": 40.14,
+              "clip_fraction": 0.003,
+              "coverage": 0.4668,
+              "fill": 0.956,
+              "gloss": 0.0007,
               "holes": 0,
-              "mean_luminance": 0.5732,
-              "p75_luminance": 0.7282,
-              "peak_luminance": 1.0,
+              "mean_luminance": 0.5725,
+              "p75_luminance": 0.7313,
+              "peak_luminance": 0.9956,
               "pieces": 1
             }
           },
@@ -5102,7 +5084,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.9464 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be"
+            "measures fill 0.956 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -5154,10 +5136,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.23,
+              "chromaticity_drift_degrees": 0.33,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 0.953,
-              "swatch_to_albedo": 0.69
+              "icon_to_swatch": 0.937,
+              "swatch_to_albedo": 0.691
             },
             "character": {
               "anchor": {
@@ -5175,8 +5157,8 @@
               "emphasis": "md1",
               "ladder": 0.0,
               "measured": {
-                "fill": 0.9348,
-                "gloss": 0.0797,
+                "fill": 0.9329,
+                "gloss": 0.0688,
                 "holes": 3,
                 "pieces": 1
               },
@@ -5193,8 +5175,8 @@
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.9348 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0797 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+              "measures fill 0.9329 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0688 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
             ]
           },
           "files": {
@@ -5209,35 +5191,35 @@
           "label": "silhouette-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 40.94,
+              "chromaticity_degrees": 40.93,
               "clip_fraction": 0.0,
-              "coverage": 0.4497,
-              "fill": 0.9593,
-              "gloss": 0.0154,
-              "mean_luminance": 0.428,
-              "p75_luminance": 0.4438,
-              "peak_luminance": 0.7239
+              "coverage": 0.4983,
+              "fill": 0.9441,
+              "gloss": 0.0174,
+              "mean_luminance": 0.4137,
+              "p75_luminance": 0.4493,
+              "peak_luminance": 0.7288
             },
             "32": {
-              "chromaticity_degrees": 40.92,
+              "chromaticity_degrees": 40.83,
               "clip_fraction": 0.0,
-              "coverage": 0.4492,
-              "fill": 0.9583,
-              "gloss": 0.0652,
-              "mean_luminance": 0.4351,
-              "p75_luminance": 0.4546,
-              "peak_luminance": 0.8343
+              "coverage": 0.4658,
+              "fill": 0.954,
+              "gloss": 0.0566,
+              "mean_luminance": 0.4296,
+              "p75_luminance": 0.4472,
+              "peak_luminance": 0.7661
             },
             "96": {
-              "chromaticity_degrees": 40.86,
-              "clip_fraction": 0.0144,
-              "coverage": 0.4368,
-              "fill": 0.9348,
-              "gloss": 0.0797,
+              "chromaticity_degrees": 40.76,
+              "clip_fraction": 0.0005,
+              "coverage": 0.4555,
+              "fill": 0.9329,
+              "gloss": 0.0688,
               "holes": 3,
-              "mean_luminance": 0.4476,
-              "p75_luminance": 0.4653,
-              "peak_luminance": 1.0,
+              "mean_luminance": 0.441,
+              "p75_luminance": 0.4655,
+              "peak_luminance": 0.9892,
               "pieces": 1
             }
           },
@@ -5249,8 +5231,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.9348 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0797 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
+            "measures fill 0.9329 at 96px, outside the 0.366-0.706 the `md1` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0688 at 96px against the `md1` anchor's 0.0 (tolerance 0.03): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "md1",
@@ -5302,10 +5284,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.89,
+              "chromaticity_drift_degrees": 0.98,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 1.311,
-              "swatch_to_albedo": 0.69
+              "icon_to_swatch": 1.309,
+              "swatch_to_albedo": 0.691
             },
             "character": {
               "anchor": {
@@ -5323,9 +5305,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.8734,
+                "fill": 0.8786,
                 "gloss": 0.0,
-                "holes": 4,
+                "holes": 2,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -5333,10 +5315,10 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 11.57
+                "ink": 11.61
               },
               "PanelRaised": {
-                "ink": 9.51
+                "ink": 9.55
               }
             },
             "internal_contrast": null,
@@ -5356,34 +5338,34 @@
           "label": "material-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 40.23,
+              "chromaticity_degrees": 40.17,
               "clip_fraction": 0.0,
-              "coverage": 0.4809,
-              "fill": 0.8549,
+              "coverage": 0.5052,
+              "fill": 0.8509,
               "gloss": 0.0,
-              "mean_luminance": 0.5818,
-              "p75_luminance": 0.6892,
-              "peak_luminance": 0.8482
+              "mean_luminance": 0.5775,
+              "p75_luminance": 0.685,
+              "peak_luminance": 0.7925
             },
             "32": {
-              "chromaticity_degrees": 40.25,
+              "chromaticity_degrees": 40.12,
               "clip_fraction": 0.0,
-              "coverage": 0.4697,
-              "fill": 0.911,
+              "coverage": 0.4824,
+              "fill": 0.8982,
               "gloss": 0.0,
-              "mean_luminance": 0.6013,
-              "p75_luminance": 0.6994,
-              "peak_luminance": 0.8431
+              "mean_luminance": 0.6012,
+              "p75_luminance": 0.7037,
+              "peak_luminance": 0.8855
             },
             "96": {
-              "chromaticity_degrees": 40.2,
-              "clip_fraction": 0.0185,
-              "coverage": 0.4566,
-              "fill": 0.8734,
+              "chromaticity_degrees": 40.11,
+              "clip_fraction": 0.0108,
+              "coverage": 0.4719,
+              "fill": 0.8786,
               "gloss": 0.0,
-              "holes": 4,
-              "mean_luminance": 0.6156,
-              "p75_luminance": 0.7092,
+              "holes": 2,
+              "mean_luminance": 0.6158,
+              "p75_luminance": 0.7118,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -5448,10 +5430,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.32,
+              "chromaticity_drift_degrees": 0.41,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 1.024,
-              "swatch_to_albedo": 0.69
+              "icon_to_swatch": 1.011,
+              "swatch_to_albedo": 0.691
             },
             "character": {
               "anchor": {
@@ -5469,9 +5451,9 @@
               "emphasis": "touchwiz",
               "ladder": 0.5,
               "measured": {
-                "fill": 0.8879,
-                "gloss": 0.1262,
-                "holes": 4,
+                "fill": 0.8988,
+                "gloss": 0.1362,
+                "holes": 2,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -5479,14 +5461,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 9.16
+                "ink": 9.2
               },
               "PanelRaised": {
-                "ink": 7.53
+                "ink": 7.56
               }
             },
             "internal_contrast": null,
-            "notes": []
+            "notes": [
+              "measures gloss 0.1362 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+            ]
           },
           "files": {
             "context_png": "review/ticket.d-touchwiz-stack.24.png",
@@ -5500,34 +5484,34 @@
           "label": "material-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 40.82,
+              "chromaticity_degrees": 40.77,
               "clip_fraction": 0.0,
-              "coverage": 0.4844,
-              "fill": 0.8611,
-              "gloss": 0.1004,
-              "mean_luminance": 0.4573,
-              "p75_luminance": 0.5206,
-              "peak_luminance": 0.8154
+              "coverage": 0.5174,
+              "fill": 0.8713,
+              "gloss": 0.1007,
+              "mean_luminance": 0.4469,
+              "p75_luminance": 0.5274,
+              "peak_luminance": 0.7743
             },
             "32": {
-              "chromaticity_degrees": 40.82,
+              "chromaticity_degrees": 40.71,
               "clip_fraction": 0.0,
-              "coverage": 0.4736,
-              "fill": 0.9186,
-              "gloss": 0.132,
-              "mean_luminance": 0.4711,
-              "p75_luminance": 0.5467,
-              "peak_luminance": 0.8418
+              "coverage": 0.4902,
+              "fill": 0.9127,
+              "gloss": 0.1295,
+              "mean_luminance": 0.4657,
+              "p75_luminance": 0.5332,
+              "peak_luminance": 0.8685
             },
             "96": {
-              "chromaticity_degrees": 40.77,
-              "clip_fraction": 0.015,
-              "coverage": 0.4642,
-              "fill": 0.8879,
-              "gloss": 0.1262,
-              "holes": 4,
-              "mean_luminance": 0.4808,
-              "p75_luminance": 0.5509,
+              "chromaticity_degrees": 40.68,
+              "clip_fraction": 0.0072,
+              "coverage": 0.4827,
+              "fill": 0.8988,
+              "gloss": 0.1362,
+              "holes": 2,
+              "mean_luminance": 0.4758,
+              "p75_luminance": 0.5537,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -5539,7 +5523,9 @@
             "reference_grammar": "Galaxy TouchWiz study grammar, original geometry",
             "source_artwork_copied": false
           },
-          "selection_notes": [],
+          "selection_notes": [
+            "measures gloss 0.1362 at 96px against the `touchwiz` anchor's 0.102 (tolerance 0.03): the surface character is not that language's"
+          ],
           "transform": {
             "candidate_role": "touchwiz",
             "material_family": "paper lead, metal secondary, enamel accent",
@@ -5590,10 +5576,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.22,
+              "chromaticity_drift_degrees": 0.04,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 1.246,
-              "swatch_to_albedo": 0.69
+              "icon_to_swatch": 1.242,
+              "swatch_to_albedo": 0.691
             },
             "character": {
               "anchor": {
@@ -5611,8 +5597,8 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.9327,
-                "gloss": 0.0167,
+                "fill": 0.9376,
+                "gloss": 0.0012,
                 "holes": 2,
                 "pieces": 1
               },
@@ -5621,16 +5607,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 11.32
+                "ink": 11.4
               },
               "PanelRaised": {
-                "ink": 9.31
+                "ink": 9.37
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.9327 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.0167 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.9376 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.0012 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -5645,34 +5631,34 @@
           "label": "accent-led \u00b7 single body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 41.34,
+              "chromaticity_degrees": 41.25,
               "clip_fraction": 0.0,
-              "coverage": 0.4462,
-              "fill": 0.9519,
+              "coverage": 0.4965,
+              "fill": 0.9408,
               "gloss": 0.0,
-              "mean_luminance": 0.5591,
-              "p75_luminance": 0.6397,
-              "peak_luminance": 0.8032
+              "mean_luminance": 0.5496,
+              "p75_luminance": 0.6307,
+              "peak_luminance": 0.7994
             },
             "32": {
-              "chromaticity_degrees": 41.34,
+              "chromaticity_degrees": 41.13,
               "clip_fraction": 0.0,
-              "coverage": 0.4482,
-              "fill": 0.9563,
+              "coverage": 0.4658,
+              "fill": 0.954,
               "gloss": 0.0,
-              "mean_luminance": 0.5692,
-              "p75_luminance": 0.659,
-              "peak_luminance": 0.8493
+              "mean_luminance": 0.572,
+              "p75_luminance": 0.6738,
+              "peak_luminance": 0.8358
             },
             "96": {
-              "chromaticity_degrees": 41.31,
-              "clip_fraction": 0.0172,
-              "coverage": 0.4359,
-              "fill": 0.9327,
-              "gloss": 0.0167,
+              "chromaticity_degrees": 41.13,
+              "clip_fraction": 0.0021,
+              "coverage": 0.4578,
+              "fill": 0.9376,
+              "gloss": 0.0012,
               "holes": 2,
-              "mean_luminance": 0.5851,
-              "p75_luminance": 0.6932,
+              "mean_luminance": 0.5845,
+              "p75_luminance": 0.6981,
               "peak_luminance": 1.0,
               "pieces": 1
             }
@@ -5685,8 +5671,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.9327 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.0167 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.9376 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.0012 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -5738,10 +5724,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.58,
+              "chromaticity_drift_degrees": 0.45,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 0.99,
-              "swatch_to_albedo": 0.69
+              "icon_to_swatch": 0.977,
+              "swatch_to_albedo": 0.691
             },
             "character": {
               "anchor": {
@@ -5759,9 +5745,9 @@
               "emphasis": "ios6",
               "ladder": 1.0,
               "measured": {
-                "fill": 0.9427,
-                "gloss": 0.1441,
-                "holes": 1,
+                "fill": 0.9471,
+                "gloss": 0.1366,
+                "holes": 3,
                 "pieces": 1
               },
               "topography_judged": false,
@@ -5769,16 +5755,16 @@
             },
             "contrasts": {
               "Panel": {
-                "ink": 8.61
+                "ink": 8.6
               },
               "PanelRaised": {
-                "ink": 7.08
+                "ink": 7.07
               }
             },
             "internal_contrast": null,
             "notes": [
-              "measures fill 0.9427 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-              "measures gloss 0.1441 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+              "measures fill 0.9471 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+              "measures gloss 0.1366 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
             ]
           },
           "files": {
@@ -5793,35 +5779,35 @@
           "label": "accent-led \u00b7 layered body",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 41.74,
+              "chromaticity_degrees": 41.68,
               "clip_fraction": 0.0,
-              "coverage": 0.4497,
-              "fill": 0.9593,
-              "gloss": 0.1004,
-              "mean_luminance": 0.4466,
-              "p75_luminance": 0.4778,
-              "peak_luminance": 0.7746
+              "coverage": 0.5035,
+              "fill": 0.9539,
+              "gloss": 0.1069,
+              "mean_luminance": 0.4327,
+              "p75_luminance": 0.4888,
+              "peak_luminance": 0.7905
             },
             "32": {
-              "chromaticity_degrees": 41.71,
+              "chromaticity_degrees": 41.56,
               "clip_fraction": 0.0,
-              "coverage": 0.4521,
-              "fill": 0.9646,
-              "gloss": 0.1339,
-              "mean_luminance": 0.4526,
-              "p75_luminance": 0.4959,
-              "peak_luminance": 0.8542
+              "coverage": 0.4688,
+              "fill": 0.96,
+              "gloss": 0.125,
+              "mean_luminance": 0.4508,
+              "p75_luminance": 0.4908,
+              "peak_luminance": 0.7971
             },
             "96": {
-              "chromaticity_degrees": 41.67,
-              "clip_fraction": 0.0148,
-              "coverage": 0.4405,
-              "fill": 0.9427,
-              "gloss": 0.1441,
-              "holes": 1,
-              "mean_luminance": 0.4652,
-              "p75_luminance": 0.5149,
-              "peak_luminance": 1.0,
+              "chromaticity_degrees": 41.54,
+              "clip_fraction": 0.0005,
+              "coverage": 0.4625,
+              "fill": 0.9471,
+              "gloss": 0.1366,
+              "holes": 3,
+              "mean_luminance": 0.4596,
+              "p75_luminance": 0.5143,
+              "peak_luminance": 0.9823,
               "pieces": 1
             }
           },
@@ -5833,8 +5819,8 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "measures fill 0.9427 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
-            "measures gloss 0.1441 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
+            "measures fill 0.9471 at 96px, outside the 1.0-1.0 the `ios6` end of the corpus ladder spans: it is not the reading it claims to be",
+            "measures gloss 0.1366 at 96px against the `ios6` anchor's 0.24 (tolerance 0.051): the surface character is not that language's"
           ],
           "transform": {
             "candidate_role": "ios6",
@@ -5867,7 +5853,7 @@
       "source": "MD1 notification/confirmation_number silhouette; TouchWiz paper intent"
     }
   ],
-  "palette_hash": "a71a6ed667a8aba0",
+  "palette_hash": "1d7703bd4aaef5e9",
   "quality_bar": {
     "materials": "procedural only",
     "pilot_gate": "settings first",
