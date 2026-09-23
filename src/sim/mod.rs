@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::gov::RetirementReason;
 use crate::materials::effects as material_effects;
 use crate::materials::geology as material_geology;
+use crate::materials::ledger as material_ledger;
 use crate::materials::generated::REPAIR_CEILING;
 use crate::materials::generated as material_generated;
 use crate::materials::world::{self as material_world, Level};
@@ -310,6 +311,49 @@ pub struct Building {
 }
 
 impl Building {
+    /// This structure's mass, in grams, **derived from what it is** rather than stored.
+    ///
+    /// Round 9's Q59 rule — a save stores the seed and its deltas, and everything derivable is
+    /// derived — applies to a building's mass exactly as it applies to the ground's deposit:
+    /// there is one fact (this is a home, it is level 2, it claims ceramic) and the mass is a
+    /// reading of it. A stored mass could disagree with the level, and the disagreement would be
+    /// invisible until the ledger failed for a reason nobody could trace.
+    ///
+    /// `None` means the kind has no declared mass, which is a defect rather than a zero: a
+    /// structure that weighs nothing enters the ledger as nothing and hides itself, so the
+    /// caller is made to decide what that means instead of being handed a zero that looks fine.
+    pub fn mass_g(&self) -> Option<i64> {
+        material_ledger::structure_mass_g(self.kind.name(), self.level)
+    }
+
+    /// The account this structure's mass sits in: standing structures, or — once retired — the
+    /// remains, because a demolition preserves the material as surely as it preserves the record.
+    pub fn mass_account(&self, family: &str) -> String {
+        match self.retired {
+            None => material_ledger::structure_account(family),
+            Some(_) => material_ledger::ruin_account(family),
+        }
+    }
+
+    /// The appearance family this structure's material belongs to, read off its claim, falling
+    /// back to the kind's declared body part. `None` only when neither knows — which the v1 → v2
+    /// migration already treats as a defect to report rather than a material to guess.
+    pub fn material_family(&self) -> Option<&str> {
+        self.material_as_built
+            .as_ref()
+            .map(|claim| claim.family.as_str())
+            .or_else(|| {
+                // The same derivation `MaterialClaim::of_kind` makes, read for its family: the
+                // declared **body** part, which is the part that makes the structure what it is.
+                let parts = material_world::parts_of(self.kind.part_prefix());
+                parts
+                    .iter()
+                    .find(|part| part.level == Level::Body)
+                    .or_else(|| parts.first())
+                    .map(|part| part.family.as_str())
+            })
+    }
+
     /// The colour the frame draws this structure in: its own claimed material.
     ///
     /// Lives here rather than in the frame so it is **checkable** — a rule that only a
@@ -691,6 +735,73 @@ impl World {
         let taken = grams.min(found.mass_g).max(0);
         self.tiles[tile as usize].extracted_g += taken;
         taken
+    }
+
+    /// The world's mass audit, assembled from what is actually here (C9 phase 2).
+    ///
+    /// Two sides, and nothing else: the ground's depletion, per tile, at the substance its own
+    /// deposit derives to, and the mass standing in the city, per structure, at the material it
+    /// claims. That is the audit round 9's Q26 asked for — `verify.exe` reads it back, and the
+    /// number it produces is the whole claim of this campaign: **the city is made of what it dug
+    /// up, or the audit says by how much it is not.**
+    ///
+    /// It is *derived*, like everything else on this side of the boundary: nothing about it is
+    /// stored, so it cannot drift from the world, and a replay of the same save computes the
+    /// same accounts. Compiled with `grow()` still in place, a grown city reads as a named
+    /// positive quantity of material nobody dug — and that is not a false alarm. It is `grow()`
+    /// itself, printed.
+    pub fn mass_audit(&self) -> material_ledger::MassAudit {
+        let mut ledger = material_ledger::Ledger::new();
+        let mut extracted_g = 0;
+        let mut standing_g = 0;
+
+        // The ground, from what each tile has given up — read back through the same derivation
+        // that produced it, so the substance cannot be remembered wrongly.
+        for (index, tile) in self.tiles.iter().enumerate() {
+            if tile.extracted_g == 0 {
+                continue;
+            }
+            let (x, y) = (index as u32 % self.width, index as u32 / self.width);
+            let Some(deposit) = material_geology::deposit(self.seed, x, y) else {
+                // Taken from a tile whose deposit no longer derives: the take is still real, so
+                // it is recorded against the ground itself rather than dropped.
+                ledger.record(&material_ledger::ground_account("unattributed"), -tile.extracted_g);
+                extracted_g += tile.extracted_g;
+                continue;
+            };
+            let substance = material_geology::DEPOSIT_KINDS[deposit.kind].substance;
+            ledger.record(&material_ledger::ground_account(substance), -tile.extracted_g);
+            extracted_g += tile.extracted_g;
+        }
+
+        // The city, standing and in ruins, at the mass each structure derives to. A structure
+        // that cannot be weighed or attributed is **reported, never skipped**: it would otherwise
+        // enter the audit as nothing and hide itself, and an audit that can lose a building
+        // quietly is an audit nobody can trust to find the first real one.
+        let mut defects = Vec::new();
+        for building in &self.buildings {
+            let mass = building.mass_g();
+            let family = building.material_family();
+            let (Some(mass), Some(family)) = (mass, family) else {
+                defects.push(format!(
+                    "structure {} ({}, level {}) could not be weighed or attributed: {} — it is \
+                     not in the mass audit at all",
+                    building.id,
+                    building.kind.name(),
+                    building.level,
+                    if mass.is_none() {
+                        "its kind declares no mass"
+                    } else {
+                        "no material claim and no declared body part"
+                    }
+                ));
+                continue;
+            };
+            ledger.record(&building.mass_account(family), mass);
+            standing_g += mass;
+        }
+
+        material_ledger::MassAudit { ledger, extracted_g, standing_g, defects }
     }
 
     /// Demolish whatever stands on a tile. The building is **retired**, not
@@ -1403,6 +1514,105 @@ pub mod tests_support {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The claim of the whole campaign, as a test: **a city made by hand is made of what was dug
+    /// up, to the gram.** A building placed on ground whose deposit was worked out first leaves
+    /// the ledger at exactly zero, and the only way to move it is to move real mass.
+    #[test]
+    fn a_dug_city_balances_to_the_gram() {
+        let mut world = World::new(32, 32, 7);
+        for tile in world.tiles.iter_mut() {
+            tile.terrain = Terrain::Ground;
+            tile.road = false;
+        }
+
+        // Find a tile that actually holds something, and take all of it.
+        let rich = (0..1024u32)
+            .find(|tile| world.deposit_at(*tile).is_some())
+            .expect("a 32×32 world has ore in it somewhere");
+        let available = world.deposit_at(rich).expect("just found it").mass_g;
+        assert_eq!(world.extract(rich, available), available, "the take is what was there");
+
+        // The ground is debited by exactly that, at the substance it derives to.
+        let audit = world.mass_audit();
+        let ground: i64 = audit
+            .holdings()
+            .iter()
+            .filter(|(account, _)| account.starts_with("ground:"))
+            .map(|(_, grams)| *grams)
+            .sum();
+        assert_eq!(ground, -available, "the ground goes down by exactly the take");
+        assert_eq!(audit.extracted_g, available);
+        assert_eq!(audit.standing_g, 0, "nothing has been built yet");
+        assert!(
+            audit.conserves(),
+            "material taken and not yet built is loose, not invented"
+        );
+        assert_eq!(audit.loose_g(), available, "all of it is loose so far");
+
+        // Now stand something on the same tile. Its mass is derived, not stored — and the loose
+        // remainder is the take minus the house, which is the shape of the whole economy.
+        world.place_building(rich, BuildingKind::Home).expect("ground, no road, empty");
+        let audit = world.mass_audit();
+        let home = material_ledger::structure_mass_g("home", 1).expect("declared");
+        assert_eq!(audit.of("structure:ceramic"), home, "a declared mass, read off the kind");
+        assert_eq!(world.buildings[0].mass_g(), Some(home));
+        assert_eq!(audit.extracted_g, available, "building does not change what was dug");
+        assert_eq!(audit.standing_g, home);
+        assert_eq!(
+            audit.loose_g(),
+            available - home,
+            "the remainder is real material, still in the world"
+        );
+        assert!(
+            audit.holdings().iter().any(|(account, grams)| account.starts_with("ground:") && *grams < 0),
+            "and the ground it came from is still visibly debited"
+        );
+    }
+
+    /// A structure that appeared without anything being dug up is the finding, and the finding
+    /// is the *amount*: this is `grow()` printed rather than argued about.
+    #[test]
+    fn material_that_was_never_dug_up_is_reported_as_an_imbalance() {
+        let mut world = World::new(32, 32, 7);
+        for tile in world.tiles.iter_mut() {
+            tile.terrain = Terrain::Ground;
+            tile.road = false;
+        }
+        world.place_building(0, BuildingKind::Home).expect("empty ground");
+
+        let audit = world.mass_audit();
+        assert!(!audit.conserves(), "a house that grew out of nothing is not conservation");
+        let mass = material_ledger::structure_mass_g("home", 1).expect("declared");
+        assert_eq!(audit.loose_g(), -mass, "the defect is exactly the house, as a quantity");
+        let findings = audit.findings();
+        assert_eq!(findings.len(), 1, "one finding, naming the number: {findings:?}");
+        assert!(findings[0].contains("never gave up"), "{findings:?}");
+        assert!(findings[0].contains(&mass.to_string()), "the amount is named: {findings:?}");
+    }
+
+    /// A demolition moves mass to the ruins rather than destroying it, because retirement
+    /// preserves the material as surely as it preserves the record.
+    #[test]
+    fn demolishing_moves_mass_to_the_ruins() {
+        let mut world = World::new(32, 32, 7);
+        for tile in world.tiles.iter_mut() {
+            tile.terrain = Terrain::Ground;
+            tile.road = false;
+        }
+        world.place_building(0, BuildingKind::Shop).expect("empty ground");
+        let mass = material_ledger::structure_mass_g("shop", 1).expect("declared");
+        assert_eq!(world.mass_audit().of("structure:ceramic"), mass);
+
+        world.demolish(0, crate::gov::RetirementReason::Superseded);
+        let audit = world.mass_audit();
+        assert_eq!(audit.of("structure:ceramic"), 0, "it is no longer a standing structure");
+        assert_eq!(audit.of("ruin:ceramic"), mass, "the material is still in the world");
+        assert_eq!(
+            audit.standing_g, mass,
+            "demolition conserved the mass; only its account changed"
+        );
+    }
 
     fn small_city() -> World {
         let mut world = World::new(32, 32, 7);

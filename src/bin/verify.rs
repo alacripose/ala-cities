@@ -203,6 +203,28 @@ fn main() -> ExitCode {
 
                 println!("  world snapshot at tick {}", world.clock.tick);
 
+                // The mass audit (C9 phase 2). Read back out of the world, not out of the
+                // record: this is the one finding that is about the world's own arithmetic
+                // rather than about a claim somebody made, and it is the campaign's central
+                // assertion — the city is made of what it dug up, or this says by how much it
+                // is not.
+                let audit = world.mass_audit();
+                let kg = |grams: i64| format!("{:.3} t", grams as f64 / 1_000_000.0);
+                println!(
+                    "  mass — ground {} taken, {} standing, {}",
+                    kg(audit.extracted_g),
+                    kg(audit.standing_g),
+                    if audit.conserves() {
+                        format!("{} held loose or spent: the city is made of what it dug", kg(audit.loose_g()))
+                    } else {
+                        format!("{} THAT WAS NEVER DUG UP", kg(-audit.loose_g()))
+                    }
+                );
+                for finding in audit.findings() {
+                    println!("  material finding — {finding}");
+                    findings.push(finding);
+                }
+
                 // A claim is about the world at the tick it was made. This is a
                 // final-state check, so a claim that no longer holds may still
                 // be true when it was written — the honest reading is that some
