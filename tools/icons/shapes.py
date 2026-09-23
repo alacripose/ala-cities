@@ -1064,12 +1064,18 @@ def lead_families(tier: str) -> dict:
     return {"silhouette": lead, "secondary": secondary, "accent": accent}
 
 
-def composition_materials(tier: str, hues: dict, accent_finish: str = "skeuomorph") -> dict:
+def composition_materials(tier: str, hues: dict, accent_finish: str = "skeuomorph",
+                          body_finish: str = None) -> dict:
     """A candidate's three materials, from the tier, its hues and the matrix.
 
     Exactly three base colours, and the accent is one of them told apart by finish —
     which is what keeps "three main colours" a property of every icon rather than a
     slogan about them.
+
+    `body_finish` is the emphasis's own sheen (C8 a178): the ladder's gloss anchor is
+    measured per language, so the surface that carries the body has to be a property
+    of the emphasis and not of the icon. `None` leaves each family's declared surface
+    in place, which is what the entry-level call wants.
     """
     families = lead_families(tier)
     materials = {}
@@ -1077,7 +1083,7 @@ def composition_materials(tier: str, hues: dict, accent_finish: str = "skeuomorp
         family = families[role]
         hue = hues.get(role, "natural")
         level = "edge" if role == "accent" else "body"
-        finish = accent_finish if role == "accent" else None
+        finish = accent_finish if role == "accent" else body_finish
         # `family` travels with the material so the shared reference blend can own
         # the *surface* while the matrix owns the *colour*: the generator looks the
         # editable family material up in the blend and the base colour comes from
@@ -1395,11 +1401,26 @@ DEFERRED_INVENTORY = (
 #: Derived from GLYPH_SPAN rather than from any one glyph, because the traced mark is
 #: fitted to its own bounding box and its world box is therefore known before the
 #: mark is read: x and z both run -span/2 to +span/2 whatever the glyph is.
+#: ...and the finish, because the ladder's gloss anchor is a *surface* reading (C8
+#: a178). Each language's sheen is declared once here and travels with every
+#: candidate of that emphasis, so "this candidate is TouchWiz-led" is a claim about
+#: its surface as well as its construction. Before this the six candidates of one
+#: icon shared a single material set, and the measured gloss of every slot was the
+#: family's own brushed or paper surface whatever the emphasis said.
 LAYERS = {
-    "md1": {"depth": 0.28, "bevel": 0.014, "inset": 0.30, "second": 0.62},
-    "touchwiz": {"depth": 0.42, "bevel": 0.032, "inset": 0.78, "second": 0.34},
-    "ios6": {"depth": 0.34, "bevel": 0.022, "inset": 0.52, "second": 0.42},
+    "md1": {"depth": 0.28, "bevel": 0.014, "inset": 0.30, "second": 0.62,
+            "finish": "matte"},
+    "touchwiz": {"depth": 0.42, "bevel": 0.032, "inset": 0.78, "second": 0.34,
+                 "finish": "polished"},
+    "ios6": {"depth": 0.34, "bevel": 0.022, "inset": 0.52, "second": 0.42,
+             "finish": "skeuomorph"},
 }
+
+#: The finish naming the four layers above, so the two tables cannot drift apart.
+def emphasis_finish(emphasis_id: str) -> str:
+    if emphasis_id not in LAYERS:
+        raise KeyError(f"`{emphasis_id}` has no declared layer")
+    return LAYERS[emphasis_id]["finish"]
 
 
 def composition_parts(entry, emphasis: dict, construction: dict) -> list:
@@ -1482,6 +1503,7 @@ def composition_brief(entry, emphasis: dict, construction: dict) -> dict:
         },
         "emphasis": emphasis["id"],
         "construction": construction["id"],
+        "surface_finish": emphasis_finish(emphasis["id"]),
         "hues": dict(hues),
     }
 
@@ -1505,8 +1527,14 @@ def six_compositions(entry) -> list:
                     "id", "kind", "meaning", "source", "locates", "sits_on",
                     "identity", "identity_as", "framed", "brief", "lineage",
                     "forbidden_readings", "notes", "alternate", "tier", "hues",
-                    "cues", "materials", "silhouette",
+                    "cues", "silhouette",
                 )},
+                # The emphasis's finish rides with the candidate's materials, because
+                # the gloss anchor is per language (C8 a178).
+                "materials": composition_materials(
+                    entry["tier"], entry["hues"],
+                    body_finish=emphasis_finish(emphasis["id"]),
+                ),
                 "parts": composition_parts(entry, emphasis, construction),
                 "generation": f"{chr(letter)}-{emphasis['id']}-{construction['id']}",
                 "generation_label": f"{emphasis['label']} · {construction['label']}",

@@ -332,9 +332,19 @@ def build_materials(bpy, entry):
                     f"`{family}` has no Principled Base Color socket, so the declared "
                     f"colour for `{role}` would not reach the render"
                 )
+            # The emphasis's finish is applied **over** the blend's family surface
+            # (C8 a178). Without this the blend owned the whole surface and a
+            # candidate's declared sheen never reached the render: every slot of an
+            # icon measured the family's own finish whatever its emphasis said.
+            declared_finish = parameters.get("finish")
+            finished = bool(declared_finish) and openpbr.apply_finish(
+                materials[role], declared_finish)
             effective = openpbr.from_blender_material(materials[role], parameters)
             records[role] = openpbr.record(effective)
-            records[role]["surface_source"] = f"reference-blend ({family})"
+            records[role]["surface_source"] = (
+                f"reference-blend ({family}) + declared finish ({declared_finish})"
+                if finished else f"reference-blend ({family})"
+            )
             records[role]["colour_source"] = f"matrix ({family} at the declared hue)"
         else:
             materials[role] = openpbr.build_material(bpy, name, parameters)

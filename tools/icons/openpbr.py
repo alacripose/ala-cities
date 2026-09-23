@@ -159,13 +159,42 @@ def _finish_nodes(tree, bsdf, finish):
         tree.links.new(wave.outputs["Color"], bump.inputs["Height"])
         tree.links.new(roughness.outputs["Result"], bsdf.inputs["Roughness"])
         tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    elif finish == "matte":
+        # C8 a178: the emphasis owns a finish because the ladder's gloss anchor is a
+        # *surface* reading. `matte` had no branch here, so the name was a label on a
+        # surface that was still the family's own — the md1 slots measured 0.031-0.074
+        # gloss against an anchor of 0.0 (tolerance 0.03) and nothing could move them.
+        # A true matte is a high roughness with no coat, and that is what this sets.
+        if "Roughness" in bsdf.inputs:
+            bsdf.inputs["Roughness"].default_value = max(
+                bsdf.inputs["Roughness"].default_value, 0.86)
+        if "Coat Weight" in bsdf.inputs:
+            bsdf.inputs["Coat Weight"].default_value = 0.0
     elif finish in {"polished", "enamel"}:
+        # Measured across the reviewed set (C8 a178): road's touchwiz slots went
+        # 0.0595/0.0619 -> 0.068/+ and into their band, `tool-inspect` 0.0608 -> 0.068
+        # and still short of the 0.072 floor. So this is the right direction and not
+        # yet the whole distance; the anchor is the target and the gap is recorded
+        # rather than papered over.
+        if "Roughness" in bsdf.inputs:
+            bsdf.inputs["Roughness"].default_value = min(
+                bsdf.inputs["Roughness"].default_value, 0.45)
         if "Coat Weight" in bsdf.inputs:
             bsdf.inputs["Coat Weight"].default_value = max(bsdf.inputs["Coat Weight"].default_value, 0.35)
     elif finish == "skeuomorph":
         # The iOS 6 layer, as far as a surface can carry it: a coat heavy enough to
         # read as glass over the family's own body. Nothing here is a post-process,
         # because the rig has none and says so.
+        if "Roughness" in bsdf.inputs:
+            # The ios6 anchor is gloss 0.24 and the coat alone reached 0.110-0.119,
+            # under its 0.189 floor. Polishing the body moved it by ~0.001-0.002 on
+            # the coated families and by 0.013 on `ticket`'s paper. **The statistic
+            # rewards a broad lobe, not a mirror**: it counts the share of pixels
+            # above 1.6x the median, so a sharper highlight covers fewer of them.
+            # The distance is therefore not a roughness number away, and it is
+            # recorded as an open fault rather than closed by a guess.
+            bsdf.inputs["Roughness"].default_value = min(
+                bsdf.inputs["Roughness"].default_value, 0.22)
         if "Coat Weight" in bsdf.inputs:
             bsdf.inputs["Coat Weight"].default_value = 0.85
         if "Coat Roughness" in bsdf.inputs:
@@ -177,6 +206,38 @@ def _finish_nodes(tree, bsdf, finish):
             bsdf.inputs["Coat Weight"].default_value = 0.6
         if "Transmission Weight" in bsdf.inputs:
             bsdf.inputs["Transmission Weight"].default_value = 0.18
+
+
+def apply_finish(material, finish: str) -> bool:
+    """Put a declared finish onto an already-built material's surface.
+
+    This exists because of where the surface comes from: when a family is in
+    `reference.blend` the generator *copies* that material and overrides only its
+    base colour, so the blend owns the family's body surface and a finish declared
+    by the emphasis had no way into the render. The measured consequence (C8 a178)
+    was every candidate of an icon wearing the family's own brushed or paper
+    surface whatever its emphasis said, which is why gloss ignored the ladder.
+
+    `matte` also **unlinks** the Roughness socket. A family whose surface is a
+    procedural variation (metal's `brushed`) drives Roughness from a node, and a
+    node wins over a default value, so setting a number there would have been a
+    finish that did nothing. Replacing the family's variation is what "matte"
+    claims, so the link goes rather than the claim.
+    """
+    if finish not in FINISH_NOTES:
+        raise KeyError(f"unknown authored finish `{finish}`")
+    if not material.use_nodes or material.node_tree is None:
+        return False
+    tree = material.node_tree
+    bsdf = next((node for node in tree.nodes if node.type == "BSDF_PRINCIPLED"), None)
+    if bsdf is None:
+        return False
+    if finish == "matte" and "Roughness" in bsdf.inputs:
+        for link in list(bsdf.inputs["Roughness"].links):
+            tree.links.remove(link)
+    _finish_nodes(tree, bsdf, finish)
+    material["icon_finish"] = finish
+    return True
 
 
 def build_material(bpy, name: str, parameters: dict):
