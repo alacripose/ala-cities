@@ -36,6 +36,7 @@ if HERE not in sys.path:
 
 import bpy  # noqa: E402  (only available inside Blender)
 
+import families  # noqa: E402
 import openpbr  # noqa: E402
 import palette  # noqa: E402
 import rig  # noqa: E402
@@ -966,9 +967,141 @@ def promote(bpy, entry, generation, pixels) -> dict:
 # ---------------------------------------------------------------------------
 
 
+#: The authored void floor (a193/a196): an enclosed void below this share of the
+#: object's own covered area is a sliver rather than a declared opening.
+#:
+#: It is **authored, not measured**, and that was the person's decision after seeing
+#: the measurement that made a purely measured threshold impossible: the current
+#: set's real slivers run 0.04-0.59 % while the ticket's own declared perforations
+#: measure 0.67-1.43 %, so no single area number separates them. The number gates the
+#: things the evidence does not speak about, and the per-family declaration does the
+#: separating. Its value is the one a196 settled (3.5 %) and the ticket's notches are
+#: drawn above it rather than excepted from it (a199), which is why they measure
+#: 3.66-4.75 % rather than 1.37 %.
+VOID_FLOOR = 0.035
+
+
+#: How much two declared parts may overlap before it is interpenetration. Zero would
+#: refuse a hairline touch that no one can see and no render reports; the number is a
+#: volume in the icon's own world units, and a part pair that overlaps by less than
+#: this is a *seam*, not two solids in the same space.
+INTERPENETRATION_FLOOR = 1e-4
+
+
+def interference(named_bounds) -> list:
+    """Declared parts whose boxes overlap, as `(first, second, overlap_volume)`.
+
+    a183 refuses promotion for interpenetrating shells, and a184's answer is to weld
+    overlapping solids into **one profile** — so this test runs on the pairs a
+    generation declares as *separate*. Parts that were welded are one object by
+    construction and cannot appear here.
+
+    The test is on world boxes rather than on meshes, and that is stated rather than
+    implied: a rotated solid's box is bigger than the solid, so this can report an
+    overlap that the geometry does not have. It is the right way round anyway — the
+    declaration promises a *clearance* (a200's derived accent slot, the bin's lid
+    gap), and a pair whose boxes touch is a pair whose clearance is not being kept.
+    """
+    pairs = []
+    for index, (name_a, a) in enumerate(named_bounds):
+        for name_b, b in named_bounds[index + 1:]:
+            overlap = 1.0
+            for axis in range(3):
+                span = min(a[axis + 3], b[axis + 3]) - max(a[axis], b[axis])
+                if span <= 0.0:
+                    overlap = 0.0
+                    break
+                overlap *= span
+            if overlap > INTERPENETRATION_FLOOR:
+                pairs.append((name_a, name_b, round(overlap, 6)))
+    return pairs
+
+
+def geometry_gate(family, lam, fill, topography, sites=(), void_sites=(), parts=(),
+                  excluded_px=0) -> dict:
+    """The geometric validity gate for one candidate of one family (C8 a183-a204).
+
+    Four judgements, each of them a decision already taken rather than a rule invented
+    here, and each of them a *refusal* rather than a note:
+
+    * **An undeclared component** (a183). The render's part count must equal the count
+      the family declares — 1 for five of the six, 2 for the bin, whose own reference
+      measures a gap-separated lid. `excluded_px` is the accent's declared disc read
+      back out of the raster, so the count is the *body's*, which is what a202 asks.
+    * **A sliver** (a196): any enclosed void under `VOID_FLOOR` of the object's covered
+      area. The site is reported, because "an enclosed void of 0.0004" cannot be
+      looked at and "a 1 px void at (61, 34)" can.
+    * **Interpenetration** (a183/a200): a declared part pair whose boxes overlap.
+    * **Fill** (a204): the reading must sit inside the family's own response envelope
+      at this λ, which is measured from its reference at the md1 end and from its own
+      object at the iOS 6 end.
+
+    Returns the whole judgement, so a refusal carries the numbers that produced it.
+    """
+    notes = []
+    declaration = families.declaration(family)
+    declared_parts = declaration["declared_parts"]["count"]
+    measured_parts = topography.get("pieces")
+    if measured_parts != declared_parts:
+        places = "; ".join(
+            f"{area} px at ({x}, {y})" for area, x, y in list(sites)[:4]
+        )
+        notes.append(
+            f"the object arrives in {measured_parts} pieces where `{family}` declares "
+            f"{declared_parts} ({places or 'no sites reported'}): an undeclared "
+            f"component refuses promotion"
+        )
+    shares = list(topography.get("hole_shares") or [])
+    void_sites = list(void_sites)
+    for index, share in enumerate(shares):
+        if share < VOID_FLOOR:
+            site = void_sites[index] if index < len(void_sites) else None
+            where = f" at ({site[1]}, {site[2]})" if site else ""
+            notes.append(
+                f"an enclosed void covering {share:.4f} of the object{where} is under "
+                f"the {VOID_FLOOR} floor: a sliver rather than a declared opening"
+            )
+    for first, second, volume in parts:
+        notes.append(
+            f"`{first}` and `{second}` overlap by {volume} of the icon's own units: "
+            f"interpenetration refuses promotion, so they are welded into one profile "
+            f"or moved clear"
+        )
+    low, high = families.fill_envelope(family, lam)
+    inside = low <= fill <= high
+    if not inside:
+        notes.append(
+            f"fill {fill:.4f} falls outside `{family}`'s own envelope at λ = {lam} "
+            f"({low}-{high}), which is measured from its reference at the md1 end and "
+            f"from its own object at the iOS 6 end"
+        )
+    return {
+        "family": family,
+        "lambda": lam,
+        "declared_parts": declared_parts,
+        "measured_parts": measured_parts,
+        "excluded_px": excluded_px,
+        "fill": round(fill, 4),
+        "fill_envelope": [low, high],
+        "void_floor": VOID_FLOOR,
+        "void_shares": shares,
+        "interference": list(parts),
+        "notes": notes,
+        "verdict": "pass" if not notes else "refuse",
+    }
+
+
 def judge_generation(entry, generation) -> dict:
     """Every check for one generation, with every reason it is not a clean pass."""
     notes = list((generation.get("composition") or {}).get("notes", []))
+    # The geometric validity gate (a183-a204) runs on any generation that declares a
+    # family and a λ. Generations from the superseded concept set declare neither, and
+    # their notes already say what they are; a family candidate cannot promote without
+    # this passing, which is the point of it being here rather than in a harness.
+    if generation.get("geometry"):
+        gate = geometry_gate(**generation["geometry"])
+        generation["geometry_gate"] = gate
+        notes.extend(gate["notes"])
     silhouette = generation.get("silhouette") or {}
     if silhouette and not silhouette.get("judged"):
         notes.append(
@@ -1166,8 +1299,11 @@ def judge_generation(entry, generation) -> dict:
                 f"language's"
             )
 
-    return {"notes": notes, "contrasts": contrasts, "internal_contrast": internal,
-            "arrival": arrival, "character": character}
+    out = {"notes": notes, "contrasts": contrasts, "internal_contrast": internal,
+           "arrival": arrival, "character": character}
+    if generation.get("geometry_gate"):
+        out["geometry"] = generation["geometry_gate"]
+    return out
 
 
 def candidate_gate_notes(entry, generation, all_generations) -> list:

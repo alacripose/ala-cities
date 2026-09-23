@@ -14,6 +14,7 @@ import os
 import sys
 
 import bpy
+import mathutils
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import families  # noqa: E402
@@ -88,6 +89,50 @@ def render_and_read(scene, path, exclude=None, px=generate.DECISION_PX):
             small)
 
 
+def gate_self_test():
+    """Feed the gate the four things it exists to refuse, and one clean candidate.
+
+    A gate that passes everything is not evidence, so it is tested against its own
+    refusals rather than only against the family set it happens to approve of. The
+    inputs are crafted measurements, not renders: what is under test is the judgement,
+    not the renderer.
+    """
+    cases = (
+        ("an undeclared component", dict(
+            family="gear", lam=0.0, fill=0.479,
+            topography={"pieces": 4, "hole_shares": [0.2]},
+            sites=[(1803, 47, 35), (5, 92, 86), (4, 88, 94), (1, 83, 94)])),
+        ("a one-pixel sliver", dict(
+            family="gear", lam=0.0, fill=0.479,
+            topography={"pieces": 1, "hole_shares": [0.0004]},
+            void_sites=[(1, 61, 34)])),
+        ("interpenetration", dict(
+            family="gear", lam=0.0, fill=0.479,
+            topography={"pieces": 1, "hole_shares": []},
+            parts=[("body", "accent", 0.02)])),
+        ("a fill outside the envelope", dict(
+            family="gear", lam=0.0, fill=0.99,
+            topography={"pieces": 1, "hole_shares": []})),
+    )
+    print("\ngate self-test — every one of these has to be refused:")
+    failures = 0
+    for label, arguments in cases:
+        verdict = generate.geometry_gate(**arguments)
+        refused = verdict["verdict"] == "refuse"
+        failures += 0 if refused else 1
+        print(f"  {'refused' if refused else 'PASSED (should have refused)'}: {label}")
+        if refused:
+            print(f"      {verdict['notes'][0]}")
+    clean = generate.geometry_gate(
+        family="bin", lam=0.5, fill=0.757,
+        topography={"pieces": 2, "hole_shares": []})
+    if clean["verdict"] != "pass":
+        failures += 1
+        print(f"  refused a clean candidate: {clean['notes']}")
+    print(f"  {'ok' if not failures else 'FAILED'}: {len(cases)} refusals, 1 pass, "
+          f"{failures} unexpected")
+
+
 def main():
     scene = rig.configure(bpy, device="GPU")
     # One body material and one for the accent, so the renders are readable rather
@@ -117,7 +162,6 @@ def main():
             # welded, and a slot derived from its unposed box would sit inside it.
             # (The same is true of the exclusion disc below, which is why the slot is
             # read back in world space rather than from the body's local origin.)
-            import mathutils
             corners = [part.matrix_world @ mathutils.Vector(corner)
                        for part in built for corner in part.bound_box]
             bounds = (min(c[0] for c in corners), min(c[2] for c in corners),
@@ -148,25 +192,32 @@ def main():
             found, topo, small = render_and_read(scene, path, exclude=[disc])
             # Anything under the 3.5 % rule's floor is a sliver, and a sliver is only
             # fixable if the run says *where* it is (a196).
-            slivers = [site for site in generate.void_sites(
-                           small, generate.DECISION_PX, exclude=[disc])
-                       if site[0] / max(1, topo["covered_px"]) < 0.035]
-            if slivers:
-                print(f"    slivers at {slivers[:4]} px, top-down, of "
-                      f"{topo['covered_px']} covered px")
-            if topo["pieces"] != declared:
-                # The object has to arrive in the number of parts its family declares
-                # (a183/a184/a202), and naming where the extra ones are is the
-                # difference between a number and a fix.
-                print(f"    ! declared {declared} part(s), measured {topo['pieces']}: "
-                      f"{topo['piece_sites'][:6]} px at (x, y) top-down")
+            voids = generate.void_sites(small, generate.DECISION_PX, exclude=[disc])
+            # The gate the pipeline itself runs (a183-a204), called here rather than
+            # reimplemented: a smoke test that judges by its own rules proves the
+            # harness works, not the gate.
+            boxes = []
+            for part in built:
+                corners = [part.matrix_world @ mathutils.Vector(corner)
+                           for corner in part.bound_box]
+                boxes.append((part.name,
+                              (min(c[0] for c in corners), min(c[1] for c in corners),
+                               min(c[2] for c in corners), max(c[0] for c in corners),
+                               max(c[1] for c in corners), max(c[2] for c in corners))))
+            gate = generate.geometry_gate(
+                family, lam, found["fill"], topo,
+                sites=topo.get("piece_sites") or [], void_sites=voids,
+                parts=generate.interference(boxes),
+                excluded_px=found["excluded_px"])
+            for note in gate["notes"]:
+                print(f"    ! {note}")
             counter = counters[0]["name"] if counters else declaration["parameters"][0]["name"]
             counts = (families.features(vector[counter])
                       if counters else round(vector[counter], 2))
             shares = topo.get("hole_shares") or []
             printed = " ".join(f"{share * 100:5.2f}%" for share in shares[:4]) or "none"
-            low, high = families.fill_envelope(family, lam)
-            judged = "in" if low <= found["fill"] <= high else "OUT"
+            low, high = gate["fill_envelope"]
+            judged = "in" if gate["verdict"] == "pass" else "OUT"
             # The body alone is what a202 judges, and the accent's own pixels are out
             # of the reading, so these are the *body's* pieces and holes.
             print(f"{family:8} {lam:6.2f}  {found['coverage']:6.3f} "
@@ -176,6 +227,7 @@ def main():
                   f"{counter}={vector[counter]:.2f} -> {counts}")
             for item in built + [accent_obj]:
                 bpy.data.objects.remove(item, do_unlink=True)
+    gate_self_test()
     print("\nThe rendered frame is measured with the pipeline's own functions, so a\n"
           "number here means the same thing it will mean in the review set.")
 

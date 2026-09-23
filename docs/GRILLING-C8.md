@@ -1307,6 +1307,39 @@ declaration — a184's "one profile" read as *one profile per declared part*. Th
 reading of a184/a202 rather than a new decision, and it is overridable if the bin
 should instead weld its lid and lose the gap the reference draws.
 
+## 8.16 The geometric validity gate, and its own refusals tested
+
+`generate.geometry_gate` now runs **inside `judge_generation`**, so a candidate that
+declares a family and a λ cannot promote without passing it — not in a harness, in the
+pipeline that writes the review record. Four judgements, each one a decision already
+taken:
+
+| judgement | decided by | refused when |
+|---|---|---|
+| an undeclared component | a183/a184/a202 | the render's part count ≠ the family's declaration (the accent's disc is excluded, so this is the **body's** count) |
+| a sliver | a193/a196 | any enclosed void under `VOID_FLOOR` = 3.5 % of the object, reported **with its site** |
+| interpenetration | a183/a200 | a declared part pair whose boxes overlap by more than a seam |
+| fill | a204 | the reading falls outside the family's own envelope **at that λ** |
+
+The void floor's provenance is stated where it lives: it is **authored**, because the
+measurement that produced it showed no single area number can separate the set's real
+slivers (0.04–0.59 %) from the ticket's declared perforations (0.67–1.43 %), and the
+per-family declaration does the separating instead.
+
+**The gate is tested against its own refusals**, because a gate that passes everything
+is not evidence: the smoke harness feeds it an undeclared component, a one-pixel
+sliver, an interpenetrating pair, and a fill outside the envelope — and a clean
+candidate — and prints `4 refusals, 1 pass, 0 unexpected`. Each refusal names the
+reason and the place, e.g.:
+
+> *the object arrives in 4 pieces where `gear` declares 1 (1803 px at (47, 35); 5 px
+> at (92, 86); 4 px at (88, 94); 1 px at (83, 94)): an undeclared component refuses
+> promotion*
+
+and with it the whole family set still measures **30 of 30 inside their envelopes**,
+now judged by the same code that will judge the reviewed renders rather than by the
+harness's own rules.
+
 ---
 
 ## Still open, and deliberately so
