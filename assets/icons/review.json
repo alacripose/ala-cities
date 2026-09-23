@@ -409,7 +409,7 @@
               "peak_luminance": 0.7376
             },
             "32": {
-              "chromaticity_degrees": 55.49,
+              "chromaticity_degrees": 55.48,
               "clip_fraction": 0.0,
               "coverage": 0.125,
               "excluded_px": 22,
@@ -421,7 +421,7 @@
             },
             "96": {
               "chromaticity_degrees": 55.69,
-              "clip_fraction": 0.0819,
+              "clip_fraction": 0.0828,
               "coverage": 0.1166,
               "covered_px": 1075,
               "excluded_px": 155,
@@ -495,7 +495,7 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 0.24,
+              "chromaticity_drift_degrees": 0.25,
               "declared_albedo_luminance": 0.4771,
               "icon_to_swatch": 1.343,
               "swatch_to_albedo": 0.594
@@ -550,12 +550,12 @@
               "excluded_px": 14,
               "fill": 0.5952,
               "gloss": 0.12,
-              "mean_luminance": 0.3619,
+              "mean_luminance": 0.3618,
               "p75_luminance": 0.3468,
               "peak_luminance": 0.8862
             },
             "32": {
-              "chromaticity_degrees": 56.8,
+              "chromaticity_degrees": 56.81,
               "clip_fraction": 0.0118,
               "coverage": 0.166,
               "excluded_px": 24,
@@ -566,7 +566,7 @@
               "peak_luminance": 0.9642
             },
             "96": {
-              "chromaticity_degrees": 56.9,
+              "chromaticity_degrees": 56.91,
               "clip_fraction": 0.095,
               "coverage": 0.1599,
               "covered_px": 1474,
@@ -641,7 +641,7 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.57,
+              "chromaticity_drift_degrees": 1.56,
               "declared_albedo_luminance": 0.4771,
               "icon_to_swatch": 0.863,
               "swatch_to_albedo": 0.594
@@ -690,7 +690,7 @@
           "label": "TouchWiz \u2192 iOS 6 \u00b7 \u03bb 0.75",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 54.84,
+              "chromaticity_degrees": 54.86,
               "clip_fraction": 0.0,
               "coverage": 0.2083,
               "excluded_px": 13,
@@ -698,10 +698,10 @@
               "gloss": 0.0333,
               "mean_luminance": 0.2295,
               "p75_luminance": 0.23,
-              "peak_luminance": 0.5901
+              "peak_luminance": 0.5896
             },
             "32": {
-              "chromaticity_degrees": 55.06,
+              "chromaticity_degrees": 55.08,
               "clip_fraction": 0.0,
               "coverage": 0.1973,
               "excluded_px": 21,
@@ -712,17 +712,17 @@
               "peak_luminance": 0.5308
             },
             "96": {
-              "chromaticity_degrees": 55.09,
+              "chromaticity_degrees": 55.1,
               "clip_fraction": 0.0069,
               "coverage": 0.1875,
               "covered_px": 1728,
               "excluded_px": 143,
               "fill": 0.6429,
-              "gloss": 0.0284,
+              "gloss": 0.0278,
               "hole_shares": [],
               "holes": 0,
               "mean_luminance": 0.2443,
-              "p75_luminance": 0.234,
+              "p75_luminance": 0.2339,
               "peak_luminance": 1.0,
               "piece_sites": [
                 [
@@ -787,9 +787,9 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.47,
+              "chromaticity_drift_degrees": 1.45,
               "declared_albedo_luminance": 0.4771,
-              "icon_to_swatch": 0.832,
+              "icon_to_swatch": 0.831,
               "swatch_to_albedo": 0.594
             },
             "character": null,
@@ -836,29 +836,29 @@
           "label": "iOS 6 \u00b7 \u03bb 1.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 55.3,
+              "chromaticity_degrees": 55.33,
               "clip_fraction": 0.0,
               "coverage": 0.2188,
               "excluded_px": 14,
               "fill": 0.75,
               "gloss": 0.0476,
-              "mean_luminance": 0.2229,
+              "mean_luminance": 0.2228,
               "p75_luminance": 0.2256,
               "peak_luminance": 0.4212
             },
             "32": {
-              "chromaticity_degrees": 55.05,
+              "chromaticity_degrees": 55.07,
               "clip_fraction": 0.0,
               "coverage": 0.2188,
               "excluded_px": 20,
               "fill": 0.7,
               "gloss": 0.0402,
-              "mean_luminance": 0.2297,
+              "mean_luminance": 0.2295,
               "p75_luminance": 0.2259,
               "peak_luminance": 0.7086
             },
             "96": {
-              "chromaticity_degrees": 55.19,
+              "chromaticity_degrees": 55.21,
               "clip_fraction": 0.0078,
               "coverage": 0.2094,
               "covered_px": 1930,
@@ -867,7 +867,7 @@
               "gloss": 0.029,
               "hole_shares": [],
               "holes": 0,
-              "mean_luminance": 0.2355,
+              "mean_luminance": 0.2354,
               "p75_luminance": 0.2259,
               "peak_luminance": 1.0,
               "piece_sites": [
@@ -1785,25 +1785,25 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.85,
+              "chromaticity_drift_degrees": 0.73,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.244,
-              "swatch_to_albedo": 0.569
+              "icon_to_swatch": 1.284,
+              "swatch_to_albedo": 0.574
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 5.73
+                "ink": 6.0
               },
               "PanelRaised": {
-                "ink": 4.71
+                "ink": 4.93
               }
             },
             "geometry": {
               "declared_parts": 1,
               "excluded_px": 156,
               "family": "lens",
-              "fill": 0.358,
+              "fill": 0.3532,
               "fill_envelope": [
                 0.1836,
                 0.3788
@@ -1815,12 +1815,12 @@
               "verdict": "pass",
               "void_floor": 0.035,
               "void_shares": [
-                0.6984
+                0.7412
               ]
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.2815 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
+              "the render carries 0.247 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
               "8 of 9 declared cells of `action/search` are under half covered (worst carries 0.0 of its own ink): the mark is carried on average but not cell for cell"
             ]
           },
@@ -1836,47 +1836,47 @@
           "label": "MD1 \u00b7 \u03bb 0.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 66.22,
+              "chromaticity_degrees": 64.87,
               "clip_fraction": 0.0,
-              "coverage": 0.092,
+              "coverage": 0.0885,
               "excluded_px": 14,
-              "fill": 0.438,
-              "gloss": 0.1321,
+              "fill": 0.4215,
+              "gloss": 0.1176,
               "mean_luminance": 0.3029,
-              "p75_luminance": 0.321,
-              "peak_luminance": 0.5963
+              "p75_luminance": 0.3437,
+              "peak_luminance": 0.6499
             },
             "32": {
-              "chromaticity_degrees": 66.83,
+              "chromaticity_degrees": 65.81,
               "clip_fraction": 0.0,
-              "coverage": 0.0859,
+              "coverage": 0.0781,
               "excluded_px": 23,
-              "fill": 0.3911,
-              "gloss": 0.125,
-              "mean_luminance": 0.3253,
-              "p75_luminance": 0.3349,
-              "peak_luminance": 0.7042
+              "fill": 0.3556,
+              "gloss": 0.1625,
+              "mean_luminance": 0.3364,
+              "p75_luminance": 0.353,
+              "peak_luminance": 0.7274
             },
             "96": {
-              "chromaticity_degrees": 67.22,
-              "clip_fraction": 0.0361,
-              "coverage": 0.0752,
-              "covered_px": 693,
+              "chromaticity_degrees": 66.1,
+              "clip_fraction": 0.0413,
+              "coverage": 0.0709,
+              "covered_px": 653,
               "excluded_px": 156,
-              "fill": 0.358,
-              "gloss": 0.114,
+              "fill": 0.3532,
+              "gloss": 0.1394,
               "hole_shares": [
-                0.6984
+                0.7412
               ],
               "holes": 1,
-              "mean_luminance": 0.3446,
-              "p75_luminance": 0.3259,
-              "peak_luminance": 0.9981,
+              "mean_luminance": 0.3591,
+              "p75_luminance": 0.3437,
+              "peak_luminance": 1.0,
               "piece_sites": [
                 [
-                  693,
-                  50,
-                  35
+                  653,
+                  49,
+                  34
                 ]
               ],
               "pieces": 1
@@ -1890,7 +1890,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.2815 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
+            "the render carries 0.247 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
             "8 of 9 declared cells of `action/search` are under half covered (worst carries 0.0 of its own ink): the mark is carried on average but not cell for cell"
           ],
           "transform": {
@@ -1935,25 +1935,25 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 2.28,
+              "chromaticity_drift_degrees": 1.74,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.184,
-              "swatch_to_albedo": 0.569
+              "icon_to_swatch": 1.229,
+              "swatch_to_albedo": 0.574
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 5.63
+                "ink": 5.68
               },
               "PanelRaised": {
-                "ink": 4.63
+                "ink": 4.67
               }
             },
             "geometry": {
               "declared_parts": 1,
               "excluded_px": 153,
               "family": "lens",
-              "fill": 0.505,
+              "fill": 0.4913,
               "fill_envelope": [
                 0.2611,
                 0.5387
@@ -1965,12 +1965,12 @@
               "verdict": "pass",
               "void_floor": 0.035,
               "void_shares": [
-                0.367
+                0.3773
               ]
             },
             "internal_contrast": null,
             "notes": [
-              "the render carries 0.5396 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
+              "the render carries 0.5211 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
               "4 of 9 declared cells of `action/search` are under half covered (worst carries 0.0 of its own ink): the mark is carried on average but not cell for cell"
             ]
           },
@@ -1986,47 +1986,47 @@
           "label": "MD1 \u2192 TouchWiz \u00b7 \u03bb 0.25",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 67.44,
+              "chromaticity_degrees": 67.02,
               "clip_fraction": 0.0,
-              "coverage": 0.1233,
+              "coverage": 0.1198,
               "excluded_px": 14,
-              "fill": 0.5379,
-              "gloss": 0.1127,
-              "mean_luminance": 0.3058,
-              "p75_luminance": 0.3222,
-              "peak_luminance": 0.7488
+              "fill": 0.5227,
+              "gloss": 0.1449,
+              "mean_luminance": 0.3172,
+              "p75_luminance": 0.3315,
+              "peak_luminance": 0.7833
             },
             "32": {
-              "chromaticity_degrees": 67.37,
+              "chromaticity_degrees": 66.77,
               "clip_fraction": 0.0,
-              "coverage": 0.1279,
+              "coverage": 0.125,
               "excluded_px": 23,
-              "fill": 0.5458,
-              "gloss": 0.1069,
-              "mean_luminance": 0.3041,
-              "p75_luminance": 0.3175,
-              "peak_luminance": 0.8314
+              "fill": 0.5333,
+              "gloss": 0.1328,
+              "mean_luminance": 0.3191,
+              "p75_luminance": 0.3351,
+              "peak_luminance": 0.8408
             },
             "96": {
-              "chromaticity_degrees": 67.65,
-              "clip_fraction": 0.015,
-              "coverage": 0.1159,
-              "covered_px": 1068,
+              "chromaticity_degrees": 67.11,
+              "clip_fraction": 0.0241,
+              "coverage": 0.1127,
+              "covered_px": 1039,
               "excluded_px": 153,
-              "fill": 0.505,
-              "gloss": 0.1124,
+              "fill": 0.4913,
+              "gloss": 0.1405,
               "hole_shares": [
-                0.367
+                0.3773
               ],
               "holes": 1,
-              "mean_luminance": 0.3279,
-              "p75_luminance": 0.3198,
-              "peak_luminance": 0.9657,
+              "mean_luminance": 0.3437,
+              "p75_luminance": 0.3228,
+              "peak_luminance": 0.9674,
               "piece_sites": [
                 [
-                  1068,
-                  49,
-                  36
+                  1039,
+                  50,
+                  32
                 ]
               ],
               "pieces": 1
@@ -2040,7 +2040,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "the render carries 0.5396 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
+            "the render carries 0.5211 of the declared `action/search` mark, below the 0.9 containment floor: it is not the silhouette the brief names",
             "4 of 9 declared cells of `action/search` are under half covered (worst carries 0.0 of its own ink): the mark is carried on average but not cell for cell"
           ],
           "transform": {
@@ -2085,25 +2085,25 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.93,
+              "chromaticity_drift_degrees": 1.99,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.222,
-              "swatch_to_albedo": 0.569
+              "icon_to_swatch": 1.186,
+              "swatch_to_albedo": 0.574
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 5.73
+                "ink": 5.66
               },
               "PanelRaised": {
-                "ink": 4.71
+                "ink": 4.66
               }
             },
             "geometry": {
               "declared_parts": 1,
-              "excluded_px": 155,
+              "excluded_px": 156,
               "family": "lens",
-              "fill": 0.6458,
+              "fill": 0.6262,
               "fill_envelope": [
                 0.3386,
                 0.6986
@@ -2115,7 +2115,7 @@
               "verdict": "pass",
               "void_floor": 0.035,
               "void_shares": [
-                0.207
+                0.2009
               ]
             },
             "internal_contrast": null,
@@ -2136,45 +2136,45 @@
           "label": "TouchWiz \u00b7 \u03bb 0.50",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 66.76,
+              "chromaticity_degrees": 66.84,
               "clip_fraction": 0.0,
-              "coverage": 0.1806,
-              "excluded_px": 15,
-              "fill": 0.7222,
-              "gloss": 0.1538,
-              "mean_luminance": 0.318,
-              "p75_luminance": 0.3623,
-              "peak_luminance": 0.6768
+              "coverage": 0.1892,
+              "excluded_px": 14,
+              "fill": 0.6987,
+              "gloss": 0.1284,
+              "mean_luminance": 0.3084,
+              "p75_luminance": 0.3259,
+              "peak_luminance": 0.6769
             },
             "32": {
-              "chromaticity_degrees": 66.88,
+              "chromaticity_degrees": 67.0,
               "clip_fraction": 0.0,
-              "coverage": 0.1719,
+              "coverage": 0.1777,
               "excluded_px": 22,
-              "fill": 0.6875,
-              "gloss": 0.1761,
-              "mean_luminance": 0.3308,
-              "p75_luminance": 0.3671,
-              "peak_luminance": 0.7596
+              "fill": 0.6691,
+              "gloss": 0.1429,
+              "mean_luminance": 0.3226,
+              "p75_luminance": 0.3349,
+              "peak_luminance": 0.7654
             },
             "96": {
-              "chromaticity_degrees": 67.3,
-              "clip_fraction": 0.0242,
-              "coverage": 0.1615,
-              "covered_px": 1488,
-              "excluded_px": 155,
-              "fill": 0.6458,
-              "gloss": 0.1458,
+              "chromaticity_degrees": 67.36,
+              "clip_fraction": 0.0215,
+              "coverage": 0.1663,
+              "covered_px": 1533,
+              "excluded_px": 156,
+              "fill": 0.6262,
+              "gloss": 0.1363,
               "hole_shares": [
-                0.207
+                0.2009
               ],
               "holes": 1,
-              "mean_luminance": 0.3385,
-              "p75_luminance": 0.3261,
-              "peak_luminance": 0.987,
+              "mean_luminance": 0.3315,
+              "p75_luminance": 0.3218,
+              "peak_luminance": 0.9888,
               "piece_sites": [
                 [
-                  1488,
+                  1533,
                   47,
                   36
                 ]
@@ -2235,25 +2235,25 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.17,
+              "chromaticity_drift_degrees": 4.13,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.038,
-              "swatch_to_albedo": 0.569
+              "icon_to_swatch": 1.0,
+              "swatch_to_albedo": 0.574
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 4.49
+                "ink": 4.41
               },
               "PanelRaised": {
-                "ink": 3.69
+                "ink": 3.63
               }
             },
             "geometry": {
               "declared_parts": 1,
               "excluded_px": 152,
               "family": "lens",
-              "fill": 0.6964,
+              "fill": 0.7044,
               "fill_envelope": [
                 0.4162,
                 0.8584
@@ -2265,7 +2265,7 @@
               "verdict": "pass",
               "void_floor": 0.035,
               "void_shares": [
-                0.1062
+                0.105
               ]
             },
             "internal_contrast": null,
@@ -2286,45 +2286,45 @@
           "label": "TouchWiz \u2192 iOS 6 \u00b7 \u03bb 0.75",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 61.1,
+              "chromaticity_degrees": 61.12,
               "clip_fraction": 0.0,
-              "coverage": 0.25,
+              "coverage": 0.2535,
               "excluded_px": 14,
-              "fill": 0.7347,
-              "gloss": 0.1875,
-              "mean_luminance": 0.2743,
-              "p75_luminance": 0.3031,
-              "peak_luminance": 0.7613
+              "fill": 0.7449,
+              "gloss": 0.1644,
+              "mean_luminance": 0.2674,
+              "p75_luminance": 0.2833,
+              "peak_luminance": 0.7257
             },
             "32": {
-              "chromaticity_degrees": 61.09,
+              "chromaticity_degrees": 61.19,
               "clip_fraction": 0.0,
-              "coverage": 0.2461,
+              "coverage": 0.249,
               "excluded_px": 20,
-              "fill": 0.7778,
-              "gloss": 0.2024,
-              "mean_luminance": 0.2777,
-              "p75_luminance": 0.2916,
-              "peak_luminance": 0.785
+              "fill": 0.787,
+              "gloss": 0.1765,
+              "mean_luminance": 0.2704,
+              "p75_luminance": 0.2575,
+              "peak_luminance": 0.8185
             },
             "96": {
-              "chromaticity_degrees": 61.2,
-              "clip_fraction": 0.0348,
-              "coverage": 0.237,
-              "covered_px": 2184,
+              "chromaticity_degrees": 61.24,
+              "clip_fraction": 0.0326,
+              "coverage": 0.2397,
+              "covered_px": 2209,
               "excluded_px": 152,
-              "fill": 0.6964,
-              "gloss": 0.1648,
+              "fill": 0.7044,
+              "gloss": 0.148,
               "hole_shares": [
-                0.1062
+                0.105
               ],
               "holes": 1,
-              "mean_luminance": 0.2873,
-              "p75_luminance": 0.2446,
+              "mean_luminance": 0.2797,
+              "p75_luminance": 0.2396,
               "peak_luminance": 1.0,
               "piece_sites": [
                 [
-                  2184,
+                  2209,
                   47,
                   37
                 ]
@@ -2385,25 +2385,25 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 4.13,
+              "chromaticity_drift_degrees": 4.83,
               "declared_albedo_luminance": 0.4871,
-              "icon_to_swatch": 1.034,
-              "swatch_to_albedo": 0.569
+              "icon_to_swatch": 1.033,
+              "swatch_to_albedo": 0.574
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 4.55
+                "ink": 4.38
               },
               "PanelRaised": {
-                "ink": 3.74
+                "ink": 3.6
               }
             },
             "geometry": {
               "declared_parts": 1,
-              "excluded_px": 143,
+              "excluded_px": 158,
               "family": "lens",
-              "fill": 0.7419,
+              "fill": 0.7438,
               "fill_envelope": [
                 0.4937,
                 1.0
@@ -2415,12 +2415,12 @@
               "verdict": "pass",
               "void_floor": 0.035,
               "void_shares": [
-                0.0519
+                0.0655
               ]
             },
             "internal_contrast": null,
             "notes": [
-              "1 of 9 declared cells of `action/search` are under half covered (worst carries 0.5416 of its own ink): the mark is carried on average but not cell for cell"
+              "1 of 9 declared cells of `action/search` are under half covered (worst carries 0.4649 of its own ink): the mark is carried on average but not cell for cell"
             ]
           },
           "files": {
@@ -2435,45 +2435,45 @@
           "label": "iOS 6 \u00b7 \u03bb 1.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 61.07,
+              "chromaticity_degrees": 60.42,
               "clip_fraction": 0.0,
-              "coverage": 0.3403,
-              "excluded_px": 15,
-              "fill": 0.7656,
-              "gloss": 0.199,
-              "mean_luminance": 0.2644,
-              "p75_luminance": 0.285,
-              "peak_luminance": 0.7007
+              "coverage": 0.2795,
+              "excluded_px": 17,
+              "fill": 0.8214,
+              "gloss": 0.1925,
+              "mean_luminance": 0.2788,
+              "p75_luminance": 0.2893,
+              "peak_luminance": 0.7825
             },
             "32": {
-              "chromaticity_degrees": 61.45,
+              "chromaticity_degrees": 60.33,
               "clip_fraction": 0.0,
-              "coverage": 0.3086,
-              "excluded_px": 20,
-              "fill": 0.79,
-              "gloss": 0.2089,
-              "mean_luminance": 0.2805,
-              "p75_luminance": 0.2925,
-              "peak_luminance": 0.8154
+              "coverage": 0.2871,
+              "excluded_px": 21,
+              "fill": 0.735,
+              "gloss": 0.1973,
+              "mean_luminance": 0.2784,
+              "p75_luminance": 0.2647,
+              "peak_luminance": 0.9092
             },
             "96": {
-              "chromaticity_degrees": 61.24,
-              "clip_fraction": 0.0407,
-              "coverage": 0.3095,
-              "covered_px": 2852,
-              "excluded_px": 143,
-              "fill": 0.7419,
-              "gloss": 0.1529,
+              "chromaticity_degrees": 60.54,
+              "clip_fraction": 0.048,
+              "coverage": 0.2715,
+              "covered_px": 2502,
+              "excluded_px": 158,
+              "fill": 0.7438,
+              "gloss": 0.1471,
               "hole_shares": [
-                0.0519
+                0.0655
               ],
               "holes": 1,
-              "mean_luminance": 0.2864,
-              "p75_luminance": 0.2485,
+              "mean_luminance": 0.2887,
+              "p75_luminance": 0.2377,
               "peak_luminance": 1.0,
               "piece_sites": [
                 [
-                  2852,
+                  2502,
                   47,
                   39
                 ]
@@ -2489,7 +2489,7 @@
             "source_artwork_copied": false
           },
           "selection_notes": [
-            "1 of 9 declared cells of `action/search` are under half covered (worst carries 0.5416 of its own ink): the mark is carried on average but not cell for cell"
+            "1 of 9 declared cells of `action/search` are under half covered (worst carries 0.4649 of its own ink): the mark is carried on average but not cell for cell"
           ],
           "transform": {
             "candidate_role": "interpolation",
@@ -2651,7 +2651,7 @@
           "label": "MD1 \u00b7 \u03bb 0.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 25.69,
+              "chromaticity_degrees": 25.68,
               "clip_fraction": 0.0,
               "coverage": 0.1736,
               "excluded_px": 14,
@@ -2808,7 +2808,7 @@
               "excluded_px": 14,
               "fill": 0.85,
               "gloss": 0.0,
-              "mean_luminance": 0.2625,
+              "mean_luminance": 0.2626,
               "p75_luminance": 0.2824,
               "peak_luminance": 0.4163
             },
@@ -2820,7 +2820,7 @@
               "fill": 0.8438,
               "gloss": 0.0,
               "mean_luminance": 0.2596,
-              "p75_luminance": 0.2824,
+              "p75_luminance": 0.2834,
               "peak_luminance": 0.3768
             },
             "96": {
@@ -2830,7 +2830,7 @@
               "covered_px": 1318,
               "excluded_px": 155,
               "fill": 0.7627,
-              "gloss": 0.0023,
+              "gloss": 0.0015,
               "hole_shares": [],
               "holes": 0,
               "mean_luminance": 0.2814,
@@ -2906,7 +2906,7 @@
             "arrival": {
               "chromaticity_drift_degrees": 5.34,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 1.059,
+              "icon_to_swatch": 1.058,
               "swatch_to_albedo": 0.569
             },
             "character": null,
@@ -2953,7 +2953,7 @@
           "label": "TouchWiz \u00b7 \u03bb 0.50",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 25.47,
+              "chromaticity_degrees": 25.48,
               "clip_fraction": 0.0,
               "coverage": 0.1806,
               "excluded_px": 13,
@@ -2964,13 +2964,13 @@
               "peak_luminance": 0.4163
             },
             "32": {
-              "chromaticity_degrees": 23.85,
+              "chromaticity_degrees": 23.84,
               "clip_fraction": 0.0,
               "coverage": 0.1602,
               "excluded_px": 23,
               "fill": 0.8542,
               "gloss": 0.0,
-              "mean_luminance": 0.2633,
+              "mean_luminance": 0.2632,
               "p75_luminance": 0.2824,
               "peak_luminance": 0.3477
             },
@@ -2984,7 +2984,7 @@
               "gloss": 0.0015,
               "hole_shares": [],
               "holes": 0,
-              "mean_luminance": 0.2788,
+              "mean_luminance": 0.2787,
               "p75_luminance": 0.2864,
               "peak_luminance": 0.5878,
               "piece_sites": [
@@ -3057,7 +3057,7 @@
             "arrival": {
               "chromaticity_drift_degrees": 0.1,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 0.808,
+              "icon_to_swatch": 0.807,
               "swatch_to_albedo": 0.569
             },
             "character": null,
@@ -3104,14 +3104,14 @@
           "label": "TouchWiz \u2192 iOS 6 \u00b7 \u03bb 0.75",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 30.8,
+              "chromaticity_degrees": 30.82,
               "clip_fraction": 0.0,
               "coverage": 0.1875,
               "excluded_px": 14,
               "fill": 0.9,
               "gloss": 0.1111,
-              "mean_luminance": 0.2112,
-              "p75_luminance": 0.2064,
+              "mean_luminance": 0.2111,
+              "p75_luminance": 0.2067,
               "peak_luminance": 0.3914
             },
             "32": {
@@ -3121,7 +3121,7 @@
               "excluded_px": 23,
               "fill": 0.8646,
               "gloss": 0.0,
-              "mean_luminance": 0.2043,
+              "mean_luminance": 0.2042,
               "p75_luminance": 0.2061,
               "peak_luminance": 0.266
             },
@@ -3135,7 +3135,7 @@
               "gloss": 0.0382,
               "hole_shares": [],
               "holes": 0,
-              "mean_luminance": 0.2127,
+              "mean_luminance": 0.2126,
               "p75_luminance": 0.2073,
               "peak_luminance": 0.4357,
               "piece_sites": [
@@ -3208,7 +3208,7 @@
             "arrival": {
               "chromaticity_drift_degrees": 0.0,
               "declared_albedo_luminance": 0.4624,
-              "icon_to_swatch": 0.807,
+              "icon_to_swatch": 0.806,
               "swatch_to_albedo": 0.569
             },
             "character": null,
@@ -3261,7 +3261,7 @@
               "excluded_px": 14,
               "fill": 0.9,
               "gloss": 0.1111,
-              "mean_luminance": 0.2148,
+              "mean_luminance": 0.2146,
               "p75_luminance": 0.2073,
               "peak_luminance": 0.3954
             },
@@ -3272,9 +3272,9 @@
               "excluded_px": 22,
               "fill": 0.787,
               "gloss": 0.0,
-              "mean_luminance": 0.2055,
-              "p75_luminance": 0.2071,
-              "peak_luminance": 0.2628
+              "mean_luminance": 0.2054,
+              "p75_luminance": 0.2073,
+              "peak_luminance": 0.2623
             },
             "96": {
               "chromaticity_degrees": 29.18,
@@ -3286,7 +3286,7 @@
               "gloss": 0.0369,
               "hole_shares": [],
               "holes": 0,
-              "mean_luminance": 0.2124,
+              "mean_luminance": 0.2122,
               "p75_luminance": 0.2073,
               "peak_luminance": 0.4502,
               "piece_sites": [
@@ -3428,16 +3428,16 @@
             "arrival": {
               "chromaticity_drift_degrees": 5.08,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.152,
-              "swatch_to_albedo": 0.892
+              "icon_to_swatch": 1.148,
+              "swatch_to_albedo": 0.89
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 4.44
+                "ink": 4.43
               },
               "PanelRaised": {
-                "ink": 3.65
+                "ink": 3.64
               }
             },
             "geometry": {
@@ -3483,8 +3483,8 @@
               "excluded_px": 14,
               "fill": 0.5238,
               "gloss": 0.0114,
-              "mean_luminance": 0.2229,
-              "p75_luminance": 0.241,
+              "mean_luminance": 0.222,
+              "p75_luminance": 0.2404,
               "peak_luminance": 0.3758
             },
             "32": {
@@ -3494,8 +3494,8 @@
               "excluded_px": 23,
               "fill": 0.4861,
               "gloss": 0.0357,
-              "mean_luminance": 0.2355,
-              "p75_luminance": 0.2406,
+              "mean_luminance": 0.2342,
+              "p75_luminance": 0.2404,
               "peak_luminance": 0.4343
             },
             "96": {
@@ -3510,8 +3510,8 @@
                 0.2308
               ],
               "holes": 1,
-              "mean_luminance": 0.2475,
-              "p75_luminance": 0.2412,
+              "mean_luminance": 0.2463,
+              "p75_luminance": 0.2406,
               "peak_luminance": 0.794,
               "piece_sites": [
                 [
@@ -3578,16 +3578,16 @@
             "arrival": {
               "chromaticity_drift_degrees": 4.92,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.14,
-              "swatch_to_albedo": 0.892
+              "icon_to_swatch": 1.134,
+              "swatch_to_albedo": 0.89
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 4.44
+                "ink": 4.43
               },
               "PanelRaised": {
-                "ink": 3.66
+                "ink": 3.64
               }
             },
             "geometry": {
@@ -3627,25 +3627,25 @@
           "label": "MD1 \u2192 TouchWiz \u00b7 \u03bb 0.25",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 84.49,
+              "chromaticity_degrees": 84.48,
               "clip_fraction": 0.0,
               "coverage": 0.1562,
               "excluded_px": 13,
               "fill": 0.5769,
               "gloss": 0.0,
-              "mean_luminance": 0.2226,
-              "p75_luminance": 0.2404,
+              "mean_luminance": 0.2213,
+              "p75_luminance": 0.237,
               "peak_luminance": 0.3567
             },
             "32": {
-              "chromaticity_degrees": 84.5,
+              "chromaticity_degrees": 84.51,
               "clip_fraction": 0.0,
               "coverage": 0.1504,
               "excluded_px": 23,
               "fill": 0.5033,
               "gloss": 0.013,
-              "mean_luminance": 0.2291,
-              "p75_luminance": 0.2406,
+              "mean_luminance": 0.2278,
+              "p75_luminance": 0.2376,
               "peak_luminance": 0.4148
             },
             "96": {
@@ -3660,8 +3660,8 @@
                 0.1728
               ],
               "holes": 1,
-              "mean_luminance": 0.2449,
-              "p75_luminance": 0.2417,
+              "mean_luminance": 0.2433,
+              "p75_luminance": 0.2406,
               "peak_luminance": 0.7636,
               "piece_sites": [
                 [
@@ -3728,13 +3728,13 @@
             "arrival": {
               "chromaticity_drift_degrees": 4.8,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.129,
-              "swatch_to_albedo": 0.892
+              "icon_to_swatch": 1.128,
+              "swatch_to_albedo": 0.89
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 4.43
+                "ink": 4.42
               },
               "PanelRaised": {
                 "ink": 3.64
@@ -3777,14 +3777,14 @@
           "label": "TouchWiz \u00b7 \u03bb 0.50",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 84.71,
+              "chromaticity_degrees": 84.7,
               "clip_fraction": 0.0,
               "coverage": 0.1562,
               "excluded_px": 15,
               "fill": 0.625,
               "gloss": 0.0,
-              "mean_luminance": 0.2231,
-              "p75_luminance": 0.2404,
+              "mean_luminance": 0.2224,
+              "p75_luminance": 0.237,
               "peak_luminance": 0.3625
             },
             "32": {
@@ -3794,8 +3794,8 @@
               "excluded_px": 22,
               "fill": 0.5359,
               "gloss": 0.0,
-              "mean_luminance": 0.226,
-              "p75_luminance": 0.2404,
+              "mean_luminance": 0.2253,
+              "p75_luminance": 0.2376,
               "peak_luminance": 0.3497
             },
             "96": {
@@ -3810,8 +3810,8 @@
                 0.1321
               ],
               "holes": 1,
-              "mean_luminance": 0.2427,
-              "p75_luminance": 0.2406,
+              "mean_luminance": 0.2419,
+              "p75_luminance": 0.2401,
               "peak_luminance": 0.739,
               "piece_sites": [
                 [
@@ -3878,8 +3878,8 @@
             "arrival": {
               "chromaticity_drift_degrees": 7.53,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.129,
-              "swatch_to_albedo": 0.892
+              "icon_to_swatch": 1.131,
+              "swatch_to_albedo": 0.89
             },
             "character": null,
             "contrasts": {
@@ -3927,14 +3927,14 @@
           "label": "TouchWiz \u2192 iOS 6 \u00b7 \u03bb 0.75",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 81.56,
+              "chromaticity_degrees": 81.55,
               "clip_fraction": 0.0,
               "coverage": 0.1684,
               "excluded_px": 17,
               "fill": 0.6736,
               "gloss": 0.0206,
-              "mean_luminance": 0.2215,
-              "p75_luminance": 0.2341,
+              "mean_luminance": 0.2216,
+              "p75_luminance": 0.2363,
               "peak_luminance": 0.3868
             },
             "32": {
@@ -3960,7 +3960,7 @@
                 0.0895
               ],
               "holes": 1,
-              "mean_luminance": 0.2427,
+              "mean_luminance": 0.2426,
               "p75_luminance": 0.2368,
               "peak_luminance": 0.8473,
               "piece_sites": [
@@ -4026,10 +4026,10 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 7.54,
+              "chromaticity_drift_degrees": 7.56,
               "declared_albedo_luminance": 0.241,
-              "icon_to_swatch": 1.128,
-              "swatch_to_albedo": 0.892
+              "icon_to_swatch": 1.127,
+              "swatch_to_albedo": 0.89
             },
             "character": null,
             "contrasts": {
@@ -4077,29 +4077,29 @@
           "label": "iOS 6 \u00b7 \u03bb 1.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 81.97,
+              "chromaticity_degrees": 81.96,
               "clip_fraction": 0.0,
               "coverage": 0.1667,
               "excluded_px": 15,
               "fill": 0.6667,
               "gloss": 0.0,
-              "mean_luminance": 0.2285,
-              "p75_luminance": 0.237,
+              "mean_luminance": 0.2281,
+              "p75_luminance": 0.2368,
               "peak_luminance": 0.3645
             },
             "32": {
-              "chromaticity_degrees": 81.37,
+              "chromaticity_degrees": 81.35,
               "clip_fraction": 0.0,
               "coverage": 0.1758,
               "excluded_px": 22,
               "fill": 0.7031,
-              "gloss": 0.0167,
-              "mean_luminance": 0.2271,
+              "gloss": 0.0222,
+              "mean_luminance": 0.2266,
               "p75_luminance": 0.2368,
               "peak_luminance": 0.4198
             },
             "96": {
-              "chromaticity_degrees": 82.44,
+              "chromaticity_degrees": 82.42,
               "clip_fraction": 0.007,
               "coverage": 0.1544,
               "covered_px": 1423,
@@ -4110,7 +4110,7 @@
                 0.0618
               ],
               "holes": 1,
-              "mean_luminance": 0.2423,
+              "mean_luminance": 0.2418,
               "p75_luminance": 0.2368,
               "peak_luminance": 0.9308,
               "piece_sites": [
@@ -4246,18 +4246,18 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.75,
+              "chromaticity_drift_degrees": 1.8,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 1.255,
-              "swatch_to_albedo": 0.87
+              "icon_to_swatch": 1.257,
+              "swatch_to_albedo": 0.868
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 12.82
+                "ink": 12.77
               },
               "PanelRaised": {
-                "ink": 10.55
+                "ink": 10.5
               }
             },
             "geometry": {
@@ -4299,30 +4299,30 @@
           "label": "MD1 \u00b7 \u03bb 0.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 39.35,
+              "chromaticity_degrees": 39.3,
               "clip_fraction": 0.0,
               "coverage": 0.191,
               "excluded_px": 15,
               "fill": 0.9167,
               "gloss": 0.0,
-              "mean_luminance": 0.7294,
-              "p75_luminance": 0.772,
-              "peak_luminance": 0.8582
+              "mean_luminance": 0.7297,
+              "p75_luminance": 0.7662,
+              "peak_luminance": 0.8438
             },
             "32": {
-              "chromaticity_degrees": 39.42,
+              "chromaticity_degrees": 39.37,
               "clip_fraction": 0.0,
               "coverage": 0.207,
               "excluded_px": 23,
               "fill": 0.9464,
               "gloss": 0.0,
-              "mean_luminance": 0.6975,
-              "p75_luminance": 0.7586,
-              "peak_luminance": 0.8664
+              "mean_luminance": 0.6974,
+              "p75_luminance": 0.7573,
+              "peak_luminance": 0.8601
             },
             "96": {
-              "chromaticity_degrees": 39.34,
-              "clip_fraction": 0.0405,
+              "chromaticity_degrees": 39.29,
+              "clip_fraction": 0.0339,
               "coverage": 0.1955,
               "covered_px": 1802,
               "excluded_px": 155,
@@ -4334,9 +4334,9 @@
                 0.0366
               ],
               "holes": 3,
-              "mean_luminance": 0.7427,
-              "p75_luminance": 0.7916,
-              "peak_luminance": 0.9753,
+              "mean_luminance": 0.7426,
+              "p75_luminance": 0.7879,
+              "peak_luminance": 0.9553,
               "piece_sites": [
                 [
                   1802,
@@ -4403,15 +4403,15 @@
               "chromaticity_drift_degrees": 1.71,
               "declared_albedo_luminance": 0.6807,
               "icon_to_swatch": 1.293,
-              "swatch_to_albedo": 0.87
+              "swatch_to_albedo": 0.868
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 12.95
+                "ink": 12.97
               },
               "PanelRaised": {
-                "ink": 10.65
+                "ink": 10.67
               }
             },
             "geometry": {
@@ -4453,30 +4453,30 @@
           "label": "MD1 \u2192 TouchWiz \u00b7 \u03bb 0.25",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 39.38,
+              "chromaticity_degrees": 39.4,
               "clip_fraction": 0.0,
               "coverage": 0.1979,
               "excluded_px": 14,
               "fill": 0.8769,
               "gloss": 0.0,
-              "mean_luminance": 0.7432,
+              "mean_luminance": 0.7422,
               "p75_luminance": 0.7797,
-              "peak_luminance": 0.8601
+              "peak_luminance": 0.8605
             },
             "32": {
-              "chromaticity_degrees": 39.51,
+              "chromaticity_degrees": 39.49,
               "clip_fraction": 0.0,
               "coverage": 0.2148,
               "excluded_px": 22,
               "fill": 0.9244,
               "gloss": 0.0,
-              "mean_luminance": 0.7133,
-              "p75_luminance": 0.7662,
+              "mean_luminance": 0.7122,
+              "p75_luminance": 0.7666,
               "peak_luminance": 0.8442
             },
             "96": {
               "chromaticity_degrees": 39.38,
-              "clip_fraction": 0.0516,
+              "clip_fraction": 0.0489,
               "coverage": 0.1975,
               "covered_px": 1820,
               "excluded_px": 154,
@@ -4488,9 +4488,9 @@
                 0.0401
               ],
               "holes": 3,
-              "mean_luminance": 0.7654,
-              "p75_luminance": 0.7998,
-              "peak_luminance": 0.9728,
+              "mean_luminance": 0.7644,
+              "p75_luminance": 0.8012,
+              "peak_luminance": 0.9775,
               "piece_sites": [
                 [
                   1820,
@@ -4554,18 +4554,18 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.7,
+              "chromaticity_drift_degrees": 1.69,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 1.29,
-              "swatch_to_albedo": 0.87
+              "icon_to_swatch": 1.291,
+              "swatch_to_albedo": 0.868
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 12.93
+                "ink": 12.96
               },
               "PanelRaised": {
-                "ink": 10.64
+                "ink": 10.66
               }
             },
             "geometry": {
@@ -4607,30 +4607,30 @@
           "label": "TouchWiz \u00b7 \u03bb 0.50",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 39.4,
+              "chromaticity_degrees": 39.41,
               "clip_fraction": 0.0,
               "coverage": 0.1979,
               "excluded_px": 14,
               "fill": 0.8769,
               "gloss": 0.0,
-              "mean_luminance": 0.7464,
-              "p75_luminance": 0.7793,
-              "peak_luminance": 0.8673
+              "mean_luminance": 0.7458,
+              "p75_luminance": 0.7802,
+              "peak_luminance": 0.866
             },
             "32": {
-              "chromaticity_degrees": 39.51,
+              "chromaticity_degrees": 39.53,
               "clip_fraction": 0.0,
               "coverage": 0.2207,
               "excluded_px": 22,
               "fill": 0.8968,
               "gloss": 0.0,
-              "mean_luminance": 0.7009,
-              "p75_luminance": 0.7661,
-              "peak_luminance": 0.8567
+              "mean_luminance": 0.7003,
+              "p75_luminance": 0.7666,
+              "peak_luminance": 0.833
             },
             "96": {
-              "chromaticity_degrees": 39.39,
-              "clip_fraction": 0.0457,
+              "chromaticity_degrees": 39.4,
+              "clip_fraction": 0.044,
               "coverage": 0.1997,
               "covered_px": 1840,
               "excluded_px": 155,
@@ -4642,8 +4642,8 @@
                 0.0424
               ],
               "holes": 3,
-              "mean_luminance": 0.7638,
-              "p75_luminance": 0.7989,
+              "mean_luminance": 0.7632,
+              "p75_luminance": 0.8007,
               "peak_luminance": 0.9901,
               "piece_sites": [
                 [
@@ -4711,15 +4711,15 @@
               "chromaticity_drift_degrees": 1.26,
               "declared_albedo_luminance": 0.6807,
               "icon_to_swatch": 0.923,
-              "swatch_to_albedo": 0.87
+              "swatch_to_albedo": 0.868
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 9.11
+                "ink": 9.08
               },
               "PanelRaised": {
-                "ink": 7.49
+                "ink": 7.46
               }
             },
             "geometry": {
@@ -4761,14 +4761,14 @@
           "label": "TouchWiz \u2192 iOS 6 \u00b7 \u03bb 0.75",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 39.88,
+              "chromaticity_degrees": 39.89,
               "clip_fraction": 0.0,
               "coverage": 0.2083,
               "excluded_px": 14,
               "fill": 0.8571,
               "gloss": 0.0,
-              "mean_luminance": 0.5225,
-              "p75_luminance": 0.5523,
+              "mean_luminance": 0.5214,
+              "p75_luminance": 0.5478,
               "peak_luminance": 0.6494
             },
             "32": {
@@ -4778,27 +4778,27 @@
               "excluded_px": 24,
               "fill": 0.8889,
               "gloss": 0.0,
-              "mean_luminance": 0.4991,
+              "mean_luminance": 0.4979,
               "p75_luminance": 0.5339,
               "peak_luminance": 0.5779
             },
             "96": {
               "chromaticity_degrees": 39.83,
-              "clip_fraction": 0.0179,
+              "clip_fraction": 0.0168,
               "coverage": 0.2003,
               "covered_px": 1846,
               "excluded_px": 154,
               "fill": 0.8391,
-              "gloss": 0.0325,
+              "gloss": 0.033,
               "hole_shares": [
                 0.0455,
                 0.045,
                 0.045
               ],
               "holes": 3,
-              "mean_luminance": 0.5463,
-              "p75_luminance": 0.5478,
-              "peak_luminance": 0.9956,
+              "mean_luminance": 0.5452,
+              "p75_luminance": 0.5457,
+              "peak_luminance": 0.9962,
               "piece_sites": [
                 [
                   1846,
@@ -4862,18 +4862,18 @@
           },
           "checks": {
             "arrival": {
-              "chromaticity_drift_degrees": 1.26,
+              "chromaticity_drift_degrees": 1.25,
               "declared_albedo_luminance": 0.6807,
-              "icon_to_swatch": 0.922,
-              "swatch_to_albedo": 0.87
+              "icon_to_swatch": 0.92,
+              "swatch_to_albedo": 0.868
             },
             "character": null,
             "contrasts": {
               "Panel": {
-                "ink": 9.14
+                "ink": 9.1
               },
               "PanelRaised": {
-                "ink": 7.52
+                "ink": 7.49
               }
             },
             "geometry": {
@@ -4915,15 +4915,15 @@
           "label": "iOS 6 \u00b7 \u03bb 1.00",
           "measurements": {
             "24": {
-              "chromaticity_degrees": 40.04,
+              "chromaticity_degrees": 40.05,
               "clip_fraction": 0.0,
               "coverage": 0.2118,
               "excluded_px": 15,
               "fill": 0.8714,
               "gloss": 0.0,
-              "mean_luminance": 0.5093,
+              "mean_luminance": 0.5076,
               "p75_luminance": 0.5357,
-              "peak_luminance": 0.6176
+              "peak_luminance": 0.6196
             },
             "32": {
               "chromaticity_degrees": 39.95,
@@ -4932,27 +4932,27 @@
               "excluded_px": 20,
               "fill": 0.812,
               "gloss": 0.0,
-              "mean_luminance": 0.4951,
-              "p75_luminance": 0.5339,
+              "mean_luminance": 0.493,
+              "p75_luminance": 0.5292,
               "peak_luminance": 0.5905
             },
             "96": {
-              "chromaticity_degrees": 39.83,
+              "chromaticity_degrees": 39.84,
               "clip_fraction": 0.0017,
               "coverage": 0.1862,
               "covered_px": 1716,
               "excluded_px": 142,
               "fill": 0.8211,
-              "gloss": 0.0093,
+              "gloss": 0.0105,
               "hole_shares": [
                 0.0478,
                 0.0478,
                 0.0478
               ],
               "holes": 3,
-              "mean_luminance": 0.5456,
-              "p75_luminance": 0.55,
-              "peak_luminance": 0.9886,
+              "mean_luminance": 0.5435,
+              "p75_luminance": 0.5474,
+              "peak_luminance": 0.9816,
               "piece_sites": [
                 [
                   1716,

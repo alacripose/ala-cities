@@ -1622,6 +1622,82 @@ effects slice is supposed to derive.
 
 ---
 
+## 8.21 The lens: two real defects, one solver, and a read that moved
+
+**Q208's answer was *change the lens geometry*, and the local measurement said where to aim**
+before any of it was touched. The validator's verdict was that the lens reads as a
+**toothed control disc at all five λ**. Measured on the committed renders, the object was
+the **smoothest in the set** — angular profile cv 0.016–0.116, **zero** radial peaks at
+λ ≥ 0.5, against the gear's 4–8 peaks — so it was not toothed: it was a plain disc with a
+handle that barely protruded. Reach over its own median radius ran **1.21 → 1.00** where the
+reference's handle reaches **1.88×** its ring.
+
+**Defect 1: the handle was aimed off its own spoke.** `box` sets
+`rotation_euler = (0, +angle, 0)`, and a +Y rotation maps the X axis to `−angle` in the XZ
+plane while the call site placed the handle's *centre* at `+angle`. Measured on the built
+object: for a **45°** handle the farthest vertex sat at **75.6°**, only rim was reachable
+along the spoke, and the body's own bounds stopped at **0.6029** against a declared tip of
+**0.8069** — the reference's 1.88 was never reached at all. With the sign corrected the
+tip lands on the spoke by construction (centre `inset + w/2` plus half-length `w/2` equals
+`inset + w`), measured **0.8082 at 48.2°**, and at λ = 1 **0.7501** against a rim at 0.6779.
+
+**Defect 2, and it is the bigger one: the EXACT boolean solver fails at a knife-edge.**
+With the handle correctly aimed, the lens at exactly λ = 0.5 came back as a **handle-shaped
+fragment** — 187 vertices, nothing at all in the negative quadrant, vertices x
+`[0.1443, 0.6365]` where the ring's own radius is 0.464. The consequences downstream were
+all measured: containment **0.0**, cover **0.012**, voids **0**, fill 0.291 against an
+envelope of 0.34–0.70. Isolated by perturbing nothing but the handle angle:
+
+| handle angle | vertices | body |
+|---|---|---|
+| 38.50° | 2719 | intact, symmetric ±0.5580 |
+| **39.00° (declared)** | **187** | **handle fragment only** |
+| 39.01° | 183 | handle fragment only |
+| 39.50° | 187 | handle fragment only |
+| 40.00° | 2721 | intact, symmetric ±0.5580 |
+
+The handle deliberately starts inside the bore **and is cut by it**, so at those angles it
+crosses the cutter's surface at a near-tangency the exact solver cannot resolve. The solver
+is the fix, and it was chosen by measurement rather than preference: with **`MANIFOLD`**
+all five of those angles give the intact body (2629–2639 vertices, symmetric); **`FAST`**
+produced no geometry at all. `shapes.WELD_SOLVER` is now `MANIFOLD` for welds and cuts, and
+the three numbers are in the source beside it.
+
+**Nothing else moved, and that was checked rather than assumed.** The full smoke reports
+**30 of 30 samples inside their envelopes**; comparing the manifest against the committed
+one, `vocab-settings`, `tool-road`, `ticket` and the rest are **bit-identical** per
+containment and verdict, and only `tool-inspect` moved:
+
+| lens | λ = 0 | 0.25 | 0.5 | 0.75 | 1.0 |
+|---|---|---|---|---|---|
+| containment, committed → now | 0.2815 → 0.247 | 0.5396 → 0.5211 | 0.7136 | 0.8457 | 0.9396 → 0.9149 |
+| handle reach / median, before → after | 1.21 → **1.72** | 1.19 → **1.57** | 1.04 → **1.43** | 1.04 → 1.19 | 1.00 → 1.10 |
+
+**And the read moved with it.** Same model, same matte, same closed set, calibration still
+passing:
+
+```
+before   λ = 0.0   gear      λ = 0.25  gear      λ = 0.5   gear
+         λ = 0.75  gear      λ = 1.0   gear              → 0 of 5 read as a lens
+
+after    λ = 0.0   lens ✓    λ = 0.25  lens ✓    λ = 0.5   lens ✓
+         λ = 0.75  road      λ = 1.0   gear              → 3 of 5 read as a lens
+```
+
+**The remainder is named, not rounded off.** The failure moved to the **iOS 6 end**, and
+the reason is arithmetic in the declaration: `handle_length` *shrinks* along λ (1.48 → 1.1)
+while the rim stack grows (`rings` 1 → 3, `ring_ratio` 0.74 → 0.86, `collar_width` 0 →
+0.16), so the outermost rim reaches **1.36 ×** the ring's radius against a handle tip of
+**1.50 ×** — a protrusion of 10 %. The clamp added here holds the authored rim stack inside
+the measured tip, but it can only guarantee *one rim-wall* of protrusion, which is what
+λ = 1 measures. Making the iOS 6 end read needs one of: a **declared protrusion proportion**
+for the handle at that end (measured from an iOS 6 reference if one exists for this part,
+authored otherwise and marked as such), or a rim stack that yields further than one wall.
+That is the next decision on this family, and it is the same fork the road's md1 anchor
+already went through.
+
+---
+
 ## Still open, and deliberately so
 
 * **`tool-zone`** — the locator half, unchanged by this campaign (a166).

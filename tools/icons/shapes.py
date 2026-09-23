@@ -1901,15 +1901,27 @@ def _cut(bpy, body, cutters):
     """
     _bake(bpy, body)
     for cutter in cutters:
+        _bake(bpy, cutter)
         boolean = body.modifiers.new(name="declared void", type="BOOLEAN")
         boolean.operation = "DIFFERENCE"
         boolean.object = cutter
-        boolean.solver = "EXACT"
+        boolean.solver = WELD_SOLVER
     for modifier in [m for m in body.modifiers if m.type == "BOOLEAN"]:
         _apply_modifier(bpy, body, modifier)
     for cutter in cutters:
         bpy.data.objects.remove(cutter, do_unlink=True)
     return body
+
+
+#: The solver every weld and cut uses, and it is a **measured** choice rather than a
+#: preference. With `EXACT`, the lens broke at a knife-edge: at a handle angle of 38.5°
+#: and 40.0° the body came back intact (2719/2721 vertices, symmetric in x and z) while
+#: 39.00°, 39.01° and 39.50° returned a **handle-shaped fragment** — 187 vertices, nothing
+#: in the negative quadrant — because the handle crosses the bore cutter's surface at a
+#: near-tangency the exact solver cannot resolve. `FAST` produced no geometry at all on
+#: the same inputs. `MANIFOLD` produced the intact body at every one of those angles
+#: (2629–2639 vertices, symmetric), which is what a solver is for.
+WELD_SOLVER = "MANIFOLD"
 
 
 def _weld(bpy, body, others):
@@ -1925,10 +1937,20 @@ def _weld(bpy, body, others):
     for other in others:
         if other is None:
             continue
+        # **Every operand is baked first.** A feature built by `box` or `ring` still
+        # carries its own unapplied bevel and weighted-normal modifiers when it reaches
+        # the union, and the EXACT solver evaluates an operand's modifier stack in ways
+        # that are not the same as applying it — measured, the lens at exactly λ = 0.5
+        # came back as a handle-shaped fragment in the +x/+z quadrant with the whole
+        # housing, rim and collar gone (vertices x [0.1443, 0.6365] where the ring's own
+        # radius is 0.464), while λ = 0.4 and 0.6 were symmetric and correct. Baking the
+        # operands removes the difference between what the solver sees and the mesh it is
+        # welding.
+        _bake(bpy, other)
         boolean = body.modifiers.new(name="welded feature", type="BOOLEAN")
         boolean.operation = "UNION"
         boolean.object = other
-        boolean.solver = "EXACT"
+        boolean.solver = WELD_SOLVER
     for modifier in [m for m in body.modifiers if m.type == "BOOLEAN"]:
         _apply_modifier(bpy, body, modifier)
     for other in others:
@@ -2262,16 +2284,36 @@ def lens_body(bpy, name, material, vector, radius=None, depth=0.34):
     # first**: a count of 1 is one thin ring rather than a ring plus a decoration,
     # which is what the reference measures and what the first attempt got wrong by
     # welding a torus *on top of* a housing that was already the ring.
+    # The handle is read off the **ring**, which is the measurement's own meaning: the
+    # reference's handle reaches 1.88× its ring's outer radius, and 1.88 is what
+    # `inset + handle_length` gives. Its tip is the object's outer bound, and the rim
+    # stack below is clamped inside that bound.
+    handle_inset = outer * 0.4
+    tip = handle_inset + outer * vector["handle_length"]
+    # Why the clamp exists, measured: the *authored* rim stack outgrew the *measured*
+    # handle. At λ = 1 the rims (three rings plus a collar) reached ≈1.8 × the ring's
+    # outer radius against a handle tip of 1.5 ×, so the handle vanished inside the disc
+    # — and the validator then read the object as "a toothed control disc" at all five λ
+    # samples with a handle reach of 1.03 (3 %). The same rule the road's curb already
+    # followed applies: where a measured number and an authored one disagree, the
+    # authored one yields. The outermost rim stops one rim-wall short of the tip, so the
+    # handle always protrudes by at least as much as the rim beside it is thick.
+    stack_limit = tip - rim_wall
+
     cursor = outer
     whole, fraction = families.features(vector["rings"])
     rims = [(1.0, index) for index in range(1, whole)]
     if fraction > 0.0:
         rims.append((fraction, whole))
+    clamped = []
     for extent, index in rims:
         # Each rim overlaps the last (`major - minor` sits inside it) so the weld has
         # something to weld, and the partial rim's **wall is its extent** -- a rim that
         # has not grown yet has no wall, which is a187's rule applied to a rim.
         minor = rim_wall * extent
+        if cursor + minor * 2.0 > stack_limit:
+            minor = max(1e-3, (stack_limit - cursor) * 0.5)
+            clamped.append(index)
         major = cursor + minor * 0.5
         features.append(ring(bpy, f"{name} rim {index}", material, 0.0, 0.0,
                              major, minor, y=0.0))
@@ -2281,10 +2323,17 @@ def lens_body(bpy, name, material, vector, radius=None, depth=0.34):
         # A collar is a rim too, and it has to be one: a *cylinder* welded around the
         # housing would fill the bore it is supposed to leave open.
         minor = collar * 0.5
+        if cursor + minor * 2.0 > stack_limit:
+            minor = max(1e-3, (stack_limit - cursor) * 0.5)
+            clamped.append("collar")
         major = cursor + minor * 0.5
         features.append(ring(bpy, f"{name} collar", material, 0.0, 0.0, major, minor,
                              y=0.0))
         cursor = major + minor
+    stack_note = (
+        f"ring {outer:.4f} · handle tip {tip:.4f} · outermost rim {cursor:.4f}"
+        f"{' · clamped ' + ','.join(str(item) for item in clamped) if clamped else ' · unborn'}"
+    )
     # The handle starts **inside** the ring rather than at its edge: a handle left
     # touching the rim is the floating-component class a183 refuses, and the first run
     # measured exactly that -- the body arriving in two pieces, 95 px of handle
@@ -2293,15 +2342,26 @@ def lens_body(bpy, name, material, vector, radius=None, depth=0.34):
     # The reach is read off the **ring**, not off the outermost rim: tying it to
     # `cursor` made the handle grow every time a ring was added, which grew the
     # object's bounds and took the accent's slot out of the frame at the iOS 6 end.
+    # **The box's angle is negated, and that is a measured correction.** `box` sets
+    # `rotation_euler = (0, +angle, 0)`, and a +Y rotation maps the X axis to `-angle` in
+    # the XZ plane while this call places the handle's *centre* at `+angle` — so the long
+    # axis pointed mirrored off its own spoke. Measured on the built object: the farthest
+    # vertex sat at **75.6°** for a 45° handle, only the rim was reachable along the spoke,
+    # and the declared tip (0.8069, which is the reference's 1.88× the ring) was never
+    # reached — the body's own bounds stopped at 0.6029. With the sign corrected the far
+    # end lands on the tip by construction: centre `inset + w/2` plus half-length `w/2`
+    # equals `inset + w`, which is the tip.
     angle = math.radians(vector["handle_angle"])
-    reach = outer * vector["handle_length"]
-    inset = outer * 0.4
     features.append(box(bpy, f"{name} handle", material,
-                        math.cos(angle) * (inset + reach * 0.5),
-                        math.sin(angle) * (inset + reach * 0.5),
-                        reach, outer * 0.22, depth=depth * 0.62,
-                        angle=vector["handle_angle"]))
+                        math.cos(angle) * (handle_inset + (tip - handle_inset) * 0.5),
+                        math.sin(angle) * (handle_inset + (tip - handle_inset) * 0.5),
+                        tip - handle_inset, outer * 0.22, depth=depth * 0.62,
+                        angle=-vector["handle_angle"]))
     _weld(bpy, housing, features)
+    # Recorded on the object rather than in a log line: the rim stack's own numbers, so the
+    # harness can report how far the handle protrudes at each λ instead of a reader
+    # assuming it does.
+    housing["handle_stack"] = stack_note
     # The bore is measured against the **object's half-span**, which is the frame the
     # reference's own 0.51 was read in, not against the ring's outer radius.
     bore_cutter = cylinder(bpy, f"{name} bore cutter", material, 0.0, 0.0, bore,
