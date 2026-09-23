@@ -1,0 +1,374 @@
+{
+  "asset_summary": {
+    "byte_count": 2794001,
+    "file_count": 186
+  },
+  "binaries": [
+    "src/main.rs"
+  ],
+  "canonical": false,
+  "generator": "tools/design/source_scan.py",
+  "inferred_capabilities": [
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "assets/icons/manifest.json"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "assets/icons/review.json"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-011",
+      "path": "playtest/C1/RESULT.md"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-011",
+      "path": "playtest/C1/RUN.md"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-011",
+      "path": "playtest/C2/RESULT.md"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-011",
+      "path": "playtest/C7/RESULT.md"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-011",
+      "path": "src/agentledger.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-009",
+      "path": "src/audio.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-012",
+      "path": "src/bin/agent.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-012",
+      "path": "src/bin/pick.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-012",
+      "path": "src/bin/verify.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-012",
+      "path": "src/buildinfo.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-009",
+      "path": "src/design.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-005",
+      "path": "src/gov/mod.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-006",
+      "path": "src/gov/season.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-009",
+      "path": "src/hud.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "src/iconreview.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "src/icons.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-008",
+      "path": "src/main.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/chain.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/effects.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/generated.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/geology.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/ledger.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/mod.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/schema.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/surface.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-002",
+      "path": "src/materials/world.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-009",
+      "path": "src/render.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-011",
+      "path": "src/session.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-003",
+      "path": "src/sim/citizen.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-001",
+      "path": "src/sim/mod.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-001",
+      "path": "src/sim/rng.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-001",
+      "path": "src/sim/road.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-003",
+      "path": "src/sim/task.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-001",
+      "path": "src/sim/terrain.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-009",
+      "path": "src/text.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-009",
+      "path": "src/ui.rs"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/OPENPBR.md"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/_measure_containment.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/_measure_marks.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/_probe_lens.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/_smoke_families.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/_smoke_road_width.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/_sweep_world.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/decide.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/families.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/generate.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/openpbr.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/palette.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/reference_blend.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/reference_settings_preview.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/rig.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/shapes.py"
+    },
+    {
+      "confidence": "source-derived",
+      "family_id": "CAP-010",
+      "path": "tools/icons/validate.py"
+    }
+  ],
+  "kind": "source-capability-reference",
+  "modules": [
+    "src/agentledger.rs",
+    "src/audio.rs",
+    "src/bin/agent.rs",
+    "src/bin/pick.rs",
+    "src/bin/verify.rs",
+    "src/buildinfo.rs",
+    "src/design.rs",
+    "src/gov/mod.rs",
+    "src/gov/season.rs",
+    "src/hud.rs",
+    "src/iconreview.rs",
+    "src/icons.rs",
+    "src/lib.rs",
+    "src/main.rs",
+    "src/materials/chain.rs",
+    "src/materials/effects.rs",
+    "src/materials/generated.rs",
+    "src/materials/geology.rs",
+    "src/materials/ledger.rs",
+    "src/materials/mod.rs",
+    "src/materials/schema.rs",
+    "src/materials/surface.rs",
+    "src/materials/world.rs",
+    "src/render.rs",
+    "src/session.rs",
+    "src/sim/citizen.rs",
+    "src/sim/mod.rs",
+    "src/sim/rng.rs",
+    "src/sim/road.rs",
+    "src/sim/task.rs",
+    "src/sim/terrain.rs",
+    "src/text.rs",
+    "src/ui.rs"
+  ],
+  "playtest_file_count": 15,
+  "schema_version": 1,
+  "source_counts": {
+    "json_files": 23,
+    "markdown_files": 25,
+    "python_files": 35,
+    "ron_files": 0,
+    "rust_files": 33,
+    "toml_files": 2,
+    "total_source_files": 118,
+    "wgsl_files": 0
+  },
+  "source_digest": "0de1da3395f04a197356cd0daf7b9c69f73994a0bf02de13304fa4a57aa5da80",
+  "tools": [
+    "tools/design/__init__.py",
+    "tools/design/__main__.py",
+    "tools/design/cli.py",
+    "tools/design/coverage.py",
+    "tools/design/extract.py",
+    "tools/design/project.py",
+    "tools/design/source_scan.py",
+    "tools/design/tests/__init__.py",
+    "tools/design/tests/test_cli.py",
+    "tools/design/tests/test_coverage.py",
+    "tools/design/tests/test_extract.py",
+    "tools/design/tests/test_project.py",
+    "tools/design/tests/test_source_scan.py",
+    "tools/design/tests/test_validate.py",
+    "tools/design/validate.py",
+    "tools/design_verify.py",
+    "tools/icons/_measure_containment.py",
+    "tools/icons/_measure_marks.py",
+    "tools/icons/_probe_lens.py",
+    "tools/icons/_smoke_families.py",
+    "tools/icons/_smoke_road_width.py",
+    "tools/icons/_sweep_world.py",
+    "tools/icons/decide.py",
+    "tools/icons/families.py",
+    "tools/icons/generate.py",
+    "tools/icons/openpbr.py",
+    "tools/icons/palette.py",
+    "tools/icons/reference_blend.py",
+    "tools/icons/reference_settings_preview.py",
+    "tools/icons/rig.py",
+    "tools/icons/shapes.py",
+    "tools/icons/validate.py",
+    "tools/materials/declare.py",
+    "tools/materials/emit.py",
+    "tools/materials/schema.py"
+  ]
+}

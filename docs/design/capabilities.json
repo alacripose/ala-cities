@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "design_revision": 1,
+  "generator": "tools/design/cli.py project",
+  "capabilities": [
+    {"id": "CAP-001", "name": "World and time", "status": "draft", "packet": "capabilities/CAP-001.json"},
+    {"id": "CAP-002", "name": "Matter and transformations", "status": "draft", "packet": "capabilities/CAP-002.json"},
+    {"id": "CAP-003", "name": "Work and agents", "status": "draft", "packet": "capabilities/CAP-003.json"},
+    {"id": "CAP-004", "name": "Settlement and economy", "status": "draft", "packet": "capabilities/CAP-004.json"},
+    {"id": "CAP-005", "name": "Authority and governance", "status": "draft", "packet": "capabilities/CAP-005.json"},
+    {"id": "CAP-006", "name": "Evidence and records", "status": "draft", "packet": "capabilities/CAP-006.json"},
+    {"id": "CAP-007", "name": "Persistence and replay", "status": "draft", "packet": "capabilities/CAP-007.json"},
+    {"id": "CAP-008", "name": "Client and input", "status": "draft", "packet": "capabilities/CAP-008.json"},
+    {"id": "CAP-009", "name": "Presentation and interface", "status": "draft", "packet": "capabilities/CAP-009.json"},
+    {"id": "CAP-010", "name": "Assets and review tools", "status": "draft", "packet": "capabilities/CAP-010.json"},
+    {"id": "CAP-011", "name": "Playtest and feedback", "status": "draft", "packet": "capabilities/CAP-011.json"},
+    {"id": "CAP-012", "name": "Build, verification, and delivery", "status": "draft", "packet": "capabilities/CAP-012.json"}
+  ]
+}

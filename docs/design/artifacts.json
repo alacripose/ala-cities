@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "design_revision": 1,
+  "generator": "tools/design/cli.py project",
+  "artifacts": []
+}

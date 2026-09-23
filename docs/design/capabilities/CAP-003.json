@@ -1,0 +1,17 @@
+{
+  "id": "CAP-003",
+  "name": "Work and agents",
+  "review_state": "draft",
+  "purpose": [],
+  "actors_consumers": [],
+  "vocabulary": [],
+  "invariants": [],
+  "interface": [],
+  "authoritative_model": [],
+  "flows": [],
+  "failure_refusal": [],
+  "verification": [],
+  "artifact_dispositions": [],
+  "inherited_decision_coverage": [],
+  "unresolved_questions": ["Work and agents packet has not been grilled"]
+}

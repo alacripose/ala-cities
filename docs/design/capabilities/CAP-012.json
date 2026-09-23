@@ -1,0 +1,17 @@
+{
+  "id": "CAP-012",
+  "name": "Build, verification, and delivery",
+  "review_state": "draft",
+  "purpose": [],
+  "actors_consumers": [],
+  "vocabulary": [],
+  "invariants": [],
+  "interface": [],
+  "authoritative_model": [],
+  "flows": [],
+  "failure_refusal": [],
+  "verification": [],
+  "artifact_dispositions": [],
+  "inherited_decision_coverage": [],
+  "unresolved_questions": ["Build, verification, and delivery packet has not been grilled"]
+}

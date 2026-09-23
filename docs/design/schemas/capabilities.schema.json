@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ala-cities.local/schemas/capabilities.schema.json",
+  "title": "Capability graph",
+  "type": "object",
+  "required": ["schema_version", "design_revision", "capabilities"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "design_revision": {"type": "integer", "minimum": 1},
+    "generator": {"type": "string"},
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "status", "packet"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^CAP-[0-9]{3}$"},
+          "name": {"type": "string", "minLength": 1},
+          "status": {"enum": ["draft", "reviewed", "approved", "retired"]},
+          "packet": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

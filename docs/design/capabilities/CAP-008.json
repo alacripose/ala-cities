@@ -1,0 +1,17 @@
+{
+  "id": "CAP-008",
+  "name": "Client and input",
+  "review_state": "draft",
+  "purpose": [],
+  "actors_consumers": [],
+  "vocabulary": [],
+  "invariants": [],
+  "interface": [],
+  "authoritative_model": [],
+  "flows": [],
+  "failure_refusal": [],
+  "verification": [],
+  "artifact_dispositions": [],
+  "inherited_decision_coverage": [],
+  "unresolved_questions": ["Client and input packet has not been grilled"]
+}

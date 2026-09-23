@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ala-cities.local/schemas/decisions.schema.json",
+  "title": "Decision ledger",
+  "type": "object",
+  "required": ["schema_version", "design_revision", "decisions"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "design_revision": {"type": "integer", "minimum": 1},
+    "generator": {"type": "string"},
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "aliases", "source_file", "source_line", "source_digest", "question_text", "review_state"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^C[0-9]+-Q[0-9]{3}$"},
+          "aliases": {"type": "array", "items": {"type": "string", "pattern": "^Q[0-9]+[a-z]?$"}},
+          "source_file": {"type": "string"},
+          "source_line": {"type": "integer", "minimum": 1},
+          "source_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "question_text": {"type": "string"},
+          "answer_summary": {"type": "string"},
+          "review_state": {"enum": ["unreviewed", "reviewed", "approved"]},
+          "disposition": {"type": ["string", "null"]},
+          "capability_id": {"type": ["string", "null"]},
+          "target_stage": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

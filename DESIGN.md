@@ -90,5 +90,6 @@ Every stage has a **gate**: named commands with expected **readings**, the
 | Q249 | design gate | ✔ named `design-verify` command locally and in CI/release gates |
 
 *Rounds 2–6 (Q217–Q249) are answered in `docs/GRILLING-C11.md`. The typed
-package and Python design CLI are now specified; the inherited-decision corpus
-and capability-graph drafts are the live blockers for world truth and replay.*
+package and Python design CLI are now specified and the first verified drafts
+are generated; inherited-decision review (#17) and capability-graph review
+(#18) remain the live blockers for world truth and replay (#16).*

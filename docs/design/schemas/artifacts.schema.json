@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ala-cities.local/schemas/artifacts.schema.json",
+  "title": "Logical artifact census",
+  "type": "object",
+  "required": ["schema_version", "design_revision", "artifacts"],
+  "properties": {
+    "schema_version": {"type": "integer", "minimum": 1},
+    "design_revision": {"type": "integer", "minimum": 1},
+    "generator": {"type": "string"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "producer", "disposition"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^ART-[0-9]{3}$"},
+          "name": {"type": "string", "minLength": 1},
+          "producer": {"type": "string"},
+          "disposition": {"enum": ["unreviewed", "keep", "migrate", "retire"]},
+          "source_digest": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

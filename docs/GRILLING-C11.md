@@ -613,3 +613,29 @@ the approved twelve-family taxonomy, the foundational evidence projection, the
 measured source baseline, and the world-truth/replay frontier. The diagram is a
 review projection, not the canonical capability graph; dependency edges and
 sub-capabilities still require human approval through #18 and #16.
+
+### Typed package implementation checkpoint — 2026-09-23
+
+The approved design-package slice is implemented in `tools/design/` with
+stdlib-only extraction, validation, source scanning, and projection. The
+canonical package roots and schemas are under `docs/design/`; the inherited
+ledger and source-capability views are explicitly generated and noncanonical.
+
+Verified readings:
+
+- inherited extraction: 453 declarations, 7 unparsed headings, 70 reused
+  aliases, 2 numeric gaps;
+- current C11 projection: 39 reviewed rows, Q211–Q249;
+- source view: clean-worktree digest fresh, 118 source files, 55 source-derived
+  hints;
+- Python design suite: 28 tests pass;
+- `cargo clippy --all-targets`: pass;
+- `cargo test`: six pre-existing material-table failures, with no Rust source
+  changed by this slice;
+- `python tools/design_verify.py`: intentionally non-zero with exactly the
+  twelve unresolved capability packet questions.
+
+Issues [#17](https://github.com/alacripose/ala-cities/issues/17) and
+[#18](https://github.com/alacripose/ala-cities/issues/18) remain open for human
+review. #16 world truth and replay remains blocked until those reviews and the
+capability packet are resolved.

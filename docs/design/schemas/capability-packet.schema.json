@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ala-cities.local/schemas/capability-packet.schema.json",
+  "title": "Capability design packet",
+  "type": "object",
+  "required": [
+    "id", "name", "review_state", "purpose", "actors_consumers", "vocabulary",
+    "invariants", "interface", "authoritative_model", "flows", "failure_refusal",
+    "verification", "artifact_dispositions", "inherited_decision_coverage",
+    "unresolved_questions"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^CAP-[0-9]{3}$"},
+    "name": {"type": "string", "minLength": 1},
+    "review_state": {"enum": ["draft", "reviewed", "approved"]},
+    "purpose": {"type": "array"},
+    "actors_consumers": {"type": "array"},
+    "vocabulary": {"type": "array"},
+    "invariants": {"type": "array"},
+    "interface": {"type": "array"},
+    "authoritative_model": {"type": "array"},
+    "flows": {"type": "array"},
+    "failure_refusal": {"type": "array"},
+    "verification": {"type": "array"},
+    "artifact_dispositions": {"type": "array"},
+    "inherited_decision_coverage": {"type": "array"},
+    "unresolved_questions": {"type": "array", "items": {"type": "string"}}
+  }
+}

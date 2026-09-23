@@ -1,0 +1,592 @@
+{
+  "decisions": [
+    {
+      "aliases": [
+        "Q211"
+      ],
+      "answer_summary": "✔ ⚠ **Overridden — nothing is torched.** Verbatim answer opening this file. So:",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q211",
+      "question_text": "— what \"the old shit does not matter\" covers",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 51,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q212"
+      ],
+      "answer_summary": "✔ **(a) confirmed.** The claim is the one thing carried across.",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q212",
+      "question_text": "— what the game is",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 66,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q213"
+      ],
+      "answer_summary": "✔ ⚠ **Overridden — Rust with free crates.** Same language; any crate is on the",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q213",
+      "question_text": "— the stack",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 76,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q214"
+      ],
+      "answer_summary": "✔ **(c) confirmed.** Land, gather, make, survive; then the next stages are",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q214",
+      "question_text": "— the finish line of \"an actual game\"",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 87,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q215"
+      ],
+      "answer_summary": "✔ ⚠ **Overridden — short *and* records**: `DESIGN.md` plus per-stage decision",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q215",
+      "question_text": "— where the new design lives",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 95,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q216"
+      ],
+      "answer_summary": "✔ **(a) confirmed.** Done this session: #1 carries the record, #2–#11 close as",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q216",
+      "question_text": "— the GitHub map (#1 and children #2–#11)",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 102,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q217"
+      ],
+      "answer_summary": "✔ **A confirmed.** Deterministic replay, conservation, retirement rather than",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q217",
+      "question_text": "— which principles are immutable",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 118,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q218"
+      ],
+      "answer_summary": "✔ ⚠ **D overridden — the whole game redesign comes first.** Every gameplay system",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q218",
+      "question_text": "— what must be redesigned before playable product work",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 135,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q219"
+      ],
+      "answer_summary": "✔ **Domain-first, internal layers confirmed.** A domain owns its behavior and",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q219",
+      "question_text": "— how domain, technical layers, and crates relate",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 148,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q220"
+      ],
+      "answer_summary": "✔ **A confirmed.** The standard library and established crates are free to be used.",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q220",
+      "question_text": "— what replaces the hand-rolled-wheels rule",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 162,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q221"
+      ],
+      "answer_summary": "✔ **A+C confirmed, with two explicit answers.**",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q221",
+      "question_text": "— what makes a stage pass",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 177,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q222"
+      ],
+      "answer_summary": "✔ **A confirmed.**",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q222",
+      "question_text": "— where each kind of truth is stored",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 201,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q223"
+      ],
+      "answer_summary": "✔ **A confirmed.** Two runs are equivalent when their canonical domain projections",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q223",
+      "question_text": "— what makes replayed worlds semantically equivalent",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 224,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q224"
+      ],
+      "answer_summary": "✔ **A confirmed.** The census covers gameplay, simulation, content declarations,",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q224",
+      "question_text": "— what census defines the whole-game scope",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 241,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q225"
+      ],
+      "answer_summary": "✔ **A confirmed.** Q218 is narrowed, not reversed. The **whole-game design",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q225",
+      "question_text": "— what “whole game first” requires before Stage 1",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 254,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q226"
+      ],
+      "answer_summary": "✔ **A confirmed.** A parallel executable specification, model, or probe may be",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q226",
+      "question_text": "— how parallel work coexists with rework in place",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 269,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q227"
+      ],
+      "answer_summary": "✔ **A confirmed.** Capabilities are re-grilled breadth-first along the frontier",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q227",
+      "question_text": "— in what order the inherited questions return",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 284,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q228"
+      ],
+      "answer_summary": "✔ **A confirmed.** Every inherited save, season record, schema, manifest, review",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q228",
+      "question_text": "— what compatibility burden inherited artifacts carry",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 300,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q229"
+      ],
+      "answer_summary": "✔ **Campaign-scoped IDs confirmed.** C1–C10 use dense per-campaign canonical IDs",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q229",
+      "question_text": "— what identity every inherited decision carries",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 315,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q230"
+      ],
+      "answer_summary": "✔ **Typed JSON ledger confirmed.** Each row carries canonical ID, aliases, exact",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q230",
+      "question_text": "— what the canonical re-grill ledger is",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 329,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q231"
+      ],
+      "answer_summary": "✔ **Immutable evidence confirmed.** C1–C10 remain byte-for-byte historical",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q231",
+      "question_text": "— what happens to C1–C10",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 343,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q232"
+      ],
+      "answer_summary": "✔ **Dense per-campaign sequence confirmed.** Primary declarations and satellites",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q232",
+      "question_text": "— how missing, malformed, or reused identities are handled",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 355,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q233"
+      ],
+      "answer_summary": "✔ **Two-way typed coverage confirmed.** The extractor recognizes the source",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q233",
+      "question_text": "— what machine gate proves re-grill coverage",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 371,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q234"
+      ],
+      "answer_summary": "✔ **Evidence-backed disposition confirmed.** Every inherited row begins",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q234",
+      "question_text": "— what evidence a disposition requires",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 385,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q235"
+      ],
+      "answer_summary": "✔ **Confirmed.** The canonical package is `docs/design/`. It holds the typed",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q235",
+      "question_text": "— where the canonical typed design data lives",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 402,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q236"
+      ],
+      "answer_summary": "✔ **Confirmed.** The ledger is a normalized versioned object. Stable ordering,",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q236",
+      "question_text": "— how the typed ledger is structured",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 415,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q237"
+      ],
+      "answer_summary": "✔ **Twelve families confirmed:**",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q237",
+      "question_text": "— what capability taxonomy covers the whole system",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 427,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q238"
+      ],
+      "answer_summary": "✔ **World truth and replay confirmed.** The first capability defines vocabulary,",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q238",
+      "question_text": "— which capability opens the breadth-first frontier",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 450,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q239"
+      ],
+      "answer_summary": "✔ **Confirmed.** Authority, evidence, retirement, and record ownership are",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q239",
+      "question_text": "— how authority and evidence constrain future capabilities",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 462,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q240"
+      ],
+      "answer_summary": "✔ **Confirmed.** Every capability packet states: purpose; actors and consumers;",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q240",
+      "question_text": "— what one capability design packet must contain",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 475,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q241"
+      ],
+      "answer_summary": "✔ **Generated then approved confirmed.** A source/document extractor produces a",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q241",
+      "question_text": "— who authors the canonical capability graph",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 489,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q242"
+      ],
+      "answer_summary": "✔ **Logical artifact provenance confirmed.** The census records logical",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q242",
+      "question_text": "— how generated asset trees enter the artifact census",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 504,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q243"
+      ],
+      "answer_summary": "✔ **Separated fact files confirmed.** The package uses `decisions.json`,",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q243",
+      "question_text": "— how facts are separated inside `docs/design/`",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 522,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q244"
+      ],
+      "answer_summary": "✔ **Python design CLI confirmed.** `tools/design/` owns extraction, validation,",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q244",
+      "question_text": "— what authors and validates the design package",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 535,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q245"
+      ],
+      "answer_summary": "✔ **Check in and verify confirmed.** Canonical JSON, generated human views, and",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q245",
+      "question_text": "— which generated artifacts live in Git",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 548,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q246"
+      ],
+      "answer_summary": "✔ **Schema plus revision confirmed.** Every package root carries an integer",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q246",
+      "question_text": "— how the package evolves",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 559,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q247"
+      ],
+      "answer_summary": "✔ **Generated reference file confirmed.**",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q247",
+      "question_text": "— where the source-derived capability view lives",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 572,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q248"
+      ],
+      "answer_summary": "✔ **One JSON per capability confirmed.** Each of the twelve capability packets",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q248",
+      "question_text": "— how capability packets are stored",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 586,
+      "target_stage": null
+    },
+    {
+      "aliases": [
+        "Q249"
+      ],
+      "answer_summary": "✔ **Local plus CI gate confirmed.** `design-verify` validates schemas,",
+      "capability_id": null,
+      "disposition": null,
+      "id": "C11-Q249",
+      "question_text": "— where the design gate runs",
+      "review_state": "reviewed",
+      "source_digest": "4627fe3e0a9bd9108edd553642f459b64774bf05efe1d7d8560c22122930baad",
+      "source_file": "GRILLING-C11.md",
+      "source_line": 598,
+      "target_stage": null
+    }
+  ],
+  "design_revision": 1,
+  "generator": "tools/design/project.py",
+  "schema_version": 1
+}

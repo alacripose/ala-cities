@@ -1,0 +1,17 @@
+{
+  "id": "CAP-005",
+  "name": "Authority and governance",
+  "review_state": "draft",
+  "purpose": [],
+  "actors_consumers": [],
+  "vocabulary": [],
+  "invariants": [],
+  "interface": [],
+  "authoritative_model": [],
+  "flows": [],
+  "failure_refusal": [],
+  "verification": [],
+  "artifact_dispositions": [],
+  "inherited_decision_coverage": [],
+  "unresolved_questions": ["Authority and governance packet has not been grilled"]
+}
