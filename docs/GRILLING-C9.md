@@ -1450,3 +1450,55 @@ went up".
 **granting** land that is not yours remains an office act (Q137); overlaps are disputes (Q122) and trespass
 needs neither claim nor permission (Q126). So the founding party's arrival *is* a set of claims on the map —
 which is the first thing in this world that is true without anyone's permission.
+
+---
+
+## Round 26 — forms, dates, and the queue
+
+All six answered (a).
+
+### Q154 — the shape of a land claim
+
+**A set of tiles**, canonical, with rectangles and dragging being ways of *inputting* a set. A rectangle cannot
+express a mine following a seam or a farm along a bank, and *storing the set rather than the gesture* keeps a
+claim independent of how the claimant drew it.
+
+### Q155 — effective dates
+
+**Declared by the enacting act, and backdating is possible but must be explicit and is recorded.** Administrative
+layers take effect per their own declaration but **never earlier than the statute that authorises them**. So
+retroactivity is a **choice with a consequence** — a citizen can be held to a rule that was not law when they
+acted, which is exactly the kind of case Q135's appeals exist to hear, and exactly the kind of statute citizens
+can campaign against.
+
+### Q156 — licence versus pardon
+
+**Different clause kinds, and conflating them is refused.** A *licence* changes what is an offence (future
+acts); a *pardon or amnesty* changes what a **record** means (past acts). A clause that pre-pardons is refused
+at enactment as unresolvable. The same discipline as everywhere else in this record: **two things that behave
+differently must not share a name.**
+
+### Q157 — a citizen's account
+
+**A derived view, computed from the underlying records every time it is read — never stored.** The records are
+the truth and a citizen's standing is always **recomputable from history**, so a save can be checked against its
+own record and a replay produces the same accounts.
+
+### Q158 — the founding compact
+
+**A declared minimum, written unanimously.** The compact must name its parties, its **territory** (the initial
+land claims), the **first offices and their scopes**, the **rule for amending it**, and the **terms under which
+new citizens join**. Unanimous at t=0, because three of five imposing a compact on the other two is a faction
+rather than a founding.
+
+The schema is load-bearing rather than administrative: Q144 refuses clauses that contradict the compact, which
+requires clauses to be **typed** — free prose cannot be checked, so an unstructured compact makes the
+constitutional check impossible rather than lenient. And *the terms of joining* is the honest answer to Q52's
+drifters: **immigration is a statute, not a spawn.**
+
+### Q159 — conversion, and the run
+
+**On the holder's request, oldest-first, against the issuer's holdings.** A queue forms and **a run is possible**,
+and the queue's length is a number citizens can read **before** deciding whether work is worth their time — which
+is where Q90's reservation finally touches something real. Round 8 chose a 20 % reserve *because* a run should
+be calculable rather than vibes; (b) and (c) would have removed the calculation.
