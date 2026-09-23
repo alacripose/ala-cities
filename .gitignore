@@ -39,3 +39,8 @@ __pycache__/
 .idea/
 Thumbs.db
 desktop.ini
+
+# Vendored third-party skill bodies, installed from the repos named in AGENTS.md.
+# `skills-lock.json` records what came from where and at which ref; reinstall with
+# `npx skills add <owner/repo> --yes`.
+/.agents/skills/
