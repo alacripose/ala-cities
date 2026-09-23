@@ -280,6 +280,59 @@ impl BuildingKind {
     }
 }
 
+/// One structure's material provenance: where its mass actually came from (round 11's Q75).
+///
+/// The record asked for **tile lineage** rather than a fungible total, and this is what that
+/// buys: a ruin knows what it is made of and where that came from, salvage can be reasoned about
+/// without a second accounting of the whole world, and "this house is 100 t of brick" has a
+/// witness per gram instead of an assertion.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaterialLineage {
+    /// The tile the ground gave it up from.
+    pub tile: u32,
+    /// The substance as it came out of the ground — ore, not steel; the substance vocabulary is
+    /// what the ground speaks, and processing is a later link in the chain that will have its own
+    /// rows here rather than rewriting these.
+    pub substance: String,
+    /// How much of it, in grams, exactly.
+    pub grams: i64,
+}
+
+/// A refusal to build, because the world could not supply the mass.
+///
+/// Round 11's Q74 answered that a refusal **files a case** rather than passing quietly: the
+/// shortfall is a thing that happened to the world, and the world needs to be able to say what
+/// it wanted, what it found, and from what kind of material. This type is the claim; the case is
+/// filed by whoever asked — and if nobody asks, nothing was built either way.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MaterialShortfall {
+    pub site: u32,
+    pub family: String,
+    pub wanted_g: i64,
+    pub found_g: i64,
+}
+
+impl MaterialShortfall {
+    /// The shortfall in grams — the number a case has to carry.
+    pub fn missing_g(&self) -> i64 {
+        (self.wanted_g - self.found_g).max(0)
+    }
+
+    /// What a person reads, in the shape the report already uses for a claim the world does not
+    /// support.
+    pub fn describe(&self) -> String {
+        format!(
+            "a structure at tile {} needs {} g of {} and the world holds {} g within reach: \
+             {} g short",
+            self.site,
+            self.wanted_g,
+            self.family,
+            self.found_g,
+            self.missing_g()
+        )
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub id: u32,
@@ -303,6 +356,16 @@ pub struct Building {
     /// Present condition, 1.0 being as-built. What decays; never the claim above.
     #[serde(default = "condition_as_built")]
     pub condition: f32,
+    /// The tiles this structure's mass came out of (round 11's Q75).
+    ///
+    /// **Empty is a placement that made no material claim** — a direct `place_building`, which is
+    /// the raw primitive the world state uses and not the way a structure is built. It is not
+    /// reported as a defect by the mass audit, because the audit has one job and it is mass; but
+    /// it is visible rather than hidden, since [`Building::lineage_g`] returns zero against a
+    /// non-zero derived mass. Filling it is the task system's business, and a structure whose
+    /// lineage is present but **disagrees** with its derived mass is a defect.
+    #[serde(default)]
+    pub material_from: Vec<MaterialLineage>,
     /// Whether this structure is known to owe a repair, so a crossed floor files
     /// **one** ticket rather than one per tick. Cleared by the repair that raises
     /// the condition back over the floor, not by the ticket being opened.
@@ -324,6 +387,12 @@ impl Building {
     /// caller is made to decide what that means instead of being handed a zero that looks fine.
     pub fn mass_g(&self) -> Option<i64> {
         material_ledger::structure_mass_g(self.kind.name(), self.level)
+    }
+
+    /// The mass this structure's recorded lineage accounts for, in grams. Zero means no material
+    /// claim was made, not that it weighs nothing — [`Building::mass_g`] is the mass.
+    pub fn lineage_g(&self) -> i64 {
+        self.material_from.iter().map(|line| line.grams).sum()
     }
 
     /// The account this structure's mass sits in: standing structures, or — once retired — the
@@ -804,6 +873,136 @@ impl World {
         material_ledger::MassAudit { ledger, extracted_g, standing_g, defects }
     }
 
+    /// Plan where a structure's material would come from, **without touching the ground**.
+    ///
+    /// Round 11's Q73 answered *nearest matching family*: tiles are searched outward from the
+    /// site for a deposit whose declared family is the structure's own claimed family — a ceramic
+    /// home takes stone, sand or clay and never iron ore. That is what makes "built out of
+    /// something" checkable rather than merely claimed; without it, a brick house raised on an
+    /// iron seam would balance in tonnes and be nonsense in substance.
+    ///
+    /// The plan is **atomic on purpose**: it is computed in full and only then drawn, so a build
+    /// that could not be covered never half-mines the map. A caller that finds three tiles of clay
+    /// and is one short would otherwise leave three holes and nothing standing on them, which is
+    /// exactly the half-finished thing a shortfall exists to refuse.
+    ///
+    /// Ties are broken by tile index, because two tiles the same distance away must be chosen the
+    /// same way on every platform and in every replay — a nearest-neighbour search with an
+    /// arbitrary order is the quietest way to lose determinism there is.
+    pub fn plan_material(
+        &self,
+        site: u32,
+        family: &str,
+        need_g: i64,
+    ) -> Result<Vec<MaterialLineage>, MaterialShortfall> {
+        let shortfall = |found_g: i64| MaterialShortfall {
+            site,
+            family: family.to_string(),
+            wanted_g: need_g,
+            found_g,
+        };
+        if need_g <= 0 {
+            return Ok(Vec::new());
+        }
+
+        let (sx, sy) = self.coords(site);
+        let mut candidates: Vec<(i64, u32, &'static str)> = Vec::new();
+        for index in 0..self.tiles.len() as u32 {
+            let Some(deposit) = self.deposit_at(index) else {
+                continue;
+            };
+            let kind = &material_geology::DEPOSIT_KINDS[deposit.kind];
+            if kind.family != family {
+                continue;
+            }
+            let (x, y) = (index % self.width, index / self.width);
+            let (dx, dy) = (
+                x as i64 - sx as i64,
+                y as i64 - sy as i64,
+            );
+            candidates.push((dx * dx + dy * dy, index, kind.substance));
+        }
+        // Nearest first, and a stable tie-break so the plan is a function of the world alone.
+        candidates.sort_by_key(|(distance, index, _)| (*distance, *index));
+
+        let mut plan = Vec::new();
+        let mut covered = 0;
+        for (_, index, substance) in candidates {
+            if covered >= need_g {
+                break;
+            }
+            let available = self.deposit_at(index).map(|d| d.mass_g).unwrap_or(0);
+            let take = available.min(need_g - covered);
+            if take <= 0 {
+                continue;
+            }
+            covered += take;
+            plan.push(MaterialLineage {
+                tile: index,
+                substance: substance.to_string(),
+                grams: take,
+            });
+        }
+        if covered < need_g {
+            return Err(shortfall(covered));
+        }
+        Ok(plan)
+    }
+
+    /// Draw a plan's mass out of the ground, returning what was actually taken.
+    ///
+    /// It takes the plan rather than recomputing it, so the mass a structure claims is the mass
+    /// the plan promised: a second search could differ from the first, and a lineage that does not
+    /// describe the hole it came from is worse than no lineage at all.
+    pub fn draw_material(&mut self, plan: &[MaterialLineage]) -> Vec<MaterialLineage> {
+        plan.iter()
+            .map(|line| MaterialLineage {
+                tile: line.tile,
+                substance: line.substance.clone(),
+                grams: self.extract(line.tile, line.grams),
+            })
+            .collect()
+    }
+
+    /// Build a structure **out of material the world actually gives up**, or refuse and say why.
+    ///
+    /// This is the shape round 11's Q72 asked for: nothing is placed that the world cannot pay
+    /// for, and the payment is recorded per tile. The refusal is returned rather than swallowed so
+    /// the caller can file a case — Q74's answer — because a city that stopped growing with no
+    /// reason on the record is the complaint this campaign opened with.
+    pub fn build_with_material(
+        &mut self,
+        tile: u32,
+        kind: BuildingKind,
+    ) -> Result<u32, MaterialShortfall> {
+        // An undeclared kind is a defect, not a shortfall: the world cannot be asked to supply
+        // material for a structure whose own mass nobody declared, and panicking *names* it in the
+        // same spirit as an undeclared surface family, rather than refusing in a way that reads as
+        // "the ground was empty".
+        let mass = material_ledger::structure_mass_g(kind.name(), 1)
+            .unwrap_or_else(|| panic!("{} declares no mass, so it cannot be built", kind.name()));
+        // The family it takes is the family it will **claim**, read from the same reading that
+        // fills `material_as_built` — one source, so a structure cannot be built out of one
+        // material and claim another, which is the substance-level version of the same defect the
+        // ledger exists to catch in grams.
+        let claim = MaterialClaim::of_kind(kind).unwrap_or_else(|| {
+            panic!("{} has no declared material claim, so its material is unknown", kind.name())
+        });
+        let family = claim.family;
+        let plan = self.plan_material(tile, &family, mass)?;
+        let drawn = self.draw_material(&plan);
+        let built = self.place_building(tile, kind).ok_or_else(|| MaterialShortfall {
+            site: tile,
+            family: family.clone(),
+            wanted_g: mass,
+            found_g: 0,
+        })?;
+        if let Some(index) = self.tiles[tile as usize].building {
+            self.buildings[index as usize].material_from = drawn;
+        }
+        Ok(built)
+    }
+
     /// Demolish whatever stands on a tile. The building is **retired**, not
     /// deleted, and the reason is recorded.
     pub fn demolish(&mut self, tile: u32, reason: RetirementReason) -> Option<u32> {
@@ -867,6 +1066,9 @@ impl World {
             // distinction the record already makes between a claim and growth.
             material_as_built: MaterialClaim::of_kind(kind),
             condition: condition_as_built(),
+            // Placement is not building: this primitive makes no material claim, and
+            // `build_with_material` is what fills one in.
+            material_from: Vec::new(),
         });
         self.tiles[tile as usize].building = Some(index);
         self.tiles[tile as usize].zone = Zone::None;
@@ -1614,6 +1816,60 @@ mod tests {
         );
     }
 
+    /// A world at the size the game actually is, worked down to bare ground, for tests about
+    /// material rather than about terrain.
+    ///
+    /// **Why not `small_city`:** a 32×32 world is one geology cell across, and a cell is one
+    /// patch, so such a world holds **one substance everywhere** — seed 7's holds iron and nothing
+    /// else. That is faithful to the derivation and it is exactly the world a ceramic home cannot
+    /// be built on, which is why it is used *for that test* rather than as a general fixture.
+    fn worked_city() -> World {
+        let mut world = World::new(256, 256, 7);
+        for tile in world.tiles.iter_mut() {
+            tile.terrain = Terrain::Ground;
+        }
+        world.rebuild_derived();
+        world
+    }
+
+    /// Total mass of a family's deposits in a world, in grams, and how many tiles hold it.
+    fn family_totals(world: &World, family: &str) -> (u32, i64) {
+        let mut tiles = 0;
+        let mut mass = 0;
+        for index in 0..world.tiles.len() as u32 {
+            if let Some(deposit) = world.deposit_at(index) {
+                if material_geology::DEPOSIT_KINDS[deposit.kind].family == family {
+                    tiles += 1;
+                    mass += deposit.mass_g;
+                }
+            }
+        }
+        (tiles, mass)
+    }
+
+    /// The ground has to be able to supply what the city's own structures are made of, or the
+    /// bootstrap is impossible for a reason nobody declared. Measured, per family, rather than
+    /// assumed: this is the check that would have caught a world whose ceramic was thinner than
+    /// one home before a player ever met it.
+    #[test]
+    fn a_game_sized_world_can_supply_every_family_its_structures_claim() {
+        let world = worked_city();
+        for kind in [BuildingKind::Home, BuildingKind::Shop, BuildingKind::Factory, BuildingKind::PowerPlant] {
+            let claim = MaterialClaim::of_kind(kind).expect("declared claim");
+            let (tiles, mass) = family_totals(&world, &claim.family);
+            let needs = material_ledger::structure_mass_g(kind.name(), 1).expect("declared");
+            assert!(
+                tiles > 0 && mass >= needs,
+                "{} needs {} g of {} and the world holds {} g across {} tiles",
+                kind.name(),
+                needs,
+                claim.family,
+                mass,
+                tiles
+            );
+        }
+    }
+
     fn small_city() -> World {
         let mut world = World::new(32, 32, 7);
         // Fill the water in, so tests exercise the city rather than the sea.
@@ -1868,6 +2124,130 @@ mod tests {
             world.tiles[far as usize].building.is_none(),
             "an unpowered tile with no road must not grow"
         );
+    }
+
+    /// A structure is built **out of material the world gives up**, and the lineage says which
+    /// tiles paid for it. This is the property that makes "built from something" a fact rather
+    /// than a claim: the grams in the lineage are grams that left the ground.
+    #[test]
+    fn a_built_structure_is_paid_for_out_of_named_tiles() {
+        let mut world = worked_city();
+        let site = world.index(4, 4);
+        let home = material_ledger::structure_mass_g("home", 1).expect("declared");
+        let id = world
+            .build_with_material(site, BuildingKind::Home)
+            .unwrap_or_else(|short| panic!("a game-sized world should cover a home: {}", short.describe()));
+        let index = world.tiles[site as usize].building.expect("the home stands on its site");
+        assert_eq!(world.buildings[index as usize].id, id, "it returns the structure it built");
+
+        let building = &world.buildings[index as usize];
+        assert_eq!(building.lineage_g(), home, "the lineage accounts for the whole mass");
+        assert!(
+            !building.material_from.is_empty(),
+            "a built structure records where its mass came from"
+        );
+        for line in &building.material_from {
+            assert!(line.grams > 0, "a lineage line of nothing is not a line");
+            let deposit = world
+                .deposit_at(line.tile)
+                .map(|d| (d.kind, d.mass_g))
+                .map(|(kind, remaining)| (material_geology::DEPOSIT_KINDS[kind].substance, remaining));
+            assert!(
+                deposit.is_some(),
+                "tile {} is not shown as dug, so the lineage names a hole that is not there",
+                line.tile
+            );
+        }
+        // The world holds the house and nothing else: exactly what it dug.
+        let audit = world.mass_audit();
+        assert!(audit.conserves(), "the material came out of the world's own ground");
+        assert_eq!(audit.extracted_g, home, "and it took exactly what the house weighs");
+        assert_eq!(audit.loose_g(), 0, "nothing is left lying around from a single build");
+    }
+
+    /// The material has to be the **right kind**: a structure only draws from deposits whose
+    /// declared family is the family it claims. Without this, a brick home could be raised on an
+    /// iron seam and the ledger would balance in tonnes while being nonsense in substance.
+    #[test]
+    fn a_structure_only_draws_from_its_own_family() {
+        let world = worked_city();
+        let site = world.index(4, 4);
+        let claim = MaterialClaim::of_kind(BuildingKind::Home).expect("declared claim");
+        let plan = world
+            .plan_material(site, &claim.family, material_ledger::structure_mass_g("home", 1).unwrap())
+            .expect("a 32×32 world should cover a home");
+        for line in &plan {
+            let deposit = world.deposit_at(line.tile).expect("a planned tile holds something");
+            let kind = &material_geology::DEPOSIT_KINDS[deposit.kind];
+            assert_eq!(
+                kind.family, claim.family,
+                "tile {} is {} ({}), not {}",
+                line.tile, kind.substance, kind.family, claim.family
+            );
+            assert_eq!(line.substance, kind.substance, "and the line names what is there");
+        }
+    }
+
+    /// A shortfall refuses **atomically**: the plan is computed without touching the ground, so an
+    /// unobtainable build leaves the map exactly as it found it rather than half-mined.
+    #[test]
+    fn a_shortfall_refuses_without_mining_anything() {
+        let world = worked_city();
+        let before: i64 = world.tiles.iter().map(|tile| tile.extracted_g).sum();
+        let site = world.index(4, 4);
+        let shortfall = world
+            .plan_material(site, "ceramic", i64::MAX / 2)
+            .expect_err("no world holds that much clay");
+        assert!(shortfall.found_g > 0, "it says what it did find: {}", shortfall.found_g);
+        assert!(shortfall.missing_g() > 0);
+        assert!(shortfall.describe().contains("short"), "{}", shortfall.describe());
+
+        let after: i64 = world.tiles.iter().map(|tile| tile.extracted_g).sum();
+        assert_eq!(after, before, "planning is a read; a refusal must not leave holes");
+        assert_eq!(world.buildings.len(), 0);
+    }
+
+    /// The same world plans the same tiles in the same order — including which of two equidistant
+    /// tiles is chosen. A nearest-neighbour search with an arbitrary order is the quietest way to
+    /// lose a replay, so the tie-break is part of the answer.
+    #[test]
+    fn the_same_world_plans_the_same_tiles() {
+        let plan = |world: &World| {
+            world
+                .plan_material(4 * 32 + 4, "ceramic", material_ledger::structure_mass_g("home", 1).unwrap())
+                .expect("coverable")
+                .iter()
+                .map(|line| (line.tile, line.grams))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(plan(&worked_city()), plan(&worked_city()));
+    }
+
+    /// **A world of iron cannot raise a brick house.** Seed 7 at 32×32 is one geology cell, so it
+    /// holds metal everywhere and no ceramic at all — which makes it the honest test of the family
+    /// rule: the plan does not exist, `build_with_material` refuses, and the refusal says what it
+    /// wanted and what it found rather than building the house out of ore.
+    #[test]
+    fn a_ceramic_home_cannot_be_built_on_a_world_of_iron() {
+        let mut world = small_city();
+        let (ceramic_tiles, _) = family_totals(&world, "ceramic");
+        assert_eq!(ceramic_tiles, 0, "this world is the fixture *because* it has no ceramic");
+        let (metal_tiles, metal_mass) = family_totals(&world, "metal");
+        assert!(metal_tiles > 0, "and it does hold metal, so the refusal is about substance");
+
+        let site = world.index(4, 4);
+        let shortfall = world
+            .build_with_material(site, BuildingKind::Home)
+            .expect_err("a home is ceramic and there is no ceramic");
+        assert_eq!(shortfall.found_g, 0);
+        assert!(shortfall.family.contains("ceramic"), "it names what it wanted: {}", shortfall.family);
+        assert!(world.buildings.is_empty(), "and nothing was placed");
+        assert_eq!(
+            world.tiles.iter().map(|tile| tile.extracted_g).sum::<i64>(),
+            0,
+            "not even out of the metal, which is there and is the wrong material"
+        );
+        assert!(metal_mass > 0);
     }
 
     /// **The measured violation, pinned.** `grow()` builds out of nothing, and this is what that
