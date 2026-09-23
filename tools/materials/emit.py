@@ -353,9 +353,22 @@ def render() -> str:
     number_table("PART_PRICE", declare.PART_PRICE,
                  "A structure's build cost is the sum of its parts' prices, per a173.")
     number_table("UPKEEP_PER_MONTH", declare.UPKEEP_PER_MONTH, "Credits per month, per part, by family.")
-    number_table("DECAY_PER_DAY", declare.DECAY_PER_DAY, "Condition lost per sim-day, by family.")
-    add(f"pub const REPAIR_FLOOR: f32 = {rust_f32(declare.REPAIR_FLOOR)};")
-    add(f"pub const REPAIR_CEILING: f32 = {rust_f32(declare.REPAIR_CEILING)};")
+    # Wear, floor and ceiling are **rationals** rather than floats: weathering moves mass
+    # (Q109/Q114) and mass here is integer grams, so the rate is grams-per-gram and the
+    # thresholds are shares of a structure's own mass. `REPAIR_SHARE` stays a float because
+    # it prices an act in credits, and credits are not mass.
+    add("/// Wear per sim-day, by family: grams lost per gram held, as an exact rational.")
+    add("pub const DECAY_PER_DAY: &[(&str, i64, i64)] = &[")
+    for family, rate in declare.DECAY_PER_DAY.items():
+        add(f"    ({rust_string(family)}, {rate.numerator}, {rate.denominator}),")
+    add("];")
+    add("")
+    add("/// Below this share of its own mass a structure owes a repair.")
+    add(f"pub const REPAIR_FLOOR: (i64, i64) = "
+        f"({declare.REPAIR_FLOOR.numerator}, {declare.REPAIR_FLOOR.denominator});")
+    add("/// Above this share it is fully maintained and nothing is owed.")
+    add(f"pub const REPAIR_CEILING: (i64, i64) = "
+        f"({declare.REPAIR_CEILING.numerator}, {declare.REPAIR_CEILING.denominator});")
     add(f"pub const REPAIR_SHARE: f32 = {rust_f32(declare.REPAIR_SHARE)};")
     add("")
     number_table("CONDUCTION", declare.CONDUCTION, "Whether a family carries power, and how much.")

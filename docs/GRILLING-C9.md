@@ -1731,4 +1731,120 @@ rather than settles.
 settled that the design doctrine governs the interface and that these surfaces need the schema
 in front of them; the schema is now in front of them.
 
+---
+
+## Built — the maintain, in the world
+
+*Written after the third phase-3 slice, and it is the same kind of note: **implementation, not
+questions.** Where a reading was needed it is marked as a reading, and where something named here
+is not built it is named as open rather than left to read as done. It closes the previous note's
+first open bullet — *`Maintain` is not built, and nothing wears yet* — and it found one defect
+while closing it, recorded below rather than smoothed over.*
+
+**What landed.** The record's cleanest decision is now literal rather than intended — *there is
+one `MAKE`/`MAINTAIN` machinery rather than one per noun* — and wear became the mass the campaign
+is about:
+
+* **Wear is mass, and its rate is exact.** `DECAY_PER_DAY` is a rational now — grams lost per gram
+  held — and every value is the number it always was as a float (**0.0004 is 1/2500**), so this is
+  a change of type rather than a re-tune. `REPAIR_FLOOR` and `REPAIR_CEILING` are rationals for the
+  same reason: a repair has to ask in whole grams. A float rate would put a rounding error into the
+  ledger's ground truth on every sim-day, which is exactly where a balance stops balancing without
+  saying so.
+* **`condition` is a reading, not a field.** A structure stores two monotone deltas — `worn_g`
+  (what weather has taken) and `mended_g` (what repairs have put back) — and its condition is
+  `standing / declared`, arithmetic. Two homes for one fact was the defect the declaration exists
+  to remove, and a stored float beside two stored integers was exactly that.
+* **The destination account Q114 asked for.** Weathering books to `worn:<family>` and the audit
+  reads it as its own line: `loose_g` subtracts it, so a city of structures that have never been
+  repaired balances to **exactly zero** instead of reporting its own ageing as material the ground
+  never gave up — the exact class of false finding `verify.exe` was corrected for once already.
+* **`Maintain` is a verb** (Q43's closed list, grown by decision, now four) and the city posts the
+  repairs it owes: once a sim-day, which is the cadence the wear itself runs at, capped at four, one
+  task per structure, with a refusal filed as a case. A repair is addressed to a structure; its bill
+  of materials is planned **in grams** off that structure's own mass before anybody walks; its
+  material is drawn from the ground under its own site; and the act closes through the **one**
+  `repair` a repair ticket also closes through (Q54).
+* **A repair books what was drawn, not what was wanted.** Mending a wall with a tenth of what it
+  lost leaves it owing the rest — read back off the mass rather than declared shut, so the next
+  pass files it again.
+* **The format moved to v3, and the old float is converted rather than dropped.** A v2 save's
+  `condition: 0.9976` becomes `worn_g` by `declared × (1 − condition)`, per structure, **reported**
+  like the v1 → v2 derivation is. The old field is read for exactly one load and is never written
+  back. Dropping it would have read every weathered wall in an old city as as-built, which is what
+  the format's own rule calls *a default that would be a lie*.
+
+**The measured result, not the intention.** On the rung's own fixture — 256², seed 7, the seed road
+plus a road out to a timber patch and a stone seam, a plant and one occupied home — the city first
+makes its hatchet unaided, then **weathers and mends its own home unaided**: the maintain is posted
+by the city, claimed by a resident, and finished well inside the 5 000-tick bound the test allows.
+The test asserts what makes it material rather than narrated: the mend equals the extraction **to
+the gram** (the mass in the wall is mass the ground gave up), the home reads above 0.9 again, the
+`worn:` account holds exactly what weathered off, and the audit still conserves. The wear itself is
+checked a day at a time through the clock, and the repair's two edges separately: below the floor it
+owes, above it nothing is owed, and a repair that put back a tenth of a 95 % deficit still owes.
+**201 tests, clippy clean, the emitting gate clean.**
+
+**Readings, stated rather than assumed — each overridable like any other.**
+
+* **The ceiling is where a repair aims; the floor is where it is owed.** A repair is planned to the
+  ceiling and only filed below the floor, so the two declared numbers answer two different
+  questions instead of one. The consequence a reader should expect: a structure at 50 % is *not*
+  owed a repair, and that is Q54's rates rather than an oversight.
+* **Wear is the weather: every standing structure, every day.** Q54's answer is *condition scales
+  throughput, wearing only while running*, and this slice builds the standing half. A machine that
+  is not running therefore still weathers here, and both remaining halves — wear while running, and
+  condition scaling what a process puts out — belong with the process structures. Named open below
+  rather than quietly skipped.
+* **`repair_work` is the declared repair cost in work-ticks.** The same reading the build path
+  already makes (a build's work is its own declared cost), so a repair is worked by the number it is
+  priced by rather than by a second number invented to sit beside it.
+* **A maintain is filed against a structure, not a tile.** The task carries the kind it was posted
+  for, and completion refuses a tile demolished and rebuilt as something else rather than mending
+  the wrong wall.
+* **A repair is a draw from the ground under its own site**, which is the same *drawn but not
+  hauled* step a build takes. Named as an inheritance from the previous slice rather than presented
+  as a decision of this one.
+* **The v3 bump was spent on wear.** The order's phase 1 row names *`v2 → v3`* as part of the world
+  substrate; phase 1 landed as v2 (v1 being every save before the world had materials), so the bump
+  was still unspent, and this is what made a default a lie. A version is a claim about how an old
+  file will be read, not a placeholder for later.
+
+**The defect this slice found, recorded rather than smoothed over.** *A one-tile route parked a
+worker for ever:* `route_between_tiles` returns the road node the citizen is already standing
+beside whenever a task's site is within work reach of it, and the mover treated **every** one-tile
+path as *parked* — so the worker stood next to their work carrying the state that says they were
+still walking to it, `work_tasks` never counted a tick, and the task never finished. It was found by
+the repair of the home beside the road, which is precisely the case where the site is within reach
+of the node the residents live by; it was invisible before because every earlier task was addressed
+to a tile nobody was already standing beside. It is repaired by making **arriving one function**:
+walking the last step of a route and being handed a route that is one tile long are the same
+arrival, so they are now the same code and cannot drift apart. This is the second stall of the same
+family as `WORK_REACH` — a task postable and unworkable, with nothing on the record to say why — and
+it has its own test now.
+
+**What this slice deliberately leaves open, named here rather than implied.**
+
+* **Q54's throughput half, and wear while running.** Nothing yet reads condition into a process's
+  output, and nothing wears because it was used. Both want the process structures, which want
+  `VOCABULARY["structure"]` — still empty, which is still a declaration.
+* **A build and a repair both draw from the ground under their own site** while a make consumes a
+  holding. The gap is now wider in scope and unchanged in kind, and hauling is still the next honest
+  step.
+* **The works site is a placeholder** (unchanged): `works_site()` is still the first road-reachable
+  free ground tile in index order.
+* **Nothing gates a tier** (unchanged): a process that needed a kiln would still be run by anybody
+  standing at a site with the material.
+* **The cases are still the sim's readings**, not the governor's tickets — though a maintain's
+  refusals now arrive with a **structure** and a family on them, which is a shape the case engine
+  can read.
+* **The interface shows none of it**, and maintain is the first verb with an obvious one: a wall that
+  owes a repair is a thing a player should be able to see, and `repairs_due()` already has the
+  numbers for it.
+* **Nothing ages a tool.** A hatchet in a holding does not weather, and Q54's *wearing while it runs*
+  is what that would be — phase 4 material, named rather than implied.
+* **A patch's regrowth still does not un-take mass**, and stripping still has no way back (Q108's
+  planting is unbuilt). Unchanged, and restated here only because the audit now reads one more
+  account and a reader should check the same claim against it.
+
 [read_files: showing lines 1600-1639 of 1639.]

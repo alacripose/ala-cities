@@ -70,7 +70,10 @@ hue             the anchor it presents with, since a material is family:hue:leve
 unit            Mass | Volume | Count | Gas
 density         g/mL as a rational — required unless unit is Mass or Count
 unit_mass       g as a rational — required when unit is Count
-rot             condition lost per sim-day as a rational — 0 for anything that does not rot
+rot             condition lost per sim-day as a rational — 0 for anything that does not rot;
+                its structure-side sibling `DECAY_PER_DAY` is rational for the same reason,
+                and since C9's MAINTAIN slice both mean **grams lost per gram held**, because
+                a rot that is not mass is a rot nothing has to account for
 tags            declared, closed: fuel, edible, tool, structure, precious, salvage
 source          how it enters the world: mined | grown | gathered | salvaged | made
 ```

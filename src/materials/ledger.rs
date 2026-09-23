@@ -85,6 +85,20 @@ pub fn ruin_account(family: &str) -> String {
     format!("ruin:{family}")
 }
 
+/// The **destination account** weathering sends mass to (C9 rounds 18 and 19, Q109/Q114).
+///
+/// *"Decay cannot magically disappear. Rotted or respired mass goes to a destination account,
+/// never to nothing."* — so a wall that has shed a tonne of itself has put that tonne *here*, as
+/// dust and rubble at large, and the audit reads it exactly as it reads a standing structure.
+///
+/// It is a **claim** rather than a place, which is why it is an account like any other: nothing
+/// in the sim stands at `worn:ceramic`, and that is the point — the mass is accounted for, not
+/// located. Where it settles (a spoil heap, a stockpile, a rebuilt wall) is later work with a
+/// consumer, and this is the account that would fund it.
+pub fn worn_account(family: &str) -> String {
+    format!("worn:{family}")
+}
+
 /// An account holding loose mass **at a site**: what stands on a tile waiting to be worked or
 /// carried away (C9 round 13, Q77).
 ///
@@ -148,6 +162,14 @@ pub struct MassAudit {
     /// the difference is exactly what a builder's yard is. Both are the city's, both came out of
     /// the ground, and both therefore count against what the ground gave up.
     pub held_g: i64,
+    /// Total mass the world has **weathered off its own structures** and is now holding as dust
+    /// and rubble: the destination account of Q114, in grams.
+    ///
+    /// Without it a weathered structure would look like material that vanished, and the audit
+    /// would read the difference as a city that took more from the ground than it can account
+    /// for — which is why `loose_g` subtracts it. With it, a city of structures that have never
+    /// been repaired balances to **exactly zero**, and not to a tolerance.
+    pub worn_g: i64,
     /// Structures that could not enter the audit at all, because their mass or their material
     /// family could not be derived.
     ///
@@ -160,12 +182,13 @@ pub struct MassAudit {
 
 impl MassAudit {
     /// Material the world has taken out of its ground and **not** put anywhere, in grams —
-    /// neither standing as a structure nor held at a site. Real and legitimate: it is material
-    /// spent as waste, or simply gone from the world's books the way spent mass is.
+    /// neither standing as a structure, nor held at a site, nor weathered off something standing.
     ///
-    /// Negative is the defect, and its size is the amount of material that was never dug up.
+    /// Real and legitimate: it is material spent as waste, or simply gone from the world's books
+    /// the way spent mass is. Negative is the defect, and its size is the amount of material that
+    /// was never dug up.
     pub fn loose_g(&self) -> i64 {
-        self.extracted_g - self.standing_g - self.held_g
+        self.extracted_g - self.standing_g - self.held_g - self.worn_g
     }
 
     /// Whether every gram the city is holding came out of its own ground — the same question as
@@ -206,12 +229,13 @@ impl MassAudit {
         }
         findings.push(format!(
             "the city stands on {} g of material the ground never gave up: {} g has been taken \
-             out, {} g is standing and {} g is held, so something here was not built from \
-             anything",
+             out, {} g is standing, {} g is held and {} g has weathered off, so something here \
+             was not built from anything",
             -self.loose_g(),
             self.extracted_g,
             self.standing_g,
-            self.held_g
+            self.held_g,
+            self.worn_g
         ));
         findings
     }

@@ -12,12 +12,14 @@
 //! * **Cost and upkeep** — [`build_cost`] is the sum of a structure's declared
 //!   part prices; [`upkeep_per_month`] is the sum of its parts' families' declared
 //!   monthly rates.
-//! * **Deterioration** — [`decay_per_day`] is the structure's **weakest** part's
+//! * **Deterioration** — [`wear_per_day`] is the structure's **weakest** part's
 //!   declared rate, because the first part to fail is what forces the repair, so a
 //!   structure is as good as its worst part. This is a reading of "a `condition`
 //!   per structure, decaying per day by a declared per-family rate" for a structure
 //!   whose parts are of several families; it was decided rather than assumed, and it
-//!   is overridable in one line.
+//!   is overridable in one line. **Since C9's MAINTAIN slice the rate is a rational
+//!   and [`wear_g_per_day`] turns it into grams**: wear moves mass, and a float rate
+//!   would put a rounding error into the ledger every sim-day.
 //! * **Desirability** — [`desirability`]: how a structure of this kind moves demand
 //!   on the tiles around it.
 //! * **Nuisance** — [`nuisance`] per structure and [`nuisance_at`] sampled at a read
@@ -86,14 +88,23 @@ pub fn upkeep_per_month(part_prefix: &str) -> f32 {
         .sum()
 }
 
-/// The declared condition lost per sim-day by one family.
-pub fn decay_of(family: Family) -> f32 {
+/// The declared wear per sim-day by one family, as an **exact rational**: grams lost per gram
+/// held. Never a float, because wear moves mass (Q109/Q114) and mass here is integer grams.
+pub fn wear_of(family: Family) -> (i64, i64) {
     let name = family.as_str();
     generated::DECAY_PER_DAY
         .iter()
-        .find(|(family, _)| *family == name)
-        .map(|(_, rate)| *rate)
-        .unwrap_or_else(|| panic!("`{name}` has no declared decay in DECAY_PER_DAY"))
+        .find(|(family, _, _)| *family == name)
+        .map(|(_, num, den)| (*num, *den))
+        .unwrap_or_else(|| panic!("`{name}` has no declared wear in DECAY_PER_DAY"))
+}
+
+/// Whether one rational rate is faster than another, exactly: `a/b > c/d` is `a·d > c·b`.
+///
+/// Integer comparison rather than a float one, because "which part fails first" deciding on a
+/// rounding would be a structure that ages differently on a different machine.
+fn faster((a_num, a_den): (i64, i64), (b_num, b_den): (i64, i64)) -> bool {
+    a_num * b_den > b_num * a_den
 }
 
 /// The condition a structure loses per sim-day: its weakest part's rate.
@@ -103,11 +114,27 @@ pub fn decay_of(family: Family) -> f32 {
 /// that gets repaired — so the structure decays as fast as its fastest-decaying
 /// part. A family-less structure (one that resolves to no declared parts) decays at
 /// nothing, which its caller is expected to have refused before it got here.
-pub fn decay_per_day(part_prefix: &str) -> f32 {
+pub fn wear_per_day(part_prefix: &str) -> (i64, i64) {
     world::parts_of(part_prefix)
         .iter()
-        .map(|part| decay_of(part.family))
-        .fold(0.0_f32, f32::max)
+        .map(|part| wear_of(part.family))
+        .fold((0, 1), |worst, rate| if faster(rate, worst) { rate } else { worst })
+}
+
+/// The grams a structure holding `declared_g` loses in one sim-day: the weakest part's declared
+/// rate applied to its own mass, **exactly**, in integers.
+///
+/// At least one gram a day while it stands, and that floor is a decision rather than tidiness: a
+/// structure that could weather forever without losing a gram is mass that never moves, which is
+/// the accounting this campaign exists to keep. The floor cannot fire for anything a family with
+/// a declared rate applies to — a 100 t home loses 120 kg a day — so it is a guard on the small
+/// end rather than a thumb on the scale.
+pub fn wear_g_per_day(part_prefix: &str, declared_g: i64) -> i64 {
+    let (num, den) = wear_per_day(part_prefix);
+    if num <= 0 || den <= 0 || declared_g <= 0 {
+        return 0;
+    }
+    (declared_g * num / den).max(1)
 }
 
 /// The parts a structure is made of, for a caller that has to name them.
@@ -120,22 +147,41 @@ pub fn weakest_family(part_prefix: &str) -> Option<Family> {
     parts(part_prefix)
         .into_iter()
         .max_by(|a, b| {
-            decay_of(a.family)
-                .partial_cmp(&decay_of(b.family))
-                .unwrap_or(std::cmp::Ordering::Equal)
+            let (a_num, a_den) = wear_of(a.family);
+            let (b_num, b_den) = wear_of(b.family);
+            (a_num * b_den).cmp(&(b_num * a_den))
         })
         .map(|part| part.family)
 }
 
-/// Whether a structure is below the declared repair floor and owes a repair.
-pub fn repair_is_due(condition: f32) -> bool {
-    condition < generated::REPAIR_FLOOR
+/// Whether a structure holding `standing_g` of its own `declared_g` is below the declared floor
+/// and owes a repair — an integer comparison, so the floor is the floor rather than a rounding
+/// of it.
+pub fn repair_is_due(standing_g: i64, declared_g: i64) -> bool {
+    standing_g * generated::REPAIR_FLOOR.1 < declared_g * generated::REPAIR_FLOOR.0
+}
+
+/// The mass a structure of this size holds once it is fully maintained: the ceiling share, in
+/// whole grams. A repair draws exactly the difference between this and what stands.
+pub fn repair_target_g(declared_g: i64) -> i64 {
+    declared_g * generated::REPAIR_CEILING.0 / generated::REPAIR_CEILING.1
 }
 
 /// What a repair costs: the declared share of the structure's own build cost,
 /// because a repair is priced against the thing being repaired rather than fixed.
 pub fn repair_cost(part_prefix: &str) -> f32 {
     build_cost(part_prefix) * generated::REPAIR_SHARE
+}
+
+/// The work a repair is worth, in work-ticks: its declared cost as a whole number.
+///
+/// Credits are not hours, and this is deliberately the **same reading the build path already
+/// makes** — a build's work is its own declared cost ([`crate::sim::BuildingKind::build_cost`]) —
+/// so a repair is worked by the number it is priced by rather than by a second number invented
+/// here to sit beside it. Rounded up, because a repair nobody can finish in a whole tick is still
+/// a repair somebody has to start.
+pub fn repair_work(part_prefix: &str) -> i64 {
+    repair_cost(part_prefix).ceil() as i64
 }
 
 /// How a structure of this kind moves demand on the tiles around it.
@@ -233,7 +279,7 @@ pub fn table_defects() -> Vec<String> {
         if !generated::UPKEEP_PER_MONTH.iter().any(|(f, _)| *f == name) {
             defects.push(format!("`{name}` has no declared upkeep"));
         }
-        if !generated::DECAY_PER_DAY.iter().any(|(f, _)| *f == name) {
+        if !generated::DECAY_PER_DAY.iter().any(|(f, _, _)| *f == name) {
             defects.push(format!("`{name}` has no declared decay"));
         }
         if !generated::DESIRABILITY.iter().any(|(f, _)| *f == name) {
@@ -276,18 +322,33 @@ mod tests {
     }
 
     /// The weakest-part reading, on a structure built to exercise it: a home is
-    /// ceramic 0.0004, polymer 0.0012 and glass 0.0005, so it decays at the
-    /// polymer's rate and names the polymer as what will fail first.
+    /// ceramic 1/2500, polymer 3/2500 and glass 1/2000, so it wears at the polymer's
+    /// rate and names the polymer as what will fail first.
     #[test]
-    fn a_structure_decays_at_its_weakest_part() {
-        assert_eq!(decay_per_day("home"), 0.0012);
+    fn a_structure_wears_at_its_weakest_part() {
+        assert_eq!(wear_per_day("home"), (3, 2500), "the polymer's rate");
         assert_eq!(weakest_family("home"), Some(Family::Polymer));
-        assert_eq!(decay_of(Family::Ceramic), 0.0004);
-        assert_eq!(decay_of(Family::Glass), 0.0005);
-        // Not the mean, which would be 0.0007 and would let a structure outlive the
-        // part that actually fails.
-        let mean = (0.0004 + 0.0012 + 0.0005) / 3.0;
-        assert!((decay_per_day("home") - mean).abs() > 0.0004);
+        assert_eq!(wear_of(Family::Ceramic), (1, 2500));
+        assert_eq!(wear_of(Family::Glass), (1, 2000));
+        // The two rates are close enough that a float comparison would be at the mercy of
+        // representation; the rational one is not.
+        assert!(faster((1, 2000), (1, 2500)), "glass wears faster than ceramic");
+        assert!(!faster((1, 2500), (1, 2500)), "and nothing wears faster than itself");
+    }
+
+    /// The wear as **grams**, which is the only form the ledger can read: a 100 t home in polymer
+    /// loses 120 kg a day, and a structure with a declared rate always loses something.
+    #[test]
+    fn wear_is_grams_lost_per_day() {
+        let home = 100_000_000;
+        assert_eq!(wear_g_per_day("home", home), 120_000, "100 t × 3/2500");
+        assert_eq!(wear_g_per_day("home", 0), 0, "nothing standing loses nothing");
+        // A structure far smaller than any the game declares still loses a gram rather than
+        // weathering for free forever.
+        assert_eq!(wear_g_per_day("home", 100), 1);
+        // A family that does not weather moves no mass at all: the rate is zero, not a small
+        // number.
+        assert_eq!(wear_of(Family::Water), (0, 1));
     }
 
     #[test]
@@ -300,9 +361,19 @@ mod tests {
     #[test]
     fn a_repair_is_priced_against_the_thing_repaired() {
         assert_eq!(repair_cost("home"), 140.0 * 0.4);
-        assert!(repair_is_due(0.34));
-        assert!(!repair_is_due(0.35), "the floor is the floor, not below it");
-        assert!(!repair_is_due(1.0));
+        assert_eq!(repair_work("home"), 56, "140 credits of repair is 56 work-ticks");
+        assert_eq!(repair_work("power"), 820, "and 2050 credits of plant is 820");
+        let declared = 100_000_000;
+        assert!(repair_is_due(declared * 34 / 100, declared), "34 % is below the floor");
+        assert!(
+            !repair_is_due(declared * 35 / 100, declared),
+            "the floor is the floor, not below it"
+        );
+        assert!(!repair_is_due(declared, declared), "as-built owes nothing");
+        // The ceiling is what a repair restores by drawing the difference: at 100 % a repair of a
+        // half-worn home brings 50 t of material out of the ground.
+        assert_eq!(repair_target_g(declared), declared);
+        assert_eq!(repair_target_g(declared) - declared / 2, 50_000_000);
     }
 
     #[test]
@@ -317,9 +388,9 @@ mod tests {
             (desirability("power") - (-0.02 + 0.02 + 0.03)).abs() < 1e-6,
             "metal + ceramic + enamel, each once"
         );
-        // The plant's weakest part is its metal frame at 0.0008, ahead of enamel at
-        // 0.0006 and ceramic at 0.0004.
-        assert_eq!(decay_per_day("power"), 0.0008);
+        // The plant's weakest part is its metal frame at 1/1250, ahead of enamel at
+        // 3/5000 and ceramic at 1/2500.
+        assert_eq!(wear_per_day("power"), (1, 1250));
         assert_eq!(weakest_family("power"), Some(Family::Metal));
     }
 

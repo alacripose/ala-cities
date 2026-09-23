@@ -307,18 +307,31 @@ UPKEEP_PER_MONTH = {
     "paper": 0.3, "road": 0.4, "water": 0.0, "organic": 0.05, "soil": 0.1,
 }
 
-#: Condition lost per sim-day, by the part's family. Repaired, never patched quietly.
+#: **Wear per sim-day, by the part's family, as an exact rational.** These were floats
+#: until C9's MAINTAIN slice, and the reason they are not any more is the campaign's own
+#: rule: weathering *moves mass* (Q109/Q114 — decay goes to a destination account, never
+#: to nothing), and mass in this repository is integer grams. A float rate would put a
+#: rounding error into the ledger's ground truth on every sim-day, which is exactly where
+#: a balance stops balancing without saying so. Each value below is the same number as
+#: before, written as the fraction it always was — 0.0004 is 1/2500, not a binary
+#: approximation of it — so this is a change of type rather than a re-tune.
+#:
+#: The rate means *grams lost per gram held*: a 100 t home in polymer wears 120 kg a day.
 DECAY_PER_DAY = {
-    "metal": 0.0008, "enamel": 0.0006, "glass": 0.0005, "ceramic": 0.0004,
-    "polymer": 0.0012, "paper": 0.0018, "road": 0.0006, "water": 0.0,
-    "organic": 0.0015, "soil": 0.0009,
+    "metal": Fraction(8, 10_000), "enamel": Fraction(6, 10_000),
+    "glass": Fraction(5, 10_000), "ceramic": Fraction(4, 10_000),
+    "polymer": Fraction(12, 10_000), "paper": Fraction(18, 10_000),
+    "road": Fraction(6, 10_000), "water": Fraction(0, 1),
+    "organic": Fraction(15, 10_000), "soil": Fraction(9, 10_000),
 }
 
-#: Below this condition a repair ticket is filed. Above the ceiling a structure is
-#: fully maintained and nothing is owed.
-REPAIR_FLOOR = 0.35
-REPAIR_CEILING = 1.0
-#: What a repair costs: a share of the structure's own build cost.
+#: Below this **share of its own mass** a structure owes a repair, and above the ceiling
+#: it is fully maintained and nothing is owed. Rationals for the same reason the wear is:
+#: a repair draws the mass the ceiling asks for, and that number has to be whole grams.
+REPAIR_FLOOR = Fraction(35, 100)
+REPAIR_CEILING = Fraction(100, 100)
+#: What a repair costs **in credits**: a share of the structure's own build cost. Still a
+#: float, and correctly so — credits are not mass, and nothing in the ledger reads them.
 REPAIR_SHARE = 0.4
 
 #: Whether a family carries power, and how much of it.

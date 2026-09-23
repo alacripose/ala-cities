@@ -16,10 +16,18 @@
 //!   declaring it complete — which is what "acceptance is a test that passed" means when the
 //!   worker is a citizen rather than a ticket.
 //!
-//! The verb list is **closed on purpose and grows by decision**. Three verbs today, each with a
+//! The verb list is **closed on purpose and grows by decision**. Four verbs today, each with a
 //! mechanism behind it: `Build` raises a structure out of the ground, `Gather` takes a leaf out
-//! of the world by hand and carries it to the site, and `Make` runs a declared process on material
-//! that is already there.
+//! of the world by hand and carries it to the site, `Make` runs a declared process on material
+//! that is already there, and `Maintain` puts mass back into a structure that has weathered.
+//!
+//! # Why `Maintain` is a verb and not a service call
+//!
+//! Round 5's Q54 answered that **repair is the same system as building**, and the consequence is
+//! this list rather than a second path: a repair is a task, planned before anybody walks, drawing
+//! its material out of the ground like any other draw — and closing through `World::repair`, which
+//! is the one implementation the repair ticket owns. A structure that mended itself because a
+//! counter crossed a threshold would be health regeneration wearing a material coat.
 //!
 //! # Why `Make` is not `Build`
 //!
@@ -46,17 +54,23 @@ pub enum Verb {
     Gather,
     /// Run a declared process at a site, on material **already held there**.
     Make,
+    /// Put mass back into a structure that owes it, out of material the world gives up.
+    ///
+    /// The only verb whose site is **already built on**: a maintain is addressed to a structure
+    /// standing there, and `kind` is that structure's kind rather than a thing to raise.
+    Maintain,
 }
 
 impl Verb {
     /// The declared list, quoted in refusals so the vocabulary is never implied.
-    pub const ALL: &'static [Verb] = &[Verb::Build, Verb::Gather, Verb::Make];
+    pub const ALL: &'static [Verb] = &[Verb::Build, Verb::Gather, Verb::Make, Verb::Maintain];
 
     pub fn name(self) -> &'static str {
         match self {
             Verb::Build => "build",
             Verb::Gather => "gather",
             Verb::Make => "make",
+            Verb::Maintain => "maintain",
         }
     }
 
@@ -124,7 +138,9 @@ pub fn work_of_process(process: &Process) -> i64 {
 pub struct Task {
     pub id: u32,
     pub verb: Verb,
-    /// What is being raised, read by `Verb::Build` and ignored by every other verb.
+    /// What the work is for: the structure being raised (`Build`) or the structure being put
+    /// back (`Maintain`). Ignored by `Gather` and `Make`, which address substances and processes
+    /// rather than structures, and left at a documented placeholder there.
     pub kind: BuildingKind,
     /// The tile the work happens on.
     pub site: u32,
@@ -228,6 +244,17 @@ impl Task {
                 self.work_remaining,
                 self.claim_line()
             ),
+            // The condition is deliberately **not** printed here: it is a reading of the
+            // structure's mass, and a task carrying its own copy would be a second home for it.
+            Verb::Maintain => format!(
+                "maintain {} at tile {} ({} g of {} to put back, {} work left{})",
+                self.kind.name(),
+                self.site,
+                self.requires_g,
+                self.family,
+                self.work_remaining,
+                self.claim_line()
+            ),
         }
     }
 
@@ -252,7 +279,10 @@ mod tests {
         }
         assert_eq!(Verb::named("demolish"), None, "not declared, so not a task verb");
         assert_eq!(Verb::named(""), None);
-        assert_eq!(Verb::ALL.len(), 3, "a verb arrives with an implementation, not before");
+        // Mending is in the list because it has a mechanism behind it: a plan, a draw out of the
+        // ground, and the one `repair` that closes it (Q54).
+        assert_eq!(Verb::named("maintain"), Some(Verb::Maintain));
+        assert_eq!(Verb::ALL.len(), 4, "a verb arrives with an implementation, not before");
     }
 
     /// A gather has two destinations and a make has one, and the difference is the whole reason

@@ -4,7 +4,7 @@
 //! the world's sim all read these values, and `tests` in `mod.rs` refuses a build
 //! whose generated source no longer matches the declaration it came from.
 
-pub const SOURCE_DIGEST: u64 = 0x4218A3E2DCE1FCC2;
+pub const SOURCE_DIGEST: u64 = 0xEC8845F69AE36E62;
 pub const GENERATED_BY: &str = "tools/materials/emit.py";
 
 /// One declared material family: its own lightness, the chroma a hue variation
@@ -447,22 +447,24 @@ pub const UPKEEP_PER_MONTH: &[(&str, f32)] = &[
     ("soil", 0.1),
 ];
 
-/// Condition lost per sim-day, by family.
-pub const DECAY_PER_DAY: &[(&str, f32)] = &[
-    ("metal", 0.0008),
-    ("enamel", 0.0006),
-    ("glass", 0.0005),
-    ("ceramic", 0.0004),
-    ("polymer", 0.0012),
-    ("paper", 0.0018),
-    ("road", 0.0006),
-    ("water", 0.0),
-    ("organic", 0.0015),
-    ("soil", 0.0009),
+/// Wear per sim-day, by family: grams lost per gram held, as an exact rational.
+pub const DECAY_PER_DAY: &[(&str, i64, i64)] = &[
+    ("metal", 1, 1250),
+    ("enamel", 3, 5000),
+    ("glass", 1, 2000),
+    ("ceramic", 1, 2500),
+    ("polymer", 3, 2500),
+    ("paper", 9, 5000),
+    ("road", 3, 5000),
+    ("water", 0, 1),
+    ("organic", 3, 2000),
+    ("soil", 9, 10000),
 ];
 
-pub const REPAIR_FLOOR: f32 = 0.35;
-pub const REPAIR_CEILING: f32 = 1.0;
+/// Below this share of its own mass a structure owes a repair.
+pub const REPAIR_FLOOR: (i64, i64) = (7, 20);
+/// Above this share it is fully maintained and nothing is owed.
+pub const REPAIR_CEILING: (i64, i64) = (1, 1);
 pub const REPAIR_SHARE: f32 = 0.4;
 
 /// Whether a family carries power, and how much.

@@ -137,10 +137,26 @@ the citizens walk out and **make one hatchet on their own** inside two thousand 
 a half of sim time, most of it walking — and the audit reads the world holding the chain's own
 4.1 kg, as 2900 g of tool and 1200 g of declared by-products.
 
-The gate is two-layered on purpose: `tools/materials/schema.py` refuses to *emit* a table that
-breaks the contract, and `src/materials/schema.rs` re-checks what it would *use* — because the
-emitting gate cannot see a hand-edited artifact or a call site that invents a quantity. What
-neither can check is printed as open, every run, beside what the tables do not decide.
+**Wear is mass, and so is mending.** Decay used to be a float on a structure's `condition` — a
+reading with no hands behind it: nothing consumed material, nothing repaired, and the weathered
+grams had nowhere to have gone. A structure's condition is now **derived from what it still
+holds**: the declared rate is an exact rational (grams lost per gram held — 3/2500 a day for a
+polymer part), and what weather takes is booked to a **destination account**, `worn:ceramic`,
+which is Q114's rule that decay goes somewhere and never to nothing. A **repair is the same
+system as building** (Q54): a maintain is a task whose bill of materials is planned in grams off
+the structure's own mass before anybody walks, whose material comes out of the ground, and which
+closes through the one `repair` a repair ticket also closes through. What gets booked is what was
+**drawn** — mending a wall with a tenth of what it lost leaves the rest owing, rather than
+snapping the number up. On the rung's own fixture the city weathers its home and mends it with no
+help from the test, and the audit still reads zero.
+
+A save carries the two deltas — worn, mended — and the condition is arithmetic, so the format went
+to **v3**: a v2 save's float condition is converted to mass on the way in, and the derivation is
+reported per structure rather than happening quietly. The gate is two-layered on purpose:
+`tools/materials/schema.py` refuses to *emit* a table that breaks the contract, and
+`src/materials/schema.rs` re-checks what it would *use* — because the emitting gate cannot see a
+hand-edited artifact or a call site that invents a quantity. What neither can check is printed as
+open, every run, beside what the tables do not decide.
 
 ---
 
@@ -411,13 +427,13 @@ it lands, is synthesised rather than sampled.
   is unmeasured.
 * **Composite contrast on a rendered frame** — token pairs are measured; pixels are
   not.
-* **The material economy** — the tables, the gate, the reduction, the surface patches and
-  the rung that runs them have landed (`docs/GRILLING-C9.md`, *Built*). Open:
-  `Maintain` and wear, so nothing ages yet; the process structures (a kiln is a row
-  nobody has declared); builds still draw their mass from the ground under their own
-  site while makes consume a holding, which is the remaining half of *drawn but not
-  hauled*; the tier gate, which needs phase 6's progression; and the ore rung, blocked
-  on `SOURCES.md`'s `[NS]` rows rather than on the schema — a declared ore grade would
+* **The material economy** — the tables, the gate, the reduction, the surface patches, the rung
+  that runs them and the maintain that mends have landed (`docs/GRILLING-C9.md`, *Built*). Open:
+  Q54's *other* half, condition scaling a machine's throughput, which belongs with the process
+  structures (a kiln is still a row nobody has declared); builds still draw their mass from the
+  ground under their own site while makes consume a holding, which is the remaining half of
+  *drawn but not hauled*; the tier gate, which needs phase 6's progression; and the ore rung,
+  blocked on `SOURCES.md`'s `[NS]` rows rather than on the schema — a declared ore grade would
   make the ledger look sourced while being invented.
 * **The icon library** — ladder, registry-driven inventory, motion, and the material
   swatch check, above.

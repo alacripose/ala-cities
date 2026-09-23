@@ -20,7 +20,6 @@ use crate::materials::geology as material_geology;
 use crate::materials::schema as material_schema;
 use crate::materials::ledger as material_ledger;
 use crate::materials::surface as material_surface;
-use crate::materials::generated::REPAIR_CEILING;
 use crate::materials::generated as material_generated;
 use crate::materials::world::{self as material_world, Level};
 use citizen::{Citizen, CitizenState};
@@ -35,13 +34,15 @@ use road::RoadGraph;
 /// version and a named migration, with the derivation reported rather than silent**:
 /// deriving what a structure is made of is a decision about the historical record, and
 /// a decision that happens without a report is a decision nobody can check. v1 is every
-/// save written before the world had materials; v2 carries them.
-pub const FORMAT_VERSION: u32 = 2;
+/// save written before the world had materials; v2 carries them; v3 carries **wear as
+/// mass** instead of a float condition, because a structure's condition is now a reading
+/// of what it still holds.
+pub const FORMAT_VERSION: u32 = 3;
 
-/// The condition a structure is in when it is new. 1.0 is as-built.
-fn condition_as_built() -> f32 {
-    1.0
-}
+// `condition_as_built` stood here: the condition a structure is in when it is new. C9's MAINTAIN
+// slice made condition a **reading of mass**, so "as-built" is `worn_g = mended_g = 0` and there
+// is no float to seed — a stored condition beside two stored mass deltas would be two homes for
+// one fact, which is the defect the declaration exists to remove.
 
 /// The material a structure was built from, as its `MAT-*` ticket claims it.
 ///
@@ -157,6 +158,13 @@ pub const LOD_RADIUS: i32 = 48;
 /// posted under the old one-tile check and never worked, which is a stall with no case against
 /// it.
 pub const WORK_REACH: u32 = 3;
+
+/// How many repair tasks one daily pass may post (C9's MAINTAIN slice).
+///
+/// A cap rather than a target, and the same reading as the demand pass's four: a queue that grows
+/// faster than it drains is a queue nobody can read, and a season of neglected walls is one
+/// afternoon's worth of work either way.
+pub const MAINTAIN_POSTS_PER_PASS: usize = 4;
 
 /// The good the first rung ends in (Q7's hatchet, Q102's first-tier rung).
 ///
@@ -497,6 +505,19 @@ impl MaterialShortfall {
     }
 }
 
+/// Read a v2 save's bare `condition: 0.42` into the `Option` the migration consumes.
+///
+/// Absent stays `None`, which is what makes "a save that never carried a condition" (v1, and every
+/// save this build writes) different from "a save whose condition was 1.0" — the first has nothing
+/// to convert and the second converts to nothing, and a report that could not tell them apart would
+/// be reporting a conversion that never happened.
+fn legacy_condition_float<'de, D>(deserializer: D) -> Result<Option<f32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    f32::deserialize(deserializer).map(Some)
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Building {
     pub id: u32,
@@ -517,9 +538,38 @@ pub struct Building {
     /// an unknown material is exactly what a missing report would hide.
     #[serde(default)]
     pub material_as_built: Option<MaterialClaim>,
-    /// Present condition, 1.0 being as-built. What decays; never the claim above.
-    #[serde(default = "condition_as_built")]
-    pub condition: f32,
+    /// The mass this structure has **lost to weather**, in grams (C9's MAINTAIN slice).
+    ///
+    /// Monotone: it only ever rises, because weathering is an append-only fact about the world —
+    /// the same rule tickets, buildings and retirements follow. It is what makes decay *mass*:
+    /// Q109 and Q114 answered that a rotted or respired gram goes to a **destination account**
+    /// and never to nothing, and a wear total is the claim that account holds.
+    #[serde(default)]
+    pub worn_g: i64,
+    /// The mass put back into this structure by repairs, in grams. Monotone too, and **separate
+    /// from `worn_g` on purpose**: the rubble a wall shed stays rubble, so the destination account
+    /// is not reduced by mending — new material is drawn from the ground instead. One number
+    /// serving both would make a repair "un-wear" the world, which is mass appearing.
+    #[serde(default)]
+    pub mended_g: i64,
+    /// A **v2 save's float condition**, read only so the v2 → v3 migration can turn it into mass.
+    ///
+    /// It is not a second home for the fact and it is never written back (`skip_serializing`): it
+    /// exists for exactly one load. A v2 save's `condition: 0.87` is a statement about how much of
+    /// a structure is left, and this build's answer to that statement is `worn_g` — so dropping the
+    /// field instead would read every weathered wall in an old city as as-built, which is what the
+    /// format's own rule calls *a default that would be a lie*.
+    ///
+    /// It is read as a **bare float** rather than as an `Option`, which is the one place this file
+    /// asks serde for anything unusual: a v2 build wrote `condition:0.9976`, and a field typed
+    /// `Option<f32>` would expect `condition:Some(0.9976)` and refuse every real old save there is.
+    #[serde(
+        default,
+        rename = "condition",
+        skip_serializing,
+        deserialize_with = "legacy_condition_float"
+    )]
+    legacy_condition: Option<f32>,
     /// The tiles this structure's mass came out of (round 11's Q75).
     ///
     /// **Empty is a placement that made no material claim** — a direct `place_building`, which is
@@ -557,6 +607,43 @@ impl Building {
     /// claim was made, not that it weighs nothing — [`Building::mass_g`] is the mass.
     pub fn lineage_g(&self) -> i64 {
         self.material_from.iter().map(|line| line.grams).sum()
+    }
+
+    /// The mass standing in this structure **now**, in grams: what it was built from, less what
+    /// weather has taken, plus what repairs have put back.
+    ///
+    /// This is the number the mass audit counts, and the reason `condition` is no longer stored:
+    /// the current condition of a building is a *reading* of its mass (`standing / declared`),
+    /// and a stored float beside a derived integer would be two homes for one fact — the defect
+    /// the whole declaration exists to remove. A save carries the two deltas; the condition is
+    /// arithmetic.
+    pub fn standing_g(&self) -> Option<i64> {
+        let declared = self.mass_g()?;
+        Some((declared - self.worn_g + self.mended_g).clamp(0, declared))
+    }
+
+    /// The condition this structure reads at, 1.0 being as-built — a float, and correctly so: what
+    /// the ledger counts is the mass above, and this is how a person reads it.
+    pub fn condition(&self) -> f32 {
+        match (self.standing_g(), self.mass_g()) {
+            (Some(standing), Some(declared)) if declared > 0 => standing as f32 / declared as f32,
+            _ => 1.0,
+        }
+    }
+
+    /// The mass a fully maintained structure of this kind holds, in grams.
+    pub fn repair_target_g(&self) -> Option<i64> {
+        self.mass_g().map(material_effects::repair_target_g)
+    }
+
+    /// The mass a repair of this structure has to put back to reach the ceiling, in grams — the
+    /// number the repair's bill of materials is planned from, and the number its lineage is
+    /// checked against. Zero means nothing is owed.
+    pub fn repair_g(&self) -> i64 {
+        match (self.repair_target_g(), self.standing_g()) {
+            (Some(target), Some(standing)) => (target - standing).max(0),
+            _ => 0,
+        }
     }
 
     /// The account this structure's mass sits in: standing structures, or — once retired — the
@@ -1155,13 +1242,15 @@ impl World {
             held_g += grams;
         }
 
-        // The city, standing and in ruins, at the mass each structure derives to. A structure
+        // The city, standing and in ruins, at the mass each structure **holds now** — what it was
+        // built from, less what weather has taken, plus what repairs have put back. A structure
         // that cannot be weighed or attributed is **reported, never skipped**: it would otherwise
         // enter the audit as nothing and hide itself, and an audit that can lose a building
         // quietly is an audit nobody can trust to find the first real one.
         let mut defects = Vec::new();
+        let mut worn_g = 0;
         for building in &self.buildings {
-            let mass = building.mass_g();
+            let mass = building.standing_g();
             let family = building.material_family();
             let (Some(mass), Some(family)) = (mass, family) else {
                 defects.push(format!(
@@ -1180,9 +1269,16 @@ impl World {
             };
             ledger.record(&building.mass_account(family), mass);
             standing_g += mass;
+
+            // What weather has taken off it, to the destination account of Q114 — recorded per
+            // **as-built** family, because the family keeps claiming the mass it shed.
+            if building.worn_g > 0 {
+                ledger.record(&material_ledger::worn_account(family), building.worn_g);
+                worn_g += building.worn_g;
+            }
         }
 
-        material_ledger::MassAudit { ledger, extracted_g, standing_g, held_g, defects }
+        material_ledger::MassAudit { ledger, extracted_g, standing_g, held_g, worn_g, defects }
     }
 
     /// Plan where a structure's material would come from, **without touching the ground**.
@@ -1345,6 +1441,65 @@ impl World {
             substance: String::new(),
             fetch_from: None,
             stage: sim_task::Stage::Working,
+            claimed_by: None,
+            opened_tick: self.clock.tick,
+        });
+        Ok(id)
+    }
+
+    /// Open the work that **puts mass back into a structure**, or refuse and say why — Q54's
+    /// *repair is the same system as building*, taken literally: a maintain is a task whose
+    /// material is planned before anybody walks, exactly as a build's is.
+    ///
+    /// Three things are read off the structure here rather than decided about it:
+    ///
+    /// * **Which family.** The one the structure already claims (`material_as_built`), so a
+    ///   ceramic home is mended with ceramic. A repair drawing whatever was nearest instead would
+    ///   let a structure change substance by being mended.
+    /// * **How much.** [`Building::repair_g`] — the difference between what stands and the
+    ///   declared ceiling, in grams, read off the mass rather than converted from a condition.
+    /// * **How long.** `repair_work` of its kind: the same declared number the repair is *priced*
+    ///   with, so a repair costs what a repair costs and is worked for as long.
+    ///
+    /// The plan is the same search a build makes, at the structure's own tile — which is C9's
+    /// *drawn but not hauled* step, applied to a repair. Where a maintain's material will come
+    /// from once hauling exists is one of the things the record still has open.
+    pub fn post_repair_task(&mut self, index: usize) -> Result<u32, MaterialShortfall> {
+        let Some(building) = self.buildings.get(index) else {
+            return Err(MaterialShortfall::of(0, "a structure", 0, 0)
+                .noting("the structure this maintain is for is no longer in the world"));
+        };
+        let site = building.tile;
+        let kind = building.kind;
+        let Some(family) = building.material_family().map(|family| family.to_string()) else {
+            return Err(MaterialShortfall::of(site, "nothing", 0, 0).noting(format!(
+                "a {} claims no material, so there is nothing to put back into it",
+                kind.name()
+            )));
+        };
+        let need = building.repair_g();
+        if need <= 0 {
+            // Not a shortage and not a defect: the structure is above its floor and owes nothing.
+            // Returned as a refusal so a caller that posts one anyway is told rather than obeyed.
+            return Err(MaterialShortfall::of(site, family, 0, 0)
+                .noting("the structure is above its declared floor, so nothing is owed"));
+        }
+        let plan = self.plan_material(site, &family, need)?;
+        let id = self.next_task_id;
+        self.next_task_id += 1;
+        self.tasks.push(Task {
+            id,
+            verb: sim_task::Verb::Maintain,
+            kind,
+            site,
+            family,
+            requires_g: need,
+            material: plan,
+            process: String::new(),
+            substance: String::new(),
+            fetch_from: None,
+            stage: sim_task::Stage::Working,
+            work_remaining: material_effects::repair_work(kind.part_prefix()),
             claimed_by: None,
             opened_tick: self.clock.tick,
         });
@@ -1601,6 +1756,35 @@ impl World {
                 false
             }
         }
+    }
+
+    /// The city mends what it owns: a **daily** pass over the structures that owe a repair, and
+    /// the work posted for each — the owner-of-last-resort rule again (Q36), since no citizen owns
+    /// a wall.
+    ///
+    /// Daily, and for the same reason the rung's site is chosen daily: this asks the wear's own
+    /// cadence. The floor is crossed *by a day's wear*, so a pass per tick would ask the same
+    /// question of an answer that has not changed — and it would scan every structure five times a
+    /// sim-second to do it.
+    ///
+    /// Capped like the demand pass (four at a time) and one task per tile, so a city in decline
+    /// posts a queue somebody can read rather than one line per wall. A structure the ground
+    /// cannot supply is a **case with a number** (Q74) and not a silent nothing.
+    pub fn post_maintain_tasks(&mut self) -> bool {
+        let mut posted = 0;
+        for (index, tile, _, _) in self.repairs_due() {
+            if posted >= MAINTAIN_POSTS_PER_PASS {
+                break;
+            }
+            if self.open_task_at(tile).is_some() {
+                continue;
+            }
+            match self.post_repair_task(index as usize) {
+                Ok(_) => posted += 1,
+                Err(shortfall) => self.record_starved(&shortfall),
+            }
+        }
+        posted > 0
     }
 
     /// Whether any holding anywhere holds a gram of `substance`.
@@ -1922,6 +2106,54 @@ impl World {
                     self.release(id, CitizenState::ToHome);
                     self.tasks.remove(position);
                 }
+                // Putting mass back into a structure that owes it: the plan is drawn out of the
+                // ground and the act closes through `repair` — **one** implementation, so a repair
+                // done by a citizen and a repair closed by a ticket cannot come to mean two things
+                // (Q54).
+                (sim_task::Verb::Maintain, _) => {
+                    let standing_index = self.tiles[task.site as usize]
+                        .building
+                        .map(|index| index as usize)
+                        .filter(|index| {
+                            // The structure the work was posted for, still there and still that: a
+                            // tile demolished and rebuilt as something else between posting and
+                            // completion is a case, not a repair of the wrong wall.
+                            self.buildings[*index].retired.is_none()
+                                && self.buildings[*index].kind == task.kind
+                        });
+                    let Some(index) = standing_index else {
+                        stalled.push((
+                            id,
+                            MaterialShortfall::of(task.site, task.family.clone(), task.requires_g, 0)
+                                .noting("the structure this maintain was posted for is no longer standing there"),
+                        ));
+                        continue;
+                    };
+                    let drawn = self.draw_material(&task.material);
+                    let drawn_g: i64 = drawn.iter().map(|line| line.grams).sum();
+                    if self.repair(index, drawn_g).is_none() {
+                        stalled.push((
+                            id,
+                            MaterialShortfall::of(task.site, task.family.clone(), task.requires_g, drawn_g)
+                                .noting("the structure stopped being repairable while the work was done"),
+                        ));
+                        continue;
+                    }
+                    if drawn_g < task.requires_g {
+                        // The ground gave less than the plan asked for. The work is real and the
+                        // mass that came out is **booked** — the structure is mended with what was
+                        // taken, and the rest is an open debt the next pass files again. A reading
+                        // rather than a stall, for the same reason a thin gather is.
+                        refusals.push(MaterialShortfall::of(
+                            task.site,
+                            task.family.clone(),
+                            task.requires_g,
+                            drawn_g,
+                        ));
+                    }
+                    self.release(id, CitizenState::ToHome);
+                    self.tasks.remove(position);
+                }
                 // A gather is always fetching or carrying. A `Working` gather would be a task the
                 // world posted wrong, and saying so is cheaper than a silent no-op.
                 (sim_task::Verb::Gather, sim_task::Stage::Working) => {
@@ -2159,7 +2391,12 @@ impl World {
             // where placement is a recorded act (the player's build), which is the same
             // distinction the record already makes between a claim and growth.
             material_as_built: MaterialClaim::of_kind(kind),
-            condition: condition_as_built(),
+            // As-built: nothing has weathered off it and nothing has been mended into it, which is
+            // what `condition()` reads 1.0 from.
+            worn_g: 0,
+            mended_g: 0,
+            // Only a v2 save carries one, and this structure was not written by one.
+            legacy_condition: None,
             // Placement is not building: this primitive makes no material claim, and
             // `build_with_material` is what fills one in.
             material_from: Vec::new(),
@@ -2209,6 +2446,9 @@ impl World {
         }
         if self.clock.tick.is_multiple_of(TICKS_PER_DAY) {
             self.weather_structures();
+            // The day's wear is what crosses the floor, so the day is when the work is posted: the
+            // pass reads the repairs the wear just owed and opens one task each.
+            self.post_maintain_tasks();
         }
 
         self.step_citizens();
@@ -2231,12 +2471,21 @@ impl World {
             if building.retired.is_some() {
                 continue;
             }
-            let rate = material_effects::decay_per_day(building.kind.part_prefix());
-            if rate <= 0.0 {
+            let Some(declared) = building.mass_g() else { continue };
+            let wear = material_effects::wear_g_per_day(building.kind.part_prefix(), declared);
+            if wear <= 0 {
+                // A structure whose families do not weather (water alone, today) moves no mass,
+                // and that is a declared rate rather than a skipped step.
                 continue;
             }
-            building.condition = (building.condition - rate).max(0.0);
-            if material_effects::repair_is_due(building.condition) {
+            // The wear is bounded by what is still standing: a structure can lose all of its mass
+            // to the weather, and cannot go below nothing.
+            let standing = building.standing_g().unwrap_or(0);
+            building.worn_g += wear.min(standing);
+            // Read back rather than adjusted by hand: what decides whether the floor has been
+            // crossed is the structure's own arithmetic, not a second one written here.
+            let after = building.standing_g().unwrap_or(0);
+            if material_effects::repair_is_due(after, declared) {
                 building.repair_filed = true;
             }
         }
@@ -2258,24 +2507,41 @@ impl World {
                 (
                     index as u32,
                     b.tile,
-                    b.condition,
+                    b.condition(),
                     material_effects::repair_cost(b.kind.part_prefix()),
                 )
             })
             .collect()
     }
 
-    /// Close a repair: the structure is restored to the declared ceiling and stops
-    /// being due. Returns the condition that closed it, which is exactly what the
-    /// ticket is closed by reading back.
-    pub fn repair(&mut self, index: usize) -> Option<f32> {
+    /// Close a repair: the material the work actually put back is **booked onto the structure**,
+    /// and it stops being due. Returns the condition it closes at.
+    ///
+    /// One implementation, and the maintain task goes through it (Q54: repair is the same system
+    /// as building, rather than one per noun). Two things it is careful about, and both are mass:
+    ///
+    /// * **It books what was drawn, not what was wanted.** A repair that took six days drew a plan
+    ///   made on the first, and the structure weathered a little further in between — so it closes
+    ///   *below* the ceiling, and that is the honest reading rather than snapping a number up. A
+    ///   repair short of its target still **owes** the rest, which the flag above says.
+    /// * **It cannot be mended past as-built.** The booking is bounded by the deficit that is
+    ///   actually there, so a caller handing it more grams than are missing books the missing ones
+    ///   and the rest stays where it was — loose mass the audit can see, rather than a clamp that
+    ///   would swallow it silently.
+    pub fn repair(&mut self, index: usize, drawn_g: i64) -> Option<f32> {
         let building = self.buildings.get_mut(index)?;
         if building.retired.is_some() {
             return None;
         }
-        building.condition = REPAIR_CEILING;
-        building.repair_filed = false;
-        Some(building.condition)
+        let declared = building.mass_g()?;
+        let deficit = declared - building.standing_g().unwrap_or(declared);
+        building.mended_g += drawn_g.clamp(0, deficit);
+        // Whether it still owes one is **read back off the mass**, not declared closed: a repair
+        // that reached the ceiling settles the debt, and one that put back half the deficit leaves
+        // it owing the other half — which the next pass files again rather than losing.
+        building.repair_filed =
+            material_effects::repair_is_due(building.standing_g().unwrap_or(declared), declared);
+        Some(building.condition())
     }
 
     fn recompute_power(&mut self) {
@@ -2546,12 +2812,24 @@ impl World {
             let is_full = distance <= LOD_RADIUS;
             if is_full {
                 full += 1;
-            }
-
-            // A parked agent carries a one-tile path and has nothing to walk.
+            }            // A parked agent carries a one-tile path and has nothing to walk — but **parked is not
+            // the same as arrived**, and that distinction is what this branch is for.
+            //
+            // A route whose end is the road node the citizen is already standing beside is *one tile
+            // long*: `route_between_tiles` returns exactly that whenever a task's site is within
+            // work reach of the node next to the citizen's own home. Skipping the arrival there
+            // parked a worker in `ToWork` for ever — standing beside their work, carrying the state
+            // that says they are still walking to it — so `work_tasks` never counted a tick and the
+            // task never finished. Arriving is arriving, whichever way the route got there.
             if citizen.path.len() <= 1 {
+                if citizen.path.len() == 1 {
+                    arrive(citizen, &mut arrivals);
+                }
                 continue;
             }
+
+
+
 
             // Full agents walk a step at a time; offscreen agents advance a
             // tile per tick. Both are functions of the world, never the clock.
@@ -2566,22 +2844,9 @@ impl World {
             }
             citizen.path_cursor += 1;
             if citizen.path_cursor + 1 >= citizen.path.len() {
-                // Arrived. The agent parks on its destination instead of
-                // vanishing: a citizen at work is still a citizen.
-                let arrived = citizen.path[citizen.path.len() - 1];
-                citizen.path = vec![arrived];
-                citizen.path_cursor = 0;
-                citizen.step_work = 0.0;
-                citizen.state = match citizen.state {
-                    CitizenState::ToWork => CitizenState::AtWork,
-                    CitizenState::ToHome => CitizenState::AtHome,
-                    other => other,
-                };
-                if citizen.state == CitizenState::AtWork {
-                    if let Some(work) = citizen.work {
-                        arrivals.push(work);
-                    }
-                }
+                // Arrived. The agent parks on its destination instead of vanishing: a citizen at
+                // work is still a citizen.
+                arrive(citizen, &mut arrivals);
             }
         }
 
@@ -2774,18 +3039,47 @@ impl World {
             return Ok(());
         }
 
+        // The migrations run **in order, oldest first**, and that is a chain rather than a list: a
+        // v1 save's structures have no claim until v2 derives one, and there is nothing to say about
+        // a structure's wear until it has been weighed at all. Each one appends to the same report,
+        // because a decision that happens without a report is a decision nobody can check (a152).
+        let mut derived = Vec::new();
+
         // v1 → v2. The named migration: every structure that predates the world having
         // materials gets the material its own kind declares, and **the derivation is
         // reported** rather than happening quietly (a152).
-        let mut derived = Vec::new();
-        for building in self.buildings.iter_mut() {
-            if building.material_as_built.is_none() {
-                building.material_as_built = MaterialClaim::of_kind(building.kind);
-                if let Some(claim) = &building.material_as_built {
-                    derived.push((building.id, claim.describe()));
+        if self.format_version < 2 {
+            for building in self.buildings.iter_mut() {
+                if building.material_as_built.is_none() {
+                    building.material_as_built = MaterialClaim::of_kind(building.kind);
+                    if let Some(claim) = &building.material_as_built {
+                        derived.push((building.id, claim.describe()));
+                    }
                 }
             }
         }
+
+        // v2 → v3. A structure's **wear becomes mass**: the float condition a v2 save carried is
+        // exactly the share of the structure that was still there, so the mass it has lost is
+        // `declared × (1 − condition)` — derived rather than guessed, and reported per structure
+        // with the number it came from, so a reader can disagree with the rounding.
+        for building in self.buildings.iter_mut() {
+            let Some(condition) = building.legacy_condition.take() else {
+                continue;
+            };
+            // A structure whose mass nobody declared has nothing to convert.
+            let Some(declared) = building.mass_g() else { continue };
+            let worn = ((declared as f64) * (1.0 - condition as f64)) as i64;
+            building.worn_g = worn.clamp(0, declared);
+            derived.push((
+                building.id,
+                format!(
+                    "{} g worn off, read from a stored condition of {condition}",
+                    building.worn_g
+                ),
+            ));
+        }
+
         let from = self.format_version;
         self.format_version = FORMAT_VERSION;
         self.migration = Some(Migration {
@@ -2801,6 +3095,30 @@ impl World {
 /// save defaults to it — the same reasoning as a tile with no extraction having extracted nothing.
 fn first_task_id() -> u32 {
     1
+}
+
+/// A citizen **arrives** at the end of a route: it parks there, and its state stops being a journey
+/// and becomes a place.
+///
+/// One function because there are two ways to arrive — walking the last step of a route, and being
+/// handed a route that is one tile long because the work is within reach of the node the citizen's
+/// own home is beside — and two implementations of *arrived* would be two answers to what being at
+/// work means. Parking rather than vanishing is the other half: a citizen at work is still a
+/// citizen, standing on the tile its work is read against.
+fn arrive(citizen: &mut Citizen, arrivals: &mut Vec<u32>) {
+    citizen.path = vec![citizen.path[citizen.path.len() - 1]];
+    citizen.path_cursor = 0;
+    citizen.step_work = 0.0;
+    citizen.state = match citizen.state {
+        CitizenState::ToWork => CitizenState::AtWork,
+        CitizenState::ToHome => CitizenState::AtHome,
+        other => other,
+    };
+    if citizen.state == CitizenState::AtWork {
+        if let Some(work) = citizen.work {
+            arrivals.push(work);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -3034,44 +3352,55 @@ mod tests {
         assert_eq!(world.tiles[free as usize].zone, Zone::Residential);
     }
 
-    /// §7.4's deterioration effect, reached through the clock rather than called
-    /// directly: a declared rate off the condition every sim-day, the floor crossing
-    /// that owes **one** repair, and the repair that settles it by the condition it
-    /// wrote back.
+    /// §7.4's deterioration effect, reached through the clock rather than called directly: a
+    /// declared rate of **mass** off the structure every sim-day, the floor crossing that owes
+    /// **one** repair, and the repair that settles it by booking the mass it put back — with the
+    /// condition falling out of the arithmetic rather than being stored beside it.
     ///
-    /// Through the tick on purpose. The defect this fixes was a field nothing
-    /// touched, and a test that calls `weather_structures` itself would pass just as
-    /// happily with the call missing from `tick`.
+    /// Through the tick on purpose. The defect this fixes was a field nothing touched, and a test
+    /// that calls `weather_structures` itself would pass just as happily with the call missing from
+    /// `tick`.
     #[test]
-    fn a_structure_decays_a_day_at_a_time_and_owes_one_repair() {
-        use crate::materials::generated::REPAIR_FLOOR;
-
+    fn a_structure_wears_a_day_at_a_time_and_owes_one_repair() {
         let mut world = small_city();
         let tile = world.index(4, 4);
         world.place_building(tile, BuildingKind::Home).expect("placed");
-        let rate = material_effects::decay_per_day(BuildingKind::Home.part_prefix());
+        let declared = world.buildings[0].mass_g().expect("a home declares its mass");
+        let wear = material_effects::wear_g_per_day(BuildingKind::Home.part_prefix(), declared);
         let claim = world.buildings[0].material_as_built.clone();
-        assert_eq!(world.buildings[0].condition, 1.0, "as-built");
+        assert_eq!(world.buildings[0].worn_g, 0, "as-built");
+        assert_eq!(world.buildings[0].condition(), 1.0, "which reads as 1.0");
         assert!(world.repairs_due().is_empty(), "nothing is owed on day one");
 
-        // The tick before a day closes does nothing; the one that closes it wears the
-        // structure by exactly one declared day.
+        // The tick before a day closes does nothing; the one that closes it wears the structure by
+        // exactly one declared day — in grams, because wear is mass.
         world.clock.tick = TICKS_PER_DAY - 2;
         world.tick();
-        assert_eq!(world.buildings[0].condition, 1.0, "a day has not passed");
+        assert_eq!(world.buildings[0].worn_g, 0, "a day has not passed");
         world.clock.tick = TICKS_PER_DAY - 1;
         world.tick();
-        assert!(
-            (world.buildings[0].condition - (1.0 - rate)).abs() < 1e-6,
-            "one sim-day of wear at the declared rate, got {}",
-            world.buildings[0].condition
+        assert_eq!(world.buildings[0].worn_g, wear, "one sim-day of declared wear");
+        assert_eq!(world.buildings[0].standing_g(), Some(declared - wear));
+        assert_eq!(
+            world.buildings[0].condition(),
+            (declared - wear) as f32 / declared as f32,
+            "and the condition is a reading of that mass, not a second home for it"
         );
 
         // Drive it to just above the floor and let a day cross it.
-        world.buildings[0].condition = REPAIR_FLOOR + rate / 2.0;
+        let above_floor = declared * 35 / 100 + 1;
+        world.buildings[0].worn_g = declared - above_floor;
         world.clock.tick = TICKS_PER_DAY * 2 - 1;
         world.tick();
-        assert!(world.buildings[0].condition < REPAIR_FLOOR);
+        assert_eq!(
+            world.buildings[0].worn_g,
+            declared - above_floor + wear,
+            "the next day's wear is the one that crosses the floor"
+        );
+        assert!(
+            material_effects::repair_is_due(world.buildings[0].standing_g().unwrap(), declared),
+            "and below the declared floor is where it crosses"
+        );
         let due = world.repairs_due();
         assert_eq!(due.len(), 1, "the structure owes a repair: {due:?}");
         assert_eq!(due[0].1, tile);
@@ -3080,28 +3409,79 @@ mod tests {
             "a repair is priced against the thing repaired"
         );
 
-        // Still one, a day later: a crossed floor is a repair owed, not a repair per
-        // day, which is what the flag on the structure is for.
+        // Still one, a day later: a crossed floor is a repair owed, not a repair per day, which is
+        // what the flag on the structure is for.
         world.clock.tick = TICKS_PER_DAY * 3 - 1;
         world.tick();
         assert_eq!(world.repairs_due().len(), 1);
 
-        // The repair settles it, and the condition is what closed it.
-        let closed = world.repair(0).expect("a standing structure can be repaired");
-        assert_eq!(closed, REPAIR_CEILING);
+        // The repair settles it by **booking the mass it put back**, and the condition closes at
+        // the ceiling because the mass reached it.
+        let owed = world.buildings[0].repair_g();
+        assert_eq!(owed, world.buildings[0].worn_g, "a repair owes exactly what has worn off");
+        let closed = world.repair(0, owed).expect("a standing structure can be repaired");
+        assert_eq!(closed, 1.0, "the ceiling is where the mass now reads");
+        assert_eq!(world.buildings[0].mended_g, owed);
         assert!(world.repairs_due().is_empty());
         assert!(!world.buildings[0].repair_filed);
         assert_eq!(
             world.buildings[0].material_as_built, claim,
-            "the condition moves and the as-built claim never does (a155)"
+            "the mass moves and the as-built claim never does (a155)"
         );
 
         // A retired structure owes nothing: it is history, not a liability.
         world.demolish(tile, RetirementReason::Superseded);
-        world.buildings[0].condition = 0.1;
+        world.buildings[0].worn_g = declared * 9 / 10;
         world.buildings[0].repair_filed = true;
         assert!(world.repairs_due().is_empty(), "a ruin is not repairable");
-        assert!(world.repair(0).is_none());
+        assert!(world.repair(0, 1_000).is_none());
+    }
+
+    /// A repair is a **draw**, so it books what was drawn rather than what was wanted: mending a
+    /// wall with a third of what it lost leaves it owing the other two thirds, and the flag says so
+    /// rather than reading closed. The alternative — snapping every repair up to the ceiling —
+    /// would be mass appearing at the moment somebody putted a ladle of mortar.
+    #[test]
+    fn a_repair_short_of_its_target_leaves_the_debt_owing() {
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        world.place_building(tile, BuildingKind::Home).expect("placed");
+        let declared = world.buildings[0].mass_g().expect("declared");
+        // All but a twentieth of it weathered off, and a tenth of the debt put back still leaves it
+        // below the declared floor — which is the only reading under which a repair owes anything.
+        world.buildings[0].worn_g = declared - declared / 20;
+        world.buildings[0].repair_filed = true;
+        let owed = world.buildings[0].repair_g();
+        let poured = owed / 10;
+
+        let closed = world.repair(0, poured).expect("a standing structure can be repaired");
+        assert_eq!(world.buildings[0].mended_g, poured, "it books the draw, to the gram");
+        assert!(closed < 1.0, "which is not the ceiling: it closed at {closed}");
+        assert_eq!(
+            world.buildings[0].standing_g(),
+            Some(declared / 20 + poured),
+            "standing mass is what was left plus what was put back"
+        );
+        assert!(
+            world.buildings[0].repair_filed,
+            "and it still owes the rest, read back off the mass rather than declared shut"
+        );
+
+        // Handing it more than is missing books the missing grams and leaves the rest as loose
+        // mass the audit can see, rather than clamping a number that then reads as as-built.
+        let rest = world.buildings[0].repair_g();
+        assert_eq!(
+            world.repair(0, rest + 5_000),
+            Some(1.0),
+            "and it closes at the ceiling with nothing left owing"
+        );
+        assert_eq!(
+            world.buildings[0].mended_g,
+            poured + rest,
+            "only what was missing is booked"
+        );
+        assert_eq!(world.buildings[0].standing_g(), Some(declared), "so it is whole again");
+        assert!(!world.buildings[0].repair_filed);
     }
 
     /// A tile gives up only what it holds (C9 phase 1). The deposit is derived, the delta
@@ -3660,6 +4040,126 @@ mod tests {
         assert!(!world.post_works_tasks(), "a city with a hatchet has no first rung to work");
     }
 
+    // -----------------------------------------------------------------
+    // The maintain: mending as work, drawn out of the ground (C9 phase 3, Q54)
+    // -----------------------------------------------------------------
+
+    /// A structure wears, the city **posts the work itself**, hands put the mass back, and the mass
+    /// that goes back in comes out of the ground — driven through the real tick, because what has to
+    /// be true is that the world does it rather than that a function can.
+    ///
+    /// The fixture sets the wear directly rather than ageing the city for the centuries of sim-time
+    /// that a 35 % floor honestly takes; the wearing itself is checked a day at a time by its own
+    /// test. What this one measures is the path from *owes a repair* to *mended, and the audit still
+    /// balances*.
+    #[test]
+    fn the_city_mends_a_worn_home_out_of_the_ground() {
+        let mut world = rung_world();
+        // The rung first, so the city has its tool and nothing else is open: what is measured after
+        // this is the repair's own draw and not the rung's.
+        let works = world.works_site().expect("a road-reachable tile to work at");
+        world.post_rung_tasks(works).expect("the rung is payable");
+        drive_the_rung(&mut world, 400);
+        assert!(world.tasks.is_empty(), "the rung finished");
+        assert!(world.holds(RUNG_GOOD));
+
+        let home = world.tiles[world.index(1, 6) as usize].building.expect("the home") as usize;
+        let declared = world.buildings[home].mass_g().expect("declared");
+        // Wear it to just above the floor, so the next day's wear is what crosses it.
+        world.buildings[home].worn_g = declared - (declared * 35 / 100 + 1);
+        assert!(!world.buildings[home].repair_filed, "not yet due");
+        assert!(world.buildings[home].repair_g() > 0, "but below the ceiling");
+        let extracted_before = world.mass_audit().extracted_g;
+
+        let mut ticks = 0;
+        while world.buildings[home].mended_g == 0 && ticks < 5_000 {
+            world.tick();
+            ticks += 1;
+        }
+        assert!(
+            world.buildings[home].mended_g > 0,
+            "{ticks} ticks and the home was never mended: tasks {:?}, starved {:?}",
+            world.tasks.iter().map(|task| task.describe()).collect::<Vec<_>>(),
+            world.starved()
+        );
+
+        // It was mended with the material the ground gave up: the extraction is the mending, to the
+        // gram, and the audit reads both halves of that rather than only the wall.
+        let mended = world.buildings[home].mended_g;
+        let audit = world.mass_audit();
+        assert_eq!(
+            audit.extracted_g - extracted_before,
+            mended,
+            "every gram that went back into the wall came out of the ground"
+        );
+        assert!(
+            world.buildings[home].condition() > 0.9,
+            "and the wall is nearly whole again: it reads {}",
+            world.buildings[home].condition()
+        );
+        assert_eq!(
+            audit.of(&material_ledger::worn_account("ceramic")),
+            world.buildings[home].worn_g,
+            "while what weather took sits in the destination account (Q114), not nowhere"
+        );
+        assert!(audit.worn_g > 0, "it did weather");
+        assert!(
+            audit.conserves(),
+            "and the city is still made of what it dug: {:#?}",
+            audit.findings()
+        );
+    }
+
+    /// The route to a site **beside your own door** is one tile long, and a one-tile path used to
+    /// mean *parked*: the worker stood next to their work in `ToWork` for ever, nothing counted a
+    /// tick, and the task never finished. A repair of the home beside the road is exactly that case
+    /// — the site is within reach of the road node the residents live by — which is how this was
+    /// found rather than reasoned about.
+    #[test]
+    fn a_route_one_tile_long_still_counts_as_arriving() {
+        let mut world = rung_world();
+        let home = world.tiles[world.index(1, 6) as usize].building.expect("the home") as usize;
+        let declared = world.buildings[home].mass_g().expect("declared");
+        world.buildings[home].worn_g = declared - declared / 4;
+        let id = world
+            .post_repair_task(home)
+            .expect("a repair the world can pay for");
+        let full = material_effects::repair_work(BuildingKind::Home.part_prefix());
+
+        let mut ticks = 0;
+        let mut moved = None;
+        while ticks < 600 && moved.is_none() {
+            world.tick();
+            ticks += 1;
+            // The moment the counter moves, the citizen behind it has to be **at work** and
+            // standing where the site can be worked, rather than parked on the road with a journey
+            // still in their state.
+            let moved_on = world
+                .tasks
+                .iter()
+                .find(|task| task.id == id)
+                .is_some_and(|task| task.work_remaining < full);
+            if moved_on {
+                let task = world.tasks.iter().find(|task| task.id == id).expect("still open");
+                let worker = task.claimed_by.expect("a moving counter has a worker behind it");
+                let citizen = world.citizens.iter().find(|c| c.id == worker).expect("the worker");
+                moved = Some((citizen.state, citizen.current_tile(), task.destination()));
+            }
+        }
+
+        let (state, tile, site) = moved.unwrap_or_else(|| {
+            panic!(
+                "600 ticks and the repair never moved: {:?}",
+                world.tasks.iter().map(|task| task.describe()).collect::<Vec<_>>()
+            )
+        });
+        assert_eq!(state, CitizenState::AtWork, "arrived, not still walking");
+        assert!(
+            world.within_reach(tile.expect("somebody is standing somewhere"), site),
+            "and standing where the site can be worked, which is what the route promised"
+        );
+    }
+
     /// A patch nobody can stand beside is a patch nobody gathers: with no road at all, the rung is
     /// refused **with the substance named**, and no work is posted.
     #[test]
@@ -4064,7 +4564,7 @@ mod tests {
             .clone()
             .expect("a placed structure claims its material");
         assert_eq!(claim.part, "home.walls");
-        assert_eq!(world.building_on(tile).expect("placed").condition, 1.0);
+        assert_eq!(world.building_on(tile).expect("placed").condition(), 1.0);
 
         let dir = std::env::temp_dir().join("ala-cities-test-material-claim");
         let path = dir.join("world.ron");
@@ -4116,15 +4616,77 @@ mod tests {
                 MaterialClaim::of_kind(building.kind),
                 "the derived claim is the kind's own declared body material"
             );
-            assert_eq!(building.condition, 1.0);
+            assert_eq!(
+                (building.worn_g, building.mended_g),
+                (0, 0),
+                "and nothing has worn off it, so its condition reads as-built"
+            );
+            assert_eq!(building.condition(), 1.0);
         }
-        // Migrated once, then saved as v2, it is no longer a v1 save.
-        let saved = dir.join("world-v2.ron");
+        // Migrated once, then saved as the current version, it is no longer a v1 save.
+        let saved = dir.join("world-current.ron");
         loaded.save(&saved).expect("save migrated");
         let again = World::load(&saved).expect("reload");
-        assert!(again.migration.is_none(), "a v2 save is not migrated again");
+        assert!(again.migration.is_none(), "a current save is not migrated again");
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(&saved);
+    }
+
+    /// A v2 save's **float condition becomes mass** on the way in, and the derivation is reported:
+    /// a wall at 0.4 is a wall that has lost 60 % of what it was built from, which is a number this
+    /// build can act on and a float it no longer stores (C9's MAINTAIN slice).
+    ///
+    /// The fixture is the current save with its version rolled back and a float put back where a v2
+    /// build wrote one, because that is what the old file actually looked like — hand-typed RON
+    /// would test the typing.
+    #[test]
+    fn a_v2_save_carries_its_worn_condition_across_as_mass() {
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        world.place_building(tile, BuildingKind::Home).expect("placed");
+        let declared = world.buildings[0].mass_g().expect("declared");
+
+        let old = ron::ser::to_string(&world)
+            .expect("serialise")
+            .replacen("format_version:3", "format_version:2", 1)
+            .replacen("material_from:[", "condition:0.4,material_from:[", 1);
+        let dir = std::env::temp_dir().join("ala-cities-test-v2-condition");
+        std::fs::create_dir_all(&dir).expect("dir");
+        let path = dir.join("world-v2.ron");
+        std::fs::write(&path, old).expect("write");
+
+        let loaded = World::load(&path).expect("a v2 save loads");
+        let migration = loaded.migration.as_ref().expect("the derivation is reported");
+        assert_eq!((migration.from, migration.to), (2, FORMAT_VERSION));
+        assert_eq!(migration.derived.len(), 1, "one structure, one derivation: {migration:?}");
+        assert!(
+            migration.derived[0].1.contains("worn off"),
+            "it says what it derived: {:?}",
+            migration.derived
+        );
+        // 0.4 left means 60 % gone, in whole grams — and the last gram is where the float the old
+        // format stored disagrees with the arithmetic, which is exactly why it is no longer stored.
+        let worn = loaded.buildings[0].worn_g;
+        assert!(
+            (worn - declared * 6 / 10).abs() <= 1,
+            "60 % of {declared} g has worn off, and it reads {worn} g"
+        );
+        assert_eq!(loaded.buildings[0].mended_g, 0, "nothing was mended in a v2 save");
+        assert_eq!(
+            loaded.buildings[0].standing_g(),
+            Some(declared - worn),
+            "what stands is the declared mass less what has worn off"
+        );
+        assert!(
+            (loaded.buildings[0].condition() - 0.4).abs() < 1e-6,
+            "and it still reads where the old save left it"
+        );
+
+        // Written back out, the float is gone: this build stores the two deltas and derives the
+        // rest, so a second load converts nothing and reports nothing.
+        let text = ron::ser::to_string(&loaded).expect("serialise");
+        assert!(!text.contains("condition:"), "the float is not written back");
+        let _ = std::fs::remove_file(&path);
     }
 
     /// Two refusals, both a152's: inventing state for a newer save, and patching over a
