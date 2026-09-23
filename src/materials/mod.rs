@@ -25,6 +25,7 @@
 
 pub mod effects;
 pub mod generated;
+pub mod geology;
 pub mod world;
 
 pub use generated::*;
