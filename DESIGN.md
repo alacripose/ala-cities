@@ -73,7 +73,15 @@ Every stage has a **gate**: named commands with expected **readings**, the
 | Q232 | missing and reused question IDs | ✔ normalize the actual extracted corpus densely per campaign; remove phantom Q197–Q210 rather than infer questions |
 | Q233 | re-grill coverage gate | ✔ typed two-way source/ledger coverage; reused, malformed, aliased, and absent IDs are reported separately |
 | Q234 | disposition proof | ✔ every row starts unreviewed and needs the person's answer, reason, capability, stage, digest, evidence, and replacement decision when reworked |
+| Q235 | typed design package | ✔ canonical data, schemas, generated views, and diagrams live under `docs/design/` |
+| Q236 | ledger structure | ✔ normalized versioned JSON with stable ordering, explicit enums/nullability, digests, and ID references |
+| Q237 | capability taxonomy | ✔ twelve domain families with explicit sub-capabilities; breadth-first re-grill proceeds by family |
+| Q238 | first redesign capability | ✔ world truth and replay: vocabulary, authoritative facts, time/input order, canonical projection, and equivalence |
+| Q239 | authority/evidence placement | ✔ foundational constraints with capability-local projections; no duplicated governance mechanisms |
+| Q240 | capability design packet | ✔ twelve named fields and zero unresolved questions required for design-sweep completion |
+| Q241 | capability graph authorship | ✔ source-derived draft and reference view; agent reconciliation; human-approved typed graph is canonical; no hand-typing required |
+| Q242 | artifact census granularity | ✔ logical artifacts, producers, recipes, manifests, provenance, and compatibility decisions; generated derivatives inherit producer disposition |
 
-*Rounds 2–4 (Q217–Q234) are answered in `docs/GRILLING-C11.md`. The next
-frontier fixes the census/coverage artifact and builds the whole-system
-capability map.*
+*Rounds 2–5 (Q217–Q242) are answered in `docs/GRILLING-C11.md`. The next
+frontier opens **world truth and replay** and generates the first typed design
+package drafts for review.*

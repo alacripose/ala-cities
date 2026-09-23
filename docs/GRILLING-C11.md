@@ -394,3 +394,123 @@ person's answer is required.
 `unreviewed`. It cannot become `keep`, `rework`, or `retire` without the person's
 answer, a reason, a target capability, a target stage, source digest, evidence
 links, and a replacement canonical decision when reworked.
+
+---
+
+## Round 5 — the design-sweep substrate (Q235–Q242)
+
+### Q235 — where the canonical typed design data lives
+
+Should the ledger be a lone JSON file, hidden project data, runtime configuration,
+or a visible package that can hold schemas and generated views?
+
+➡️ **A visible `docs/design/` package.** Machine truth, schemas, generated
+Markdown, and diagrams live together without being mistaken for runtime config.
+
+✔ **Confirmed.** The canonical package is `docs/design/`. It holds the typed
+ledger and capability graph, their schemas, generated human-readable views, and
+diagrams. Exact filenames are an artifact-layout decision inside the package,
+not a second source of truth.
+
+### Q236 — how the typed ledger is structured
+
+Can JSONL, one file per decision, or flexible JSON trade simplicity for weaker
+validation and cross-record integrity?
+
+➡️ **A normalized, versioned JSON object.** Stable ordering, explicit enums,
+nullable fields, and ID references make the set validatable and diffable.
+
+✔ **Confirmed.** The ledger is a normalized versioned object. Stable ordering,
+explicit enums and nullability, source digests, and ID references are required;
+human prose fields do not make the structure free-form.
+
+### Q237 — what capability taxonomy covers the whole system
+
+Should the census inherit eight phases, mirror current modules, collapse into a
+few macro domains, or name capabilities by the behavior the product owns?
+
+➡️ **Twelve domain families with sub-capabilities.** The family is the
+breadth-first re-grill unit; finer concerns remain explicit children.
+
+✔ **Twelve families confirmed:**
+
+1. World and time
+2. Matter and transformations
+3. Work and agents
+4. Settlement and economy
+5. Authority and governance
+6. Evidence and records
+7. Persistence and replay
+8. Client and input
+9. Presentation and interface
+10. Assets and review tools
+11. Playtest and feedback
+12. Build, verification, and delivery
+
+### Q238 — which capability opens the breadth-first frontier
+
+Which settled dependency should every other design packet be able to rely on?
+
+➡️ **World truth and replay.** Vocabulary, authoritative facts, input/time
+order, and semantic projection constrain every later state model.
+
+✔ **World truth and replay confirmed.** The first capability defines vocabulary,
+authoritative world facts, time and ordered inputs, the canonical domain
+projection, and replay equivalence. Other capabilities cite its interfaces rather
+than inventing parallel state meanings.
+
+### Q239 — how authority and evidence constrain future capabilities
+
+Should every capability duplicate its own governance, leave evidence to an
+external verifier, defer it, or consume a foundation with local projections?
+
+➡️ **Foundational rules plus capability-local projections.** Authority and
+evidence own the general rules; each capability owns only what it actually does.
+
+✔ **Confirmed.** Authority, evidence, retirement, and record ownership are
+foundational constraints. Every capability declares its authority needs, evidence
+outputs, retirement semantics, and record projection without forking the general
+mechanism.
+
+### Q240 — what one capability design packet must contain
+
+Does completion mean a brief, a formal proof package, a code-first capability,
+or one complete product-design packet?
+
+➡️ **A twelve-field packet with zero unresolved questions.** A capability is not
+designed because its module exists; it is designed when every field is named.
+
+✔ **Confirmed.** Every capability packet states: purpose; actors and consumers;
+vocabulary; invariants; interface; authoritative model; flows; failure and
+refusal behavior; verification; artifact dispositions; inherited-decision
+coverage; and unresolved questions. Design-sweep completion requires zero
+unresolved questions in every packet.
+
+### Q241 — who authors the canonical capability graph
+
+Source, modules, and old documents can generate a useful draft, but current
+source does not know the target capability system. May automation become truth
+without approval?
+
+➡️ **Generate, reconcile, then obtain human approval.** The extractor is fast;
+the person owns the capability model.
+
+✔ **Generated then approved confirmed.** A source/document extractor produces a
+typed draft and a reference-only source-derived view. The agent reconciles
+missing, duplicate, and badly named capabilities. The person reviews and
+corrects the typed graph through Ask UI; only the approved graph is canonical.
+The human does not hand-type the graph.
+
+### Q242 — how generated asset trees enter the artifact census
+
+The icon workspace contains roughly 318,000 files and 582 MB while only a much
+smaller set is tracked. Must every derivative receive a ledger row?
+
+➡️ **Logical artifact provenance.** A recipe plus manifest can represent many
+deterministic derivatives without losing decisions or reproducibility.
+
+✔ **Logical artifact provenance confirmed.** The census records logical
+artifacts, producers, recipes, manifests, provenance, compatibility decisions,
+and representative outputs. Generated derivatives inherit their producer's
+disposition and are checked through manifests and digests rather than one manual
+row per file.
