@@ -881,6 +881,47 @@ The frontier is empty: every branch of this tree has been visited and recorded, 
 nothing is left silently assumed. Implementation starts with the measurement owed
 (a192's bin vocabulary, read off `action/delete`'s own marks).
 
+## 8.7 The reference marks, measured (the evidence a192 owed)
+
+`tools/icons/_measure_marks.py` reads each icon's declared mark through the same
+loader the checks use (`shapes._load_glyph`, alpha ≥ 0.5, top-down) and prints what
+the object behind the form actually measures. All six at 96 px:
+
+| icon | mark | ink | box | pieces | voids | what the object measures |
+|---|---|---|---|---|---|---|
+| `vocab-settings` | `action/settings` | 3186 (34.6 %) | 74×76 | 1 | 1 (646 px) | **6 teeth** (6 runs at 0.80 and 0.92 of R), bore ≈ 0.39 R |
+| `tool-road` | `maps/add_road` | 1632 (17.7 %) | 76×76 | 6 | 0 | the ribbon arrives in 6 components; centre column 2 runs, 89 % ink |
+| `tool-power` | `action/power_settings_new` | 1548 (16.8 %) | 72×72 | 2 (ring 1228 + stem 320) | 0 | **a power symbol**: a ring and a stem — no arms, insulators or mast |
+| `tool-inspect` | `action/search` | 1358 (14.7 %) | 69×70 | 1 | 1 (1018 px) | a magnifier: a thin ring, bore ≈ 0.51 R |
+| `tool-demolish` | `action/delete` | 3204 (34.8 %) | 56×72 | 2 (body 2664 + lid 540) | 0 | lid separated from the body by a gap, taper 0.68, **no ridges** |
+| `ticket` | `confirmation_number` | 4672 (50.7 %) | 80×64 | 1 | 3 × 64 px | three notches, each **1.37 %** of the ink |
+
+**Four places where this corrects the vocabulary I proposed in round 1:**
+
+* **gear** — I proposed teeth 8–14, and the reference object has **6**. A range that
+does not contain the object it is read from is a range that fails its own gate.
+* **lens** — my list had no bore ratio at all, and the bore (0.51 R with a thin ring)
+is the measurement that defines the object.
+* **bin** — the reference has **no ridges** and its lid is separated by a gap, so "lid
+gap" is a parameter rather than styling.
+* **ticket, and this one is load-bearing** — the reference's three notches each
+measure **1.37 %** of the ink, so **the reference object itself fails a196's 3.5 %
+threshold**. Enlarging them to clear the floor means departing from the mark that
+containment compares against, and enlarging a notch *removes ink the mark has*: the
+interaction flagged in 8.6 now has numbers, and it is a real redesign of that icon
+(≈ 64 px → ≥ 150 px per notch) rather than a check to adjust.
+
+**And one conflict that has to be put back to the person (round 5, Q198).**
+`tool-power`'s declared mark is a **power button** — a ring with a gap and a stem, two
+components, 72×72, nothing else. Two problems follow. First, the retired recipe for
+that icon was a **pylon**, which is also what the game means by `Tool::Power` (it
+places power plants and lines), and a pylon has no reference object behind it at all
+— which is precisely C3's stated reason for retiring the authored recipes. Second,
+a power button *is* the reading that icon's own declaration forbids: its
+`forbidden_readings` are "authority grant" and "a live supply reading", and a
+symbol whose whole meaning is "switched on" reads as exactly the second one. So the
+mark cannot simply be pointed at as the reference for that icon's shape.
+
 ---
 
 ## Still open, and deliberately so
