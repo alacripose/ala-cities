@@ -1163,6 +1163,50 @@ Our body must be **one welded piece** (a184/a202), and a solid oblique tile meas
 family's own reference supplies is unreachable by the object the family declares, and
 choosing which of the two yields is the person's call, not the builder's (round 9).
 
+**And it is not a lane-width problem, which is now measured rather than argued**
+(`tools/icons/_smoke_road_width.py`, a retained probe). Six carriageways at λ = 0,
+same held pose, one body each, measured under the exclusion reading:
+
+| lanes | lane width | curb | fill | judged |
+|---|---|---|---|---|
+| 2 | 0.14 | 0.06 | 0.502 | OUT |
+| 1 | 0.14 | 0.06 | 0.451 | OUT |
+| 2 | 0.10 | 0.06 | 0.471 | OUT |
+| 2 | 0.08 | 0.06 | 0.462 | OUT |
+| 1 | 0.10 | 0.06 | 0.424 | OUT |
+| 2 | 0.14 | 0.00 | 0.459 | OUT |
+
+Thinning the carriageway to **two thirds of its declared width moves the fill by
+0.03**, and removing the curb entirely by 0.04 — the parameter that carries the
+reading is not the one that carries the number. The reason is arithmetic: `fill` is
+ink over the ink's own box, and a pitched slab's ink is its top face **plus the side
+the camera can see**. At two lanes of 0.14 that side is 0.30·sin 38° ≈ 0.19 of the
+object's projected width against 0.31 of top face; flat, the same ribbon projects
+0.31 wide, which is why the same object measured **0.364 — inside the envelope —
+when its pose ramped** and measures 0.502 with the pose held.
+
+So the fork is between three answers, and only one of them is free:
+
+1. **The road ramps its pose after all** (flat at md1, oblique at iOS 6). Measured to
+   sit inside its envelope at every λ, with the anchor still its reference's own
+   number. *This is what the code did before a205, so it is a one-line change — and it
+   makes the pose a function of λ for the one family whose pose the person asked
+   about.*
+2. **The road holds its pose and its md1 anchor comes from its own object** (0.502
+   measured), with the divergence recorded: for this family the reference supplies the
+   object's reading, pose and lane proportions, not its fill, because the reference is
+   a flat map symbol and the object is a tilted tile. Cost, stated plainly: the fill
+   gate for this family then judges that the object is *stable along λ* rather than
+   that it matches its reference — a weaker claim, recorded as weaker.
+3. **The road holds its pose and the carriageway is declared fragmented** — full-width
+   gaps cut into it, open to the background, the way the reference's own six
+   components are separated. Arithmetic: cutting interior gaps leaves the ink's box
+   unchanged (the end segments set it) while removing ink, so fill scales with the
+   declared duty — 0.502 × 0.55 ≈ **0.28, predicted and not measured**, and it would
+   be measured before being built. Cost: the body is no longer one piece at the md1
+   end, so a184/a202's one-piece rule becomes "no *undeclared* component" — which is
+   what a183 already says, but it is an amendment and would be recorded as one.
+
 ---
 
 ## Still open, and deliberately so
