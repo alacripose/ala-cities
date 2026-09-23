@@ -274,6 +274,33 @@ pub struct Building {
 }
 
 impl Building {
+    /// The colour the frame draws this structure in: its own claimed material.
+    ///
+    /// Lives here rather than in the frame so it is **checkable** — a rule that only a
+    /// running window could exercise is a rule that rots. The claim is world state, so
+    /// this is a lookup; the fallback derives the kind's declared body material (the same
+    /// derivation the v1 → v2 migration makes) rather than inventing a token, so a drawn
+    /// colour is always one the table names.
+    pub fn drawn_colour(&self) -> Option<[f32; 4]> {
+        let claim = self
+            .material_as_built
+            .clone()
+            .or_else(|| MaterialClaim::of_kind(self.kind))?;
+        crate::materials::colour_of(&claim.family, &claim.anchor, &claim.level, 1.0)
+    }
+
+    /// The colour its ruin is drawn in: the same family and anchor, read one level down.
+    ///
+    /// `materials::world::RULES` already declares this — *"the retired structure's own
+    /// parts, read at `deep`"* — and the frame drew every ruin the same grey before this.
+    pub fn ruin_colour(&self, alpha: f32) -> Option<[f32; 4]> {
+        let claim = self
+            .material_as_built
+            .clone()
+            .or_else(|| MaterialClaim::of_kind(self.kind))?;
+        crate::materials::colour_of(&claim.family, &claim.anchor, "deep", alpha)
+    }
+
     pub fn is_ready(&self, tick: u64) -> bool {
         self.retired.is_none() && tick >= self.ready_tick
     }
@@ -1578,6 +1605,50 @@ mod tests {
             "the refusal names the defect: {err}"
         );
         let _ = std::fs::remove_file(&path);
+    }
+
+    /// The frame's colours are checked without a window: what is drawn is the table's own
+    /// entry for the claim, and a ruin is the same family read one level down. A renderer
+    /// rule nobody can run in a test is a rule that rots, so the rule lives here and the
+    /// frame only calls it.
+    #[test]
+    fn a_structure_is_drawn_in_its_claimed_material_and_a_ruin_one_level_down() {
+        let mut world = small_city();
+        // A plant refuses a tile with no road in reach, so the fixture builds one: a test
+        // that has to reach for a workaround to place a structure is testing the
+        // workaround.
+        world.lay_road(world.index(3, 3), world.index(3, 9));
+        for (offset, kind) in [
+            BuildingKind::Home,
+            BuildingKind::Shop,
+            BuildingKind::Factory,
+            BuildingKind::PowerPlant,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let tile = world.index(4, 4 + offset as u32);
+            world.place_building(tile, kind).expect("placed");
+            let building = world.building_on(tile).expect("placed");
+            let claim = building.material_as_built.clone().expect("claim");
+            let drawn = building.drawn_colour().expect("the table resolves the claim");
+            let entry = crate::materials::material_of(&claim.family, &claim.anchor, &claim.level)
+                .unwrap_or_else(|| panic!("{} claims an unresolved material", kind.name()));
+            assert_eq!(&drawn[..3], &entry.rgb[..], "{}", kind.name());
+            assert_eq!(drawn[3], 1.0, "a standing structure is opaque");
+            let ruin = building.ruin_colour(0.25).expect("ruin colour");
+            assert_eq!(ruin[3], 0.25, "a ruin is drawn faint");
+            assert_eq!(
+                &ruin[..3],
+                &crate::materials::material_of(&claim.family, &claim.anchor, "deep")
+                    .expect("every family resolves at deep")
+                    .rgb[..],
+                "a ruin keeps the family and reads one level down"
+            );
+            // The point of the change: two kinds must not be the same colour merely
+            // because they share a zone-shaped token.
+            assert_ne!(drawn, ruin, "a ruin is not the as-built colour");
+        }
     }
 
     #[test]

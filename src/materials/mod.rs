@@ -92,6 +92,24 @@ pub fn material_of_part(part: &str) -> Option<&'static Material> {
     material_of(part.family.as_str(), part.hue.as_str(), part.level.as_str())
 }
 
+/// The colour the frame takes for a material, at a given alpha.
+///
+/// The renderer asks by the vocabulary a claim is recorded in (`family`, `anchor`,
+/// `level`) so a structure's colour comes from its own `MAT-*` claim rather than from a
+/// token chosen at the call site. `None` means the claim names a material the table does
+/// not resolve, which a caller has to handle rather than default — a structure drawn in a
+/// colour nobody declared is exactly the silent drift the one-home rule removes.
+pub fn colour_of(family: &str, anchor: &str, level: &str, alpha: f32) -> Option<[f32; 4]> {
+    material_of(family, anchor, level).map(|entry| {
+        [entry.rgb[0], entry.rgb[1], entry.rgb[2], alpha]
+    })
+}
+
+/// The same, by the declared name of a world part (`scaffold.frame`, `home.roof`).
+pub fn part_colour(part: &str, alpha: f32) -> Option<[f32; 4]> {
+    material_of_part(part).map(|entry| [entry.rgb[0], entry.rgb[1], entry.rgb[2], alpha])
+}
+
 /// What a gate run found.
 #[derive(Clone, Debug, Default)]
 pub struct Report {

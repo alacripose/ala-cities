@@ -950,15 +950,19 @@ impl App {
 
                 if let Some(index) = t.building {
                     let b = self.world.building(index);
+                    // A structure is drawn in the material it claims to be built from.
+                    // Before this it was drawn in its *zone's* token, which said what the
+                    // tile was zoned for rather than what the building is made of — so a
+                    // ceramic home and a metal home were the same green.
+                    //
+                    // Under construction it is the declared scaffold instead (a frame
+                    // and a deck, in the table like any other material), because "being
+                    // built" is a material state rather than a zone.
                     let color = if tick < b.ready_tick {
-                        hud::style(Token::Scaffold).fill.unwrap_or([0.6, 0.5, 0.2, 1.0])
+                        materials::part_colour("scaffold.frame", 1.0)
+                            .unwrap_or([0.6, 0.5, 0.2, 1.0])
                     } else {
-                        match b.kind {
-                            BuildingKind::Home => hud::style(Token::ZoneResidential).fill.unwrap_or([0.4, 0.7, 0.4, 1.0]),
-                            BuildingKind::Shop => hud::style(Token::ZoneCommercial).fill.unwrap_or([0.4, 0.5, 0.8, 1.0]),
-                            BuildingKind::Factory => hud::style(Token::ZoneIndustrial).fill.unwrap_or([0.8, 0.6, 0.3, 1.0]),
-                            BuildingKind::PowerPlant => hud::style(Token::Powered).text.unwrap_or([0.5, 0.9, 0.6, 1.0]),
-                        }
+                        b.drawn_colour().unwrap_or([0.4, 0.7, 0.4, 1.0])
                     };
                     let height = building_height(b, tick);
                     // A contact shadow, offset along the same light that shades
@@ -991,7 +995,6 @@ impl App {
 
         // Retired structures are drawn, faintly. The city shows what it used to
         // be rather than pretending those buildings never existed.
-        let retired_color = hud::style(Token::Retired).text.unwrap_or([0.6, 0.6, 0.6, 0.5]);
         for building in &self.world.buildings {
             if building.retired.is_none() {
                 continue;
@@ -1000,6 +1003,12 @@ impl App {
             if x < left || x >= right || y < top || y >= bottom {
                 continue;
             }
+            // `world::RULES` declares what a ruin is: *the retired structure's own parts,
+            // read at `deep`*. That is a rule the table already stated and the frame did
+            // not follow — every ruin was the same grey. A ruin now keeps the family and
+            // anchor it was built from and is read one level down, which is what
+            // weathering a material means here.
+            let retired_color = building.ruin_colour(0.25).unwrap_or([0.6, 0.6, 0.6, 0.25]);
             // A ghost of its own volume: still on the map, visibly not a
             // building, and never a fill that could be mistaken for one.
             self.world_batch.building(

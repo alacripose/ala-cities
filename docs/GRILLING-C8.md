@@ -1588,6 +1588,40 @@ than between ours and a reference.
 
 ---
 
+## 8.20 The frame now draws what the world claims
+
+**A structure used to be drawn in its *zone's* token** — `ZoneResidential`, `ZoneCommercial`,
+`ZoneIndustrial`, `Powered` — which says what the tile is zoned for rather than what the
+building is made of, so a ceramic home and a metal factory differed only because their zones
+did. It is now drawn in the material its own `MAT-*` claim records, resolved through
+`materials::colour_of(family, anchor, level, alpha)`.
+
+**Two declared rules that the frame had been ignoring:**
+
+* **`scaffold.frame` and `scaffold.deck` are in the table**, so "under construction" is a
+  material state like any other — previously a `Token::Scaffold` colour chosen at the call
+  site. A structure with `tick < ready_tick` is drawn in the declared scaffold.
+* **`world::RULES` already said what a ruin is**: *"the retired structure's own parts, read
+  at `deep`"*. The frame drew every ruin the same grey. A ruin now keeps the family and
+  anchor it was built from and is read one level down — which is what weathering a material
+  means in this vocabulary, and it is the first thing the table's own rules have changed
+  on screen.
+
+**The rule lives in the library, not in the frame.** `Building::drawn_colour()` and
+`Building::ruin_colour(alpha)` sit beside the claim because a renderer rule that only a
+running window can exercise is a rule that rots; the frame now only calls them. The test
+asserts, for all four kinds, that the drawn colour **is the table's own entry** for the
+claim and that a ruin's is that family at `deep` — so a renamed family or a drifted colour
+fails a test rather than quietly changing what the city looks like.
+
+**One thing this deliberately does not do yet.** a155 says the **drawn level follows the
+condition** while the as-built claim stays fixed. `condition` exists and defaults to `1.0`,
+and nothing decays it: the decay rule, the level it maps to, and the four sim effects are
+the next slice, and inventing a threshold for them here would be inventing the balance the
+effects slice is supposed to derive.
+
+---
+
 ## Still open, and deliberately so
 
 * **`tool-zone`** — the locator half, unchanged by this campaign (a166).
