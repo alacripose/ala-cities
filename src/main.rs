@@ -457,7 +457,37 @@ impl App {
                         verdict.governor_version,
                     )
                     .unwrap_or_else(|err| format!("unfiled ({err})"));
-                self.last_ticket = Some(ticket.clone());
+                // The material claim, filed as its own kind (a175) and closed only by
+                // reading the structure back. The claim is the world's own derivation
+                // from the declared mapping, so the ticket and the world cannot disagree
+                // about what was built — only about whether it is still there.
+                if let Some(claim) = self
+                    .world
+                    .building_on(tile)
+                    .and_then(|building| building.material_as_built.clone())
+                {
+                    let material_ticket = self
+                        .gov
+                        .file(
+                            self.world.clock.tick,
+                            TicketKind::Material,
+                            format!("material of power plant {id}"),
+                            format!("built as {}", claim.describe()),
+                            Expectation::MaterialOf {
+                                tile,
+                                part: claim.part.clone(),
+                                family: claim.family.clone(),
+                                anchor: claim.anchor.clone(),
+                                level: claim.level.clone(),
+                            },
+                            Vec::new(),
+                            verdict.governor_version,
+                        )
+                        .unwrap_or_else(|err| format!("unfiled ({err})"));
+                    self.last_ticket = Some(material_ticket);
+                } else {
+                    self.last_ticket = Some(ticket.clone());
+                }
                 self.last_verdict = Some(verdict.reason.clone());
                 self.refusal = None;
                 self.play(Sound::Place);
@@ -708,9 +738,17 @@ impl App {
                 let path = PathBuf::from(WORLD_SAVE);
                 match World::load(&path) {
                     Ok(world) => {
+                        // A migration that ran is said out loud rather than left in the
+                        // file: deriving what an old building is made of is a decision
+                        // about the record, and a decision nobody is told about is one
+                        // nobody can disagree with (a152).
+                        let note = match &world.migration {
+                            Some(migration) => format!(" · {}", migration.describe()),
+                            None => String::new(),
+                        };
                         self.world = world;
                         self.toast = Some((
-                            format!("loaded {}", path.display()),
+                            format!("loaded {}{note}", path.display()),
                             self.world.clock.tick,
                         ));
                     }

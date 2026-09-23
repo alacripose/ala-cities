@@ -1518,6 +1518,76 @@ than between ours and a reference.
 
 ---
 
+## 8.19 The world's first material claim, and a save that says what it derived
+
+**a152, a155 and a175 are wired into the running game**, not merely declared:
+
+* **Every structure carries its as-built material.** `Building.material_as_built` is
+  derived from the object's own kind against `materials::world::PARTS` — the same table
+  the renderer will read — so a renamed family is a test failure rather than a silent
+  drift. `Building.condition` is a separate field at `1.0` for a new structure, which is
+  a155's split: the claim never weathers, the condition may.
+* **`MAT-*` is its own ticket kind** (`TicketKind::Material`, prefix `MAT`), filed where
+  placement is a recorded act, and closed only by reading the structure back:
+  `Expectation::MaterialOf { tile, part, family, anchor, level }` re-derives the claim
+  from the world and names the mismatch — *"tile 140's home.walls is ceramic/natural/body, 
+  and the claim was metal/natural/body on home.walls"*. A claim about an empty tile, or
+  about a structure with no claim, is a **failure** rather than a pass: *"nothing was
+  claimed to read back"* is not evidence of anything.
+* **The save is versioned and the migration is named and reported.** `format_version` 2,
+  with a v1 → v2 migration that derives every structure's material and returns a report
+  which the loader, the picker and `verify.exe` print. On the real `saves/world.ron`:
+
+  ```
+  world — saves/world.ron
+    save format v0 → v2: no structures needed a material derived; the tables and the
+    road graph were already there
+  ```
+
+  That sentence is correct rather than convenient — the snapshot's own `buildings:[]`
+  is empty — and the derivation-with-tallies path is covered by a test that migrates
+  three structures and asserts the report reads *"2 × ceramic/natural/body on home.walls, 
+  metal/natural/body on factory.frame"*.
+* **Two refusals, both a152's rule.** A save from a **newer** build is refused by name
+  ("a newer save read by an older build is invented state"), and a **current** save with a
+  structure missing its claim is refused as a defect in the file ("that is a defect in the
+  file, not a version to migrate") — so `serde(default)` parses a v1 file without turning
+  a missing claim in a v2 file into "an unknown material".
+
+**Two bugs the tests caught, both of the kind a green build hides:**
+
+1. **An id is not an index.** `place_building` returns an id starting at 1 while
+   `World::building` takes a vector index, so the first draft read the wrong structure and
+   only failed once a second one existed. Added `World::building_on(tile)`, which asks the
+   question the caller actually has.
+2. **The v1 fixture was not v1.** The helper that strips a field from a compact RON
+   document removed *both* the leading and trailing separator, producing
+   `occupants:0condition:1.0` — so the "v1 save" did not parse at all and the test failed
+   on the fixture rather than on the migration. A fixture that is not the thing it claims
+   to be tests nothing; it now removes exactly one separator, and the test asserts the
+   edited text no longer contains the fields it removed.
+
+**Two readings of a175 made here, recorded as readings rather than settled:**
+
+* **Q209 — The claim is the structure's body part.** a175 says a `MAT-*` ticket carries
+  "family, anchor and level" (singular) while a structure has several parts with different
+  families (`home.walls` ceramic, `home.roof` polymer, `home.window` glass). Read as: the
+  claim is the part that makes the structure what it is, with every other part still
+  declared in the table. (a) **Keep the body-part reading** — one claim, one ticket, and
+  the table keeps the rest checkable by name. (b) **One ticket per part** — four tickets per
+  home, and "the structure is these materials" is then the whole set rather than a
+  representative. (c) The ticket carries the **whole part list** as one claim.
+* **Q210 — Growth-placed structures carry the claim without a ticket.** The sim places
+  buildings during zone growth and has no government handle; the player's build files the
+  ticket. So *every* structure is verifiable in world state, while only recorded placements
+  are on the board. (a) **Keep this split**: world state is what `verify.exe` re-reads, the
+  board records acts, and growth is already treated as simulation rather than paper.
+  (b) **Zone claims grow a material rider**, so a growth-placed structure is covered by the
+  zone ticket that caused it. (c) The sim **queues placements** for the government to file
+  on the next tick.
+
+---
+
 ## Still open, and deliberately so
 
 * **`tool-zone`** — the locator half, unchanged by this campaign (a166).

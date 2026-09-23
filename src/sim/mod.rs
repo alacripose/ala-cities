@@ -13,9 +13,119 @@ pub mod terrain;
 use serde::{Deserialize, Serialize};
 
 use crate::gov::RetirementReason;
+use crate::materials::world::{self as material_world, Level};
 use citizen::{Citizen, CitizenState};
 use rng::Pcg32;
 use road::RoadGraph;
+
+/// The save format this build writes.
+///
+/// a152 replaced "`serde(default)` and derive the material quietly" with a **format
+/// version and a named migration, with the derivation reported rather than silent**:
+/// deriving what a structure is made of is a decision about the historical record, and
+/// a decision that happens without a report is a decision nobody can check. v1 is every
+/// save written before the world had materials; v2 carries them.
+pub const FORMAT_VERSION: u32 = 2;
+
+/// The condition a structure is in when it is new. 1.0 is as-built.
+fn condition_as_built() -> f32 {
+    1.0
+}
+
+/// The material a structure was built from, as its `MAT-*` ticket claims it.
+///
+/// Strings rather than the enums they resolve from, on purpose: the claim is recorded in
+/// the material table's own vocabulary, so a reader compares it against
+/// `materials::world` **by name**, and a renamed family is then a mismatch rather than a
+/// silent equivalence.
+///
+/// a155 is why this is split from [`Building::condition`]: this field is the as-built
+/// claim and it never changes, because a claim that weathers would make `verify.exe`
+/// report the city's own ageing as a contradiction. What decays is the condition; what
+/// the frame shows is a level derived from it, and a drawn level that disagrees with the
+/// condition is a renderer finding rather than a claim contradiction.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MaterialClaim {
+    pub part: String,
+    pub family: String,
+    pub anchor: String,
+    pub level: String,
+}
+
+impl MaterialClaim {
+    /// The claim for a structure of this kind, read off the declared world mapping.
+    ///
+    /// The **body** part is the claim: a structure has several parts and `world::PARTS`
+    /// keeps every one of them declared, so what a single ticket records is the part that
+    /// makes the structure what it is — and the rest stay checkable against the table by
+    /// name. This is a reading of a175's "carrying family, anchor and level", recorded as
+    /// a reading and overridable if the claim should be per part instead.
+    pub fn of_kind(kind: BuildingKind) -> Option<Self> {
+        let parts = material_world::parts_of(kind.part_prefix());
+        let body = parts
+            .iter()
+            .find(|part| part.level == Level::Body)
+            .or_else(|| parts.first())?;
+        Some(Self {
+            part: body.part.to_string(),
+            family: body.family.as_str().to_string(),
+            anchor: body.hue.as_str().to_string(),
+            level: body.level.as_str().to_string(),
+        })
+    }
+
+    /// The claim as a ticket states it.
+    pub fn describe(&self) -> String {
+        format!("{}/{}/{} on {}", self.family, self.anchor, self.level, self.part)
+    }
+}
+
+/// What a v1 → v2 migration derived, and from what.
+///
+/// The report exists because the derivation is a decision: it says how many structures
+/// needed a material invented for them and which materials were chosen, so a reader can
+/// disagree with the choice instead of discovering it by noticing that every old building
+/// happens to be ceramic.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Migration {
+    pub from: u32,
+    pub to: u32,
+    /// `(building id, the claim derived for it)`, in the order they were derived.
+    pub derived: Vec<(u32, String)>,
+}
+
+impl Migration {
+    pub fn describe(&self) -> String {
+        if self.derived.is_empty() {
+            return format!(
+                "save format v{} → v{}: no structures needed a material derived; the \
+                 tables and the road graph were already there",
+                self.from, self.to
+            );
+        }
+        let mut by_claim: Vec<(String, usize)> = Vec::new();
+        for (_, claim) in &self.derived {
+            match by_claim.iter_mut().find(|(name, _)| *name == *claim) {
+                Some((_, count)) => *count += 1,
+                None => by_claim.push((claim.clone(), 1)),
+            }
+        }
+        let tallies: Vec<String> = by_claim
+            .iter()
+            .map(|(claim, count)| format!("{count} × {claim}"))
+            .collect();
+        format!(
+            "save format v{} → v{}: derived the as-built material of {} structure(s) from \
+             their own kinds against the declared mapping — {}. This is a derivation, not a \
+             measurement: the structures were built before the world had materials, and a \
+             claim recorded from here on is a claim.",
+            self.from,
+            self.to,
+            self.derived.len(),
+            tallies.join(", ")
+        )
+    }
+}
 
 /// Simulation rate. Fixed, and never negotiated with the renderer.
 pub const SIM_HZ: u32 = 20;
@@ -97,6 +207,19 @@ impl BuildingKind {
         }
     }
 
+    /// The prefix its parts carry in the declared world mapping (`home.walls`, …).
+    ///
+    /// Separate from [`BuildingKind::name`] because the mapping's names are identifiers
+    /// while the display name is prose: "power plant" is not a prefix, `power` is.
+    pub fn part_prefix(self) -> &'static str {
+        match self {
+            BuildingKind::Home => "home",
+            BuildingKind::Shop => "shop",
+            BuildingKind::Factory => "factory",
+            BuildingKind::PowerPlant => "power",
+        }
+    }
+
     pub fn zone(self) -> Zone {
         match self {
             BuildingKind::Home => Zone::Residential,
@@ -139,6 +262,15 @@ pub struct Building {
     pub retired_tick: Option<u64>,
     pub powered: bool,
     pub occupants: u32,
+    /// The material this structure was built from (a155, a175). `None` means the save
+    /// predates the claim: the v1 → v2 migration fills it, and every reader treats a
+    /// `None` in a v2 save as a **defect** rather than as "an unknown material", because
+    /// an unknown material is exactly what a missing report would hide.
+    #[serde(default)]
+    pub material_as_built: Option<MaterialClaim>,
+    /// Present condition, 1.0 being as-built. What decays; never the claim above.
+    #[serde(default = "condition_as_built")]
+    pub condition: f32,
 }
 
 impl Building {
@@ -256,6 +388,14 @@ pub struct World {
     pub focus: (i32, i32),
     pub next_building_id: u32,
     pub next_citizen_id: u32,
+    /// Which save format wrote this. Absent (0) is a v1 save: it predates the world
+    /// having materials at all.
+    #[serde(default)]
+    pub format_version: u32,
+    /// What the migration derived on the way in, if it ran. Skipped in the save: this is
+    /// a report about reading a file, not part of the world.
+    #[serde(skip)]
+    pub migration: Option<Migration>,
 
     /// Derived from `tiles`. Rebuilt after any road or load, never serialised:
     /// two sources of truth for where a road is would be one too many.
@@ -308,6 +448,8 @@ impl World {
                 industrial: 0.35,
             },
             clock: Clock::default(),
+            format_version: FORMAT_VERSION,
+            migration: None,
             stats: Stats::default(),
             rng: Pcg32::new(seed),
             focus: (width as i32 / 2, height as i32 / 2),
@@ -365,6 +507,16 @@ impl World {
 
     pub fn building(&self, index: u32) -> &Building {
         &self.buildings[index as usize]
+    }
+
+    /// The structure standing on a tile, if any.
+    ///
+    /// Added because an **id is not an index**: [`World::place_building`] returns an id,
+    /// ids start at 1 and survive demolition, while an index is a position in a vector
+    /// that shrinks and grows. Reading a claim through one when you have the other is a
+    /// bug that waits until the second structure exists before showing itself.
+    pub fn building_on(&self, tile: u32) -> Option<&Building> {
+        self.tile(tile).building.map(|index| self.building(index))
     }
 
     // ---------------------------------------------------------------------
@@ -480,6 +632,13 @@ impl World {
             retired_tick: None,
             powered: false,
             occupants: 0,
+            // Every structure carries its claim, whoever placed it: the world state is
+            // what `verify.exe` re-reads, and a structure without a claim would be
+            // unverifiable rather than merely unrecorded. The `MAT-*` *ticket* is filed
+            // where placement is a recorded act (the player's build), which is the same
+            // distinction the record already makes between a claim and growth.
+            material_as_built: MaterialClaim::of_kind(kind),
+            condition: condition_as_built(),
         });
         self.tiles[tile as usize].building = Some(index);
         self.tiles[tile as usize].zone = Zone::None;
@@ -946,6 +1105,14 @@ impl World {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
+        if self.format_version != FORMAT_VERSION {
+            // Writing a save stamped with a version it was not written under would make
+            // the format field a decoration. A world in memory is always current.
+            return Err(std::io::Error::other(format!(
+                "refusing to save: this world is stamped v{} and this build writes v{}",
+                self.format_version, FORMAT_VERSION
+            )));
+        }
         // Compact on purpose. The record files are pretty because a reader has
         // to look at them; this snapshot is disposable, untracked, and rewritten
         // on a timer, so the only things that matter are bytes and milliseconds.
@@ -969,8 +1136,68 @@ impl World {
         let text = std::fs::read_to_string(path)?;
         let mut world: World =
             ron::from_str(&text).map_err(|e| std::io::Error::other(e.to_string()))?;
+        world.migrate()?;
         world.rebuild_derived();
         Ok(world)
+    }
+
+    /// Bring a loaded save up to [`FORMAT_VERSION`], or refuse.
+    ///
+    /// Two refusals, and both are a152's rule rather than caution for its own sake: a save
+    /// from a **newer** build cannot be read correctly by this one, so reading it anyway
+    /// would be inventing state; and a **current** save missing a material claim is a
+    /// defect to report, not a case to patch over, because the only reason it could be
+    /// missing is that something wrote a v2 file without the thing v2 is for.
+    pub fn migrate(&mut self) -> std::io::Result<()> {
+        if self.format_version > FORMAT_VERSION {
+            return Err(std::io::Error::other(format!(
+                "this save is format v{} and this build understands up to v{}; a newer save \
+                 read by an older build is invented state",
+                self.format_version, FORMAT_VERSION
+            )));
+        }
+        if self.format_version == FORMAT_VERSION {
+            let missing: Vec<u32> = self
+                .buildings
+                .iter()
+                .filter(|building| building.material_as_built.is_none())
+                .map(|building| building.id)
+                .collect();
+            if !missing.is_empty() {
+                return Err(std::io::Error::other(format!(
+                    "a v{FORMAT_VERSION} save carries {} structure(s) with no as-built \
+                     material ({}); that is a defect in the file, not a version to migrate",
+                    missing.len(),
+                    missing
+                        .iter()
+                        .map(|id| id.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )));
+            }
+            return Ok(());
+        }
+
+        // v1 → v2. The named migration: every structure that predates the world having
+        // materials gets the material its own kind declares, and **the derivation is
+        // reported** rather than happening quietly (a152).
+        let mut derived = Vec::new();
+        for building in self.buildings.iter_mut() {
+            if building.material_as_built.is_none() {
+                building.material_as_built = MaterialClaim::of_kind(building.kind);
+                if let Some(claim) = &building.material_as_built {
+                    derived.push((building.id, claim.describe()));
+                }
+            }
+        }
+        let from = self.format_version;
+        self.format_version = FORMAT_VERSION;
+        self.migration = Some(Migration {
+            from,
+            to: FORMAT_VERSION,
+            derived,
+        });
+        Ok(())
     }
 }
 
@@ -1153,6 +1380,258 @@ mod tests {
             world.economy.credits,
             before + world.economy.month_income - world.economy.month_expense
         );
+    }
+
+    // -----------------------------------------------------------------
+    // The material claim and the versioned save (a152, a155, a175)
+    // -----------------------------------------------------------------
+
+    /// A named field removed from a compact RON document, with its separator.
+    ///
+    /// Written rather than hand-edited so the v1 fixture in the tests below is a real
+    /// save with one field taken out, instead of a string somebody typed: a fixture that
+    /// is not the thing it claims to be tests nothing.
+    fn strip_field(text: &str, field: &str) -> String {
+        let needle = format!("{field}:");
+        let Some(start) = text.find(&needle) else {
+            return text.to_string();
+        };
+        // A field is removed with the separator that joined it to its neighbour: the comma
+        // **before** it for a last field (`...,condition:1.0)`), the comma after its value
+        // for any other. Getting this wrong leaves text that does not parse, which is how
+        // the first version of this helper announced itself.
+        let mut depth = 0usize;
+        let mut in_string = false;
+        let mut found = None;
+        for (offset, ch) in text[start..].char_indices() {
+            match ch {
+                '"' => in_string = !in_string,
+                '(' | '[' if !in_string => depth += 1,
+                ')' | ']' if !in_string => {
+                    if depth == 0 {
+                        found = Some((start + offset, false));
+                        break;
+                    }
+                    depth -= 1;
+                }
+                ',' if !in_string && depth == 0 => {
+                    found = Some((start + offset + 1, true));
+                    break;
+                }
+                _ => {}
+            }
+        }
+        let Some((end, ended_at_comma)) = found else {
+            return text.to_string();
+        };
+        // Exactly one separator goes with the field: the trailing comma when the value had
+        // one, the leading comma when it did not (a last field ends at the closing paren).
+        let cut_from = if ended_at_comma || !text[..start].ends_with(',') {
+            start
+        } else {
+            start - 1
+        };
+        format!("{}{}", &text[..cut_from], &text[end..])
+    }
+
+    /// A save as v1 wrote it: the two fields this version added, taken back out.
+    fn as_v1(world: &World) -> String {
+        let mut text = ron::ser::to_string(world).expect("serialise");
+        text = strip_field(&text, "format_version");
+        let buildings = world.buildings.len();
+        for _ in 0..buildings {
+            text = strip_field(&text, "material_as_built");
+            text = strip_field(&text, "condition");
+        }
+        assert!(!text.contains("format_version"), "the fixture still carries a version");
+        assert!(!text.contains("material_as_built"));
+        text
+    }
+
+    /// The claim is read off the declared mapping, not written here: if a family is
+    /// renamed in `world::PARTS`, this test fails rather than the world drifting.
+    #[test]
+    fn a_structure_claims_the_body_material_its_kind_declares() {
+        for kind in [
+            BuildingKind::Home,
+            BuildingKind::Shop,
+            BuildingKind::Factory,
+            BuildingKind::PowerPlant,
+        ] {
+            let claim = MaterialClaim::of_kind(kind).expect("every kind has a declared body");
+            let part = material_world::part(&claim.part)
+                .unwrap_or_else(|| panic!("{} names an undeclared part", claim.part));
+            assert_eq!(part.family.as_str(), claim.family, "{} family", kind.name());
+            assert_eq!(part.hue.as_str(), claim.anchor, "{} anchor", kind.name());
+            assert_eq!(part.level.as_str(), claim.level, "{} level", kind.name());
+            assert_eq!(claim.level, "body", "the claim is the body part");
+            assert!(claim.part.starts_with(kind.part_prefix()));
+        }
+    }
+
+    #[test]
+    fn a_placed_structure_carries_its_claim_and_keeps_it_through_a_save() {
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        let id = world.place_building(tile, BuildingKind::Home).expect("placed");
+        let placed = world.building_on(tile).expect("the structure is on its tile");
+        assert_eq!(placed.id, id, "the id is stable, the index is not");
+        let claim = placed
+            .material_as_built
+            .clone()
+            .expect("a placed structure claims its material");
+        assert_eq!(claim.part, "home.walls");
+        assert_eq!(world.building_on(tile).expect("placed").condition, 1.0);
+
+        let dir = std::env::temp_dir().join("ala-cities-test-material-claim");
+        let path = dir.join("world.ron");
+        world.save(&path).expect("save");
+        let loaded = World::load(&path).expect("load");
+        assert!(
+            loaded.migration.is_none(),
+            "a save this build wrote needs no migration"
+        );
+        assert_eq!(
+            loaded.building_on(tile).expect("loaded").material_as_built.as_ref(),
+            Some(&claim),
+            "the as-built claim is part of the record"
+        );
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_v1_save_migrates_with_a_report_naming_what_it_derived() {
+        let mut world = small_city();
+        for (tile, kind) in [
+            (world.index(4, 4), BuildingKind::Home),
+            (world.index(5, 4), BuildingKind::Home),
+            (world.index(6, 4), BuildingKind::Factory),
+        ] {
+            world.place_building(tile, kind).expect("placed");
+        }
+        let dir = std::env::temp_dir().join("ala-cities-test-migration");
+        let path = dir.join("world-v1.ron");
+        std::fs::create_dir_all(&dir).expect("dir");
+        std::fs::write(&path, as_v1(&world)).expect("write v1");
+
+        let loaded = World::load(&path).expect("a v1 save loads and migrates");
+        assert_eq!(loaded.format_version, FORMAT_VERSION);
+        let migration = loaded.migration.as_ref().expect("the derivation is reported");
+        assert_eq!((migration.from, migration.to), (0, FORMAT_VERSION));
+        assert_eq!(
+            migration.derived.len(),
+            3,
+            "every structure that predated the claim got one derived"
+        );
+        let described = migration.describe();
+        assert!(described.contains("2 × ceramic/natural/body on home.walls"), "{described}");
+        assert!(described.contains("metal/natural/body on factory.frame"), "{described}");
+        assert!(described.contains("derivation, not a measurement"), "{described}");
+        for building in &loaded.buildings {
+            assert_eq!(
+                building.material_as_built,
+                MaterialClaim::of_kind(building.kind),
+                "the derived claim is the kind's own declared body material"
+            );
+            assert_eq!(building.condition, 1.0);
+        }
+        // Migrated once, then saved as v2, it is no longer a v1 save.
+        let saved = dir.join("world-v2.ron");
+        loaded.save(&saved).expect("save migrated");
+        let again = World::load(&saved).expect("reload");
+        assert!(again.migration.is_none(), "a v2 save is not migrated again");
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(&saved);
+    }
+
+    /// Two refusals, both a152's: inventing state for a newer save, and patching over a
+    /// current save that is missing the thing the current format is for.
+    #[test]
+    fn a_save_this_build_cannot_read_is_refused_rather_than_guessed() {
+        let mut world = small_city();
+        world.place_building(world.index(4, 4), BuildingKind::Home).expect("placed");
+
+        let mut from_the_future = ron::ser::to_string(&world).expect("serialise");
+        from_the_future = from_the_future.replacen(
+            &format!("format_version:{FORMAT_VERSION}"),
+            &format!("format_version:{}", FORMAT_VERSION + 1),
+            1,
+        );
+        let dir = std::env::temp_dir().join("ala-cities-test-migration");
+        std::fs::create_dir_all(&dir).expect("dir");
+        let path = dir.join("world-newer.ron");
+        std::fs::write(&path, from_the_future).expect("write");
+        let err = World::load(&path).expect_err("a newer save is refused");
+        assert!(
+            err.to_string().contains("invented state"),
+            "the refusal names the reason: {err}"
+        );
+
+        let missing = strip_field(
+            &ron::ser::to_string(&world).expect("serialise"),
+            "material_as_built",
+        );
+        std::fs::write(&path, missing).expect("write");
+        let err = World::load(&path).expect_err("a v2 save missing a claim is refused");
+        assert!(
+            err.to_string().contains("no as-built material"),
+            "the refusal names the defect: {err}"
+        );
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_mat_claim_is_read_back_from_the_world_and_a_mismatch_is_named() {
+        use crate::gov::{check_expectation, Expectation};
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        world.place_building(tile, BuildingKind::Home).expect("placed");
+        let claim = world
+            .building_on(tile)
+            .expect("placed")
+            .material_as_built
+            .clone()
+            .expect("claim");
+        let claimed = Expectation::MaterialOf {
+            tile,
+            part: claim.part.clone(),
+            family: claim.family.clone(),
+            anchor: claim.anchor.clone(),
+            level: claim.level.clone(),
+        };
+        assert!(
+            check_expectation(&world, &claimed).is_ok(),
+            "the world shows the material its MAT-* ticket claimed"
+        );
+        assert_eq!(claimed.describe(), format!("the home.walls on tile {tile} is ceramic/natural/body"));
+        assert_eq!(claimed.tiles(), vec![tile]);
+
+        // A claim that names another material is a finding that says which.
+        let wrong = Expectation::MaterialOf {
+            tile,
+            part: "home.walls".to_string(),
+            family: "metal".to_string(),
+            anchor: "natural".to_string(),
+            level: "body".to_string(),
+        };
+        let err = check_expectation(&world, &wrong).expect_err("a mismatch is a finding");
+        assert!(err.contains("is ceramic/natural/body"), "{err}");
+        assert!(err.contains("metal/natural/body"), "{err}");
+
+        // No structure at all is not a pass: there is nothing to read back.
+        let empty = world.index(9, 9);
+        let err = check_expectation(
+            &world,
+            &Expectation::MaterialOf {
+                tile: empty,
+                part: "home.walls".to_string(),
+                family: "ceramic".to_string(),
+                anchor: "natural".to_string(),
+                level: "body".to_string(),
+            },
+        )
+        .expect_err("a claim about an empty tile cannot be read back");
+        assert!(err.contains("no structure stands"), "{err}");
     }
 
     #[test]

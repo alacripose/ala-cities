@@ -361,6 +361,11 @@ pub enum TicketKind {
     Build,
     Case,
     Intervention,
+    /// A material claim: this structure was built from this material (a175).
+    ///
+    /// Its own kind rather than riding `Build`, so material claims can be drained and
+    /// reported separately from placement and zone claims instead of hiding inside them.
+    Material,
 }
 
 impl TicketKind {
@@ -369,6 +374,7 @@ impl TicketKind {
             TicketKind::Build => "BLD",
             TicketKind::Case => "CSE",
             TicketKind::Intervention => "INT",
+            TicketKind::Material => "MAT",
         }
     }
 }
@@ -421,6 +427,20 @@ pub enum Expectation {
     ZonedTiles(Vec<(u32, Zone)>),
     BuildingAt(u32),
     Demolished(u32),
+    /// The structure on this tile was built from this material (a175).
+    ///
+    /// The claim, not the condition: a155 keeps the two apart so that a city which ages
+    /// does not read as a record contradicted by its own weathering. What a reader
+    /// compares is the **as-built** claim; the present condition is a number the world
+    /// carries and the frame draws, and it is checked against its own bounds rather than
+    /// against this claim.
+    MaterialOf {
+        tile: u32,
+        part: String,
+        family: String,
+        anchor: String,
+        level: String,
+    },
     None,
 }
 
@@ -436,6 +456,7 @@ impl Expectation {
             Expectation::RoadTiles(tiles) => tiles.clone(),
             Expectation::ZonedTiles(tiles) => tiles.iter().map(|(tile, _)| *tile).collect(),
             Expectation::BuildingAt(tile) | Expectation::Demolished(tile) => vec![*tile],
+            Expectation::MaterialOf { tile, .. } => vec![*tile],
             Expectation::None => Vec::new(),
         }
     }
@@ -446,6 +467,13 @@ impl Expectation {
             Expectation::ZonedTiles(tiles) => format!("{} tiles carry the zone set", tiles.len()),
             Expectation::BuildingAt(tile) => format!("a structure stands on tile {tile}"),
             Expectation::Demolished(tile) => format!("tile {tile} is clear"),
+            Expectation::MaterialOf {
+                tile,
+                part,
+                family,
+                anchor,
+                level,
+            } => format!("the {part} on tile {tile} is {family}/{anchor}/{level}"),
             Expectation::None => "no world expectation (nothing to read back)".to_string(),
         }
     }
@@ -1283,6 +1311,40 @@ pub fn check_expectation(world: &World, expectation: &Expectation) -> Result<(),
             } else {
                 Err(format!("something still stands on tile {tile}"))
             }
+        }
+        Expectation::MaterialOf {
+            tile,
+            part,
+            family,
+            anchor,
+            level,
+        } => {
+            let Some(index) = world.tile(*tile).building else {
+                return Err(format!(
+                    "no structure stands on tile {tile}, so no material was ever claimed \
+                     for it"
+                ));
+            };
+            let building = world.building(index);
+            // A structure with no claim is a defect rather than a pass: the claim is the
+            // thing this expectation exists to read, and "not recorded" must never be
+            // reported as "verified".
+            let Some(claim) = &building.material_as_built else {
+                return Err(format!(
+                    "the structure on tile {tile} (id {}) carries no as-built material, \
+                     so nothing was claimed to read back",
+                    building.id
+                ));
+            };
+            let claimed = format!("{family}/{anchor}/{level}");
+            let actual = format!("{}/{}/{}", claim.family, claim.anchor, claim.level);
+            if claim.part != *part || actual != claimed {
+                return Err(format!(
+                    "tile {tile}'s {} is {actual}, and the claim was {claimed} on {part}",
+                    claim.part
+                ));
+            }
+            Ok(())
         }
     }
 }

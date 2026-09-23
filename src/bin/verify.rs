@@ -188,6 +188,13 @@ fn main() -> ExitCode {
             Ok(world) => {
                 world_checked = true;
                 println!("world — {}", path.display());
+                // A save that had to be migrated is reported here too, because this is
+                // the program whose job is to say what the record does and does not
+                // support: a derived material claim is a claim this run cannot corroborate
+                // from anything a person recorded.
+                if let Some(migration) = &world.migration {
+                    println!("  {}", migration.describe());
+                }
                 let mut reproduced = 0;
                 let mut contradicted = 0;
                 let mut late = 0;
