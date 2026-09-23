@@ -1070,3 +1070,335 @@ a54's one-system rule applied to entropy rather than to making.
 
 Q53's weights already exist, so precedence is a tunable number rather than a hidden rule, and *"why is nobody
 hauling for the public works"* stays a question with a readable answer.
+
+---
+
+## Round 19 — offices, land, and what death leaves behind
+
+### Q112 — what an office is. Answered: **(a) with (b)** — a role record *and* premises.
+
+Both halves: authority is a **named scope held by a citizen** (a record with a holder, a declared term and a
+revocation rule) *and* it is **exercised somewhere**, so the premises are not decoration. The engine refuses
+acts outside the scope, which is the one thing `GOD_AGENTS.md` itself says it cannot do — its own §13 admits
+*"no authentication mechanism exists, so C9–C12, C15 and C18 are PROCEDURAL, not ENFORCED"* and that an
+authorizer is *"a NAME IN FIELD"*. A running game engine has no such excuse: the refusal happens where the
+act is attempted.
+
+### Q113 — do decisions and labour come from the same place. Answered: **(a) split by kind of act — and the government must be able to act in the world.**
+
+Decisions are **offices** held by citizens; labour is **public work** anyone may take. The rider is the
+load-bearing half: a government that can only decide is a menu, so its work — upkeep, hauling, building — goes
+into the world through the same task system as everyone else's, on its own account, with its own obligations.
+
+### Q114 — decay, and the soul. Answered: **nothing disappears; souls may leave; a carcass decomposes.**
+
+One declared decay across material, tools, buildings and people, exactly as round 18 recorded — with the
+ruling that makes it honest and the one that bounds it:
+
+* **Decay cannot magically disappear.** Rotted or respired mass goes to a **destination account**, never to
+  nothing. The same discipline as `OPENPBR.md`'s conservation, applied to time rather than to light.
+* **Souls technically can** leave — they are not mass, they are not in the ledger, and the audit has no
+  opinion about them. What a soul does after death is not a material question, which is precisely why the
+  material question can be answered strictly: *the carcass decomposes.*
+
+So a citizen's body is accounted mass (from food, from the ground) and death moves it to a corpse holding,
+where rot takes it to the destination account. Burial returns it to the ground; cremation sends it to air.
+Two rites, two ledger entries, one rule.
+
+### Q115 — can anything own land. Answered: **(a) + (b), with some (c) — so there can be disputes and trespassers.**
+
+Land is claimed as **tiles**, and never fully owned — occupancy is a *fact* and ownership is a *claim*, which
+is what lets the two disagree. The stated reason for wanting both is the design one: **disputes, trespassers,
+and land that somebody else is working**. (c) supplies the government's part — adjudication, appropriation,
+leasing — as acts rather than as ownership of everything.
+
+### Q116 — an officer's private work, and the chain of command. Answered: **(b) with a bit of (a)**.
+
+An officer is **separated from the work they authorise** — nobody signs off their own work — softened so that
+holding an office does not forbid a private life. And the addition that changes the government's shape:
+**there should be a chain of command if the government exists.**
+
+### Q117 — how an office is held. Answered: **(a) with (b)** — granted through an authorising office *and* elected, mirroring real-world election practice.
+
+At t=0 there is nothing to be elected to, so the compact names the first offices as a record; thereafter
+offices are filled by citizens **voting**, with the practice modelled rather than gestured at — which is round
+20's, along with what a seat is and what trespass actually does.
+
+---
+
+## Round 20 — primitive authority, offences, and paying a debt with your hands
+
+### Q118 — does an office need a seat. Answered: **(a), with a rider that shapes the whole thing.**
+
+The rider: **remember how primitive chains of command will be in early stages, similar to the tech tree —
+more advanced positions require more effort.** So the office set is not fixed: a young city has a foreman and
+a keeper of stores and a shallow chain, and deeper, more specialised authority arrives as the city can carry
+it. The government is *built*, in the same ladder as everything else (Q41/Q69), which is a3's
+"citizens establish the world through the system" applied to the state itself.
+
+### Q119 — the chain of command. Answered: **(a), with the recorded override.**
+
+An office declares who it answers to; a subordinate's scope is a **narrowing** of its superior's; an override
+is an **act** and therefore a record. The chain terminates in the compact (Q21 Layer 0), so there is always a
+top and the top is a document.
+
+### Q120 — an officer's private work. Answered: **(a), with (b) and (c) — and the consequences run through the courts.**
+
+This is sharper than it looks and it settles the shape of law in the whole game: **an officer may take
+forbidden private work — bounty hunting is the example given — and being forbidden does not prevent it.** What
+follows is **the courts, if they are determined guilty.**
+
+So an officer taking a bounty is a *possible act that is recorded*, and guilt is a **finding**. Nothing is
+prevented; everything is adjudicated. That is the same shape as trespass below, and it is the same shape as
+§4.9's conflict checklist — a conflict is a **precondition**, and a precondition that is crossed becomes a
+case rather than a crash.
+
+### Q121 — elections. Answered: **(a) with (c)** for the mechanism, **(ii) + (iii)** for the ballot, and (b)'s declared split.
+
+**My reading, stated rather than assumed, because (ii) and (iii) cannot both describe one ballot:**
+
+* **An office-holder's act is an open record** — a vote on a statute, a ruling, an override, a grant is
+  **roll-call**, attributable and checkable, which is (ii) and is how any institutional record has to work
+  here;
+* **a citizen's ballot is secret** and the money around it is not — (iii) — so pressure is invisible and
+  purchase is visible as a *pattern*, which is what makes corruption something citizens can legislate and
+  investigate rather than a flag;
+* and the mechanism is the mix (b) describes: elected offices with terms, candidacy and a count, appointed
+  administrators, and (c)'s direct votes where a decision is put to everyone.
+
+If that is the wrong split, it is a correction by record rather than a silent choice.
+
+### Q122 — land, trespass. Answered: **(a), with the rider that makes it work.**
+
+*Obviously workers constructing a building shouldn't be charged with trespassing.* So exclusion is not
+exclusion-from-the-world: **permission is a relation**, and a contracted builder works under their client's
+claim. Trespass requires *neither claim nor permission* — which gives Q110's contracts their first
+non-trade job and makes Q126's question live.
+
+### Q123 — insolvency. Answered: **(a), and payment is broader than money.**
+
+An issuer converts against its own holdings, oldest-first, and an issuer that cannot pay is **insolvent**.
+The rider: *"creative ways of payment — a deeply indebted citizen or official may have to face dire
+consequences if they cannot work back their debts, or through the organisations/treasury pay off their debt
+over time."* So a debt can be **worked off**, **restructured**, or **transferred**, and default has
+teeth — which makes the work-value of Q85 double as the price of a person's labour against what they owe.
+
+---
+
+## Round 21 — courts are bodies, and what a person may be made to owe
+
+### Q124 — where authority comes from before there is a record. Answered: **(a) with (c)'s emergence.**
+
+At t=0 a crew follows whoever leads; **the compact is what turns a following into an office**, and every
+later office is a narrowing of one of those. The office set is therefore *built* — a foreman and a keeper of
+stores in a young city, deeper authority as the city can carry it.
+
+### Q125 — offences and courts. Answered: **(a), closed taxonomy — and courts are buildings, or made up of people.**
+
+The rider adds a structure the record did not have: **an office may be held by a body.** A court is a bench,
+not a judge, so offices are not necessarily singular — which affects elections (electing a bench), the chain
+of command (a body answers upward as one node) and decisions (a finding has to be *decided*, and a dissent is
+something that can be recorded).
+
+### Q126 — permission. Answered: **(a) a recorded grant**, carried by contracts and revocable.
+
+### Q127 — the ladder of default. Answered: **(a), and the user's own words, kept because they are load-bearing.**
+
+> *"I have no qualms if a citizen chooses to take out another citizen because of their debts or if a citizen
+> is indebted a price they cannot pay in a positive way and is therefore in a way subservient to their
+> debtor — just as long as the murderers, if determined guilty, go through the court system."*
+
+Three decisions are in that sentence, and each is mechanical rather than rhetorical:
+
+1. **Subservience is legal.** A debt a citizen cannot pay positively can make them subservient to their
+   creditor.
+2. **Violence is possible.** A citizen may take out another citizen — the engine does not prevent it — which
+   is the same rule Q120 and Q122 already established for offences and trespass: **nothing is prevented,
+   everything is adjudicated.**
+3. **Guilt is a finding.** A killing is a death and a **murder is the court's determination**, so the courts
+   are not decorative in any part of this design — they are the only thing standing between a debt and a
+   corpse.
+
+### Q128 — what counts as payment. Answered: **(a), and the list is open where a person would bet.**
+
+*"Creative ways of payment, including more extravagancies — such as firstborn children, their lives,
+anything a person would bet on."* So a settlement may name **persons and futures**, not only goods and claims:
+what can be owed extends past property to *a life* and to *who a child belongs to*.
+
+### Q129 — an estate. Answered: **(a) debts first, then heirs**, with escheat to the last issuer or the government, recorded either way.
+
+---
+
+## Round 22 — bodies, violence, and what may be owed
+
+### Q130 — offices held by a body. Answered: **(a) collegial offices.**
+
+An office declares its size; a body decides by a **declared rule** (majority, unanimity, a chair with a casting
+vote); findings are roll-call with **dissent recorded**; and a dissent is the seed of an appeal up the chain
+(Q119). A bench is still a seated office (Q118) answering upward as one node — it gains only a decision rule
+and a record of disagreement.
+
+### Q131 — a killing. Answered: **(a) an act with an agent and an outcome.**
+
+Violence is permitted by the engine; a death removes a citizen and produces a **corpse** (Q114's mass); and the
+killing is **adjudicated** — murder is a finding, and intent, accident and self-defence are findings too.
+
+Death therefore has three causes — want (Q51's ladder), violence, and age or illness — and the corpse is **the
+same material event in all three**, which is the honest unification Q114's ruling implies.
+
+### Q132 — claims over a person. Answered: **(b) labour bonds and outcome wagers, but no person as property.**
+
+Labour may be directed and a life may be wagered; a pledged child is a **ward** — a relation with duties, an
+exit, and no transfer. The line is the claim market: a transferable claim over a person turns Q93's
+market into a market **in people**, and that drags four things with it (a ward's vote, their earnings, their
+exit, whether they may own anything at all). Those are now decisions to be made deliberately rather than
+inherited.
+
+### Q133 — what a bond changes. Answered: **(a) labour directed, personhood kept.**
+
+A bonded citizen keeps their name, their **vote** and their own obligations to others; their work is directed
+by the holder and their earnings accrue to the holder until the debt clears; the bond ends by discharge,
+manumission or death. The consequence, stated rather than hidden: a creditor can hold a bloc of labour **and
+the ballots attached to it** — unobservable per ballot (Q121 iii) and visible as a pattern, which is exactly
+the corruption mechanic Q121 chose.
+
+### Q134 — a wager. Answered: **(a) a contingent contract with a closed predicate list.**
+
+Settlement depends on a **declared, checkable** fact; stakes may be money, goods, claims, labour or a life; and
+a predicate the world cannot check cannot settle — so the list is closed like the verb list, and **settling a
+predicate is a task** like any other.
+
+### Q135 — appeals and pardons. Answered: **(a) an appeal is a chain act and a pardon is an office act** — with an instruction: **check how bills work in `GOD_AGENTS.md`.**
+
+That reading is round 23's first question, because it turns out to settle more than legislation:
+
+* **a bill grants nothing** — it is a **record** of an instrument the population is constituted under, proposed
+  and enacted through the same six-step chain a promotion uses, and *"enacting it produces a record — not a
+  permission"*;
+* **enforcement never comes from the bill**: its clauses are constraints and rights *"enforced by the controls
+  that already exist"* — which is the same rule as Q112 (authority enforced at the act) and Q125 (guilt is a
+  finding);
+* bills live as **`proposed` → introduced → `enacted` → `superseded`**, where supersession is a state reached
+  *without having failed*, and **an effective date is required** (rule 6: separate historical law from current
+  law);
+* **clauses come in governed classes** (constituting, constraining, appropriating, recommending), and *"a class
+  is never invented at the point of use"* — the same closed-vocabulary rule as the task verbs and case prefixes;
+* and the precedence order has **no exception for a founding document**: Governor Base > contract > ticket >
+  world state > HISTORY, and a bill is history.
+
+---
+
+## Round 23 — law as a record, and the boundary of the engine
+
+All six answered (a), and they are recorded together because they are one subject: what law *is* here.
+
+### Q136 — how a bill becomes law
+
+A bill is a **record**, not a permission. States: `proposed` (by an office, or by citizen initiative) →
+considered (a body, Q130) → enacted (a vote, Q121) → **in force on its effective date** → superseded or
+repealed. Its clauses are of **declared kinds** — *constitutes* an office, qualification or status;
+*constrains* an act; *appropriates* funds; *recommends* — and **a clause kind is never invented at the point
+of use**: the same closed-vocabulary discipline as the task verbs, the case prefixes and the offence taxonomy.
+
+Two consequences that make earlier decisions cohere:
+
+* **Authorized ≠ funded survives as separate clause kinds.** A statute can authorise work the treasury has not
+  funded — which is exactly the Q18 deferral, the permitted-but-unfunded case, and Q86's obligation machinery.
+* **Enforcement never comes from the bill.** Its clauses bite only through controls that already exist.
+
+### Q137 — what the engine refuses, and what only a court can find
+
+> **If the engine will not refuse it, it is not authority — it is law.**
+
+The engine enforces **authority and custody**: an act requiring an office, a scope or a permission the actor
+does not hold is refused — spending the treasury, enacting a bill, granting land, opening a sealed store.
+Everything else is **permitted and adjudicated**: trespass, theft, murder, fraud.
+
+This is the sentence that keeps Q112 real (an officer cannot act outside their scope) and Q122 honest (*you
+can* dig on someone's claim; you answer for it) at the same time.
+
+### Q138 — what a debt is denominated in
+
+A debt **names its subject**: goods, **work** (declared work-units at Q85's value), claims, or money once there
+is any. **Money is one denomination among several** rather than the substrate everything is secretly in — which
+is what lets the obligation ledger work with **no unit of account at all** (Q58), and what makes Q133's
+*earnings accrue to the holder* computable rather than metaphorical.
+
+### Q139 — violence is an act outside the task system
+
+The verb list stays closed to **work**. Violence carries an agent and an outcome (Q131), and a **bounty is a
+contingent contract** (Q134) whose predicate is a death — so hiring a killing is possible, its legality is a
+statute, and the contract settles on the world's finding. Bounty hunting is therefore exactly the offence Q120
+named, *because a bounty is a contract with a lethal predicate*; and a conspiracy is **visible as a contract**
+— a scope, a payer, a predicate — rather than hidden inside a work queue.
+
+### Q140 — the standing of dependents
+
+Standing is **per-relation and declared**:
+
+| who | what they are | vote | property |
+|---|---|---|---|
+| a child | their **guardian's ward** until a declared coming of age (Q46's life stages) | no — the vote is adults' | held, guardian manages |
+| a pledged ward | the **creditor's ward** until the debt clears | no while a child; as Q133 if adult | as above |
+| a bonded citizen | a **full citizen** whose labour is directed (Q133) | **yes** | yes |
+
+Duties attach to the relation, so **a ward who is not fed or sheltered is a case** — which is what makes Q132's
+ward shape bite instead of decorate.
+
+### Q141 — organisations cannot hold offices
+
+Offices are held by citizens, singly or as a body (Q130). An organisation may **nominate** a holder, fund the
+office and be bound by their acts; the office is the citizen's. Otherwise authority could be held by something
+that cannot be tried, which is the one hole in *"the courts are the only thing between a debt and a corpse"*.
+
+---
+
+## Round 24 — locks, sentences, and the metal underneath the money
+
+All six answered (a) again. The first one closes a hole my own Q137 recommendation opened.
+
+### Q142 — what custody is. Answered: **protection is something you build.**
+
+A store may be **sealed** — refused without the key or a grant — or **open**, in which case anyone may take and
+taking is **theft**. Locks are made things with declared inputs and their own decay, and sealing costs access
+time, so it is a decision rather than a default.
+
+This is the reconciliation Q137 needed: **authority and locks are mechanical; wrongs are legal.** And it gives
+the early game a texture that follows from the rules rather than from a script: *the first theft in a young
+city is possible because nobody built a door.*
+
+### Q143 — offences before a court exists. Answered: **the record stands unresolved.**
+
+The world remembers what was done, no finding is added, and the parties are left to negotiation, vendetta or
+nothing. Founding a court is what turns that record into findings — **including findings about old offences**,
+so a city's early history arrives at its first bench all at once, and what a courtless city runs on is
+**violence** (Q131), because vendetta is an act the courts would otherwise adjudicate.
+
+### Q144 — can a statute be unconstitutional. Answered: **the compact is an enforceable constraint.**
+
+A clause that contradicts a compact clause is **refused at enactment** — an engine refusal, which per Q137 is
+exactly the class authority belongs in — and a contradiction discovered later is **voidable by the top office**
+as a recorded act. Layer 0 is therefore real rather than ceremonial: "the courts are the only thing between a
+debt and a corpse" now has something holding the courts.
+
+### Q145 — conflicting statutes. Answered: **later effective supersedes, recorded; direct contradictions are refused at enactment; the rest is a precondition.**
+
+Anything a mechanical check cannot resolve is cleared by a **determination** — a recorded act naming which rule
+applies and why. Rule 7 (conflicts as preconditions) applied to law, and the same shape as Q21's placement
+precondition and Q120's officer conflict: **a conflict is something you clear, and clearing it is a record.**
+
+### Q146 — bonds, transfer and exit. Answered: **the bond transfers as a claim; the citizen keeps personhood; and it can be bought out.**
+
+It can be sold, inherited (Q129) and pledged in turn, and it ends by **discharge, manumission, decree, or
+death**. The buy-out is the part that keeps this from being ownership by another name: **a citizen who can pay
+their way out is a debtor with rights**, and one with no exit and no transfer is a person held.
+
+### Q147 — gold, and what a credit is. Answered: **gold is a deposit kind like any other, and a credit is a claim on declared metal.**
+
+Mined by work, on claimed land (Q115), concentrated by processing, and minted — money exists only after
+somebody has **mined and minted** it, with the metal accounted by the mass ledger the whole way. This is the
+same discipline the campaign has applied twice already: the alternative is money *grown from nothing* one layer
+above the ground it is supposed to represent.
+
+The first gold therefore has a shape worth playing: a **prospect**, a **claim**, a **mine**, a **mint**, and then
+a treasury that can finally pay what it owes (Q86).
