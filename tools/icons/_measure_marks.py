@@ -183,9 +183,11 @@ def report(icon_id, glyph):
     pieces = components(grid, True, width, height)
     holes = voids(grid, width, height)
     print(f"\n=== {icon_id}  ({glyph})")
+    box_area = (box[2] - box[0] + 1) * (box[3] - box[1] + 1)
     print(f"    mark: {width}x{height} px, ink {count} px ({100 * count / (width * height):.1f}%), "
           f"box {box[2] - box[0] + 1}x{box[3] - box[1] + 1}, aspect "
-          f"{(box[2] - box[0] + 1) / (box[3] - box[1] + 1):.2f}")
+          f"{(box[2] - box[0] + 1) / (box[3] - box[1] + 1):.2f}, "
+          f"fill {count / box_area:.4f}")
     print(f"    pieces {len(pieces)} {pieces[:6]}, voids {len(holes)} {holes[:6]}")
     print(f"    radial runs at 0.45/0.62/0.80/0.92 of R: "
           f"{list(radial_features(grid, centre, radius).values())}")
@@ -220,7 +222,8 @@ def main():
     print("\n--- candidates for tool-power's object (Q198)")
     for icon_id, glyph in CANDIDATES_FOR_POWER:
         report(icon_id, glyph)
-    print("\nRead as evidence for the declared endpoints (a188), not as a gate.")
+    print("\nRead as evidence for the declared endpoints (a188) and for each family's\n"
+          "own fill envelope (a201), not as a gate.")
 
 
 main()

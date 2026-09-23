@@ -1761,7 +1761,7 @@ def _weld(bpy, body, others):
     return body
 
 
-def gear_body(bpy, name, material, vector, radius=0.86, depth=0.34):
+def gear_body(bpy, name, material, vector, radius=None, depth=0.34):
     """One gear body, from a family vector.
 
     The tooth count is **fractional** (a187): `whole` teeth at the family's duty,
@@ -1773,6 +1773,10 @@ def gear_body(bpy, name, material, vector, radius=0.86, depth=0.34):
     """
     import math
 
+    # The body's span comes from the composition budget (a200), not from the traced
+    # mark's old 1.72: the margin the budget leaves is what a separate accent piece
+    # fits into, and a fixed accent position collided at three lanes and up.
+    radius = families.COMPOSITION["body_span"] * 0.5 if radius is None else radius
     count = vector["teeth"]
     duty = vector["tooth_duty"]
     root = radius * vector["root_ratio"]
@@ -1856,7 +1860,7 @@ def gear_body(bpy, name, material, vector, radius=0.86, depth=0.34):
     return body
 
 
-def road_body(bpy, name, material, vector, span=1.72, depth=0.30):
+def road_body(bpy, name, material, vector, span=None, depth=0.30):
     """One carriageway body, from a family vector.
 
     Lane count is fractional in the same way a tooth count is: the ribbon's width
@@ -1867,6 +1871,7 @@ def road_body(bpy, name, material, vector, span=1.72, depth=0.30):
     Markings are *raised and welded* rather than cut, because a dash cut into the
     surface is an enclosed void and a small one is a sliver (a196).
     """
+    span = families.COMPOSITION["body_span"] if span is None else span
     lanes = vector["lanes"]
     lane_width = vector["lane_width"] * span
     half = lanes * lane_width * 0.5

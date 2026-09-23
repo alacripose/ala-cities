@@ -1025,6 +1025,55 @@ family produces a sliver in its own body at any point.
    corpus's interquartile range asks the road to be a stroke drawing and the bin to
    be something other than a bin. Put to the person in round 6.
 
+## 8.11 a200 and a201 wired, and what the wiring exposed
+
+**a201 is implemented.** `POPULATION_RELATIVE_SPREAD = 0.347` (the md1 population's
+IQR half-width over its median: 0.170 / 0.490) widens each family's **own measured
+fill** into an envelope, `fill_envelope(family)` is what a candidate is judged
+against, and `check()` refuses a family that records no fill. The corpus band stays
+recorded as the catalogue-wide claim. The envelopes, against the reference
+measurements:
+
+| family | reference fill | envelope |
+|---|---|---|
+| bin | 0.7946 | 0.519–1.000 |
+| bolt | 0.3767 | 0.246–0.507 |
+| gear | 0.5665 | 0.370–0.763 |
+| lens | 0.2812 | 0.184–0.379 |
+| plaque | 0.9125 | 0.596–1.000 |
+| road | 0.2825 | 0.184–0.381 |
+
+**Four of the six reference objects fall outside the corpus band** (road 0.283 and
+lens 0.281 below its 0.366 floor; bin 0.795 and ticket 0.913 above its 0.706
+ceiling), which is the measurement that made a201 the right answer rather than a
+convenience.
+
+**a200 is implemented.** `COMPOSITION` declares the frame (2.25), the body's span
+(1.44), the accent radius (0.15) and the clearance (0.06); `accent_slot(bounds)`
+derives the placement from the body's own bounds; the family builders take the span
+from that declaration. Re-smoked: **pieces = 2 at every λ for both families and no
+sliver anywhere** — the defect class that produced 16 voids in one committed
+candidate is now structurally absent rather than repaired per icon.
+
+**Two things the run exposed, both put back to the person (round 7):**
+
+1. **A straight slab cannot be inside its own envelope.** The road's `fill` was
+   0.556 → 0.719 while its reference's is **0.2825** — and the reason is now clear:
+   `fill` is measured against the object's *own box*, and the reference mark is a
+   **fragmented, angled** carriageway whose box is the full square while its ink is
+   17.7 % of it (6 pieces, dashes drawn separately). A solid axis-aligned ribbon
+   fills its own box almost completely whatever its width, so no amount of thinning
+   reaches the envelope. Matching the object means drawing the dashes as **full-width
+gaps cut into the carriageway** — which connect to the background, so they are not
+   enclosed voids at all, and which is also what fragments the mark into its six
+   pieces.
+2. **a190's piece counts and a200 cannot both hold.** a190 promised 2 pieces at md1
+   and **1 at touchwiz/ios6** (the anchors: 2.0 / 1.0 / 1.0), while a200's chosen
+   description says a separate accent has room at **every** λ. A separate accent is a
+   separate component in a raster, so 2 at every λ is what the geometry gives — and
+   the reference objects themselves carry 1, 2, **6** and 3 pieces, so the anchor's
+   piece counts are a population reading in exactly the way the fill band was.
+
 ---
 
 ## Still open, and deliberately so

@@ -27,6 +27,42 @@ a preference:
 without a source, or a count whose endpoints are not whole numbers all fail it.
 """
 
+#: How wide a family's fill envelope is, as a fraction of its own measurement.
+#:
+#: a201 makes each family's envelope its **own** reference measurement rather than the
+#: corpus's interquartile range, because that band is a *population* statistic and
+#: four of the six reference objects fall outside it -- the road (0.283) and the lens
+#: (0.281) below its 0.366 floor, the bin (0.795) and the ticket (0.913) above its
+#: 0.706 ceiling. An object is what it is; the band says what the *catalogue* is.
+#:
+#: One reference mark gives one number, so the spread has to come from somewhere that
+#: is not taste: it is the md1 population's own relative spread (median 0.490, IQR
+#: 0.366-0.706, so a half-width of 0.170 over a median of 0.490). Applied to each
+#: object's own measurement, it is the same claim the ladder already makes -- "this is
+#: what that archive's marks look like" -- read at the size of one object instead of
+#: 1503 of them.
+POPULATION_RELATIVE_SPREAD = 0.347
+
+#: The composition budget (a200): what the object occupies of the frame the rig's
+#: camera sees, and what is left for a separate accent piece. Declared here rather
+#: than discovered in a render, because a fixed accent position collided with the
+#: road at three lanes and up and welded the two into one piece.
+#:
+#: `body_span` is deliberately smaller than the 1.72 the traced marks occupied: with
+#: 1.44 the margin is 0.405 a side, which leaves room for an accent of radius 0.15
+#: plus its clearance at every family and every point on the ladder.
+COMPOSITION = {
+    "frame_span": 2.25,
+    "body_span": 1.44,
+    "accent_radius": 0.15,
+    "clearance": 0.06,
+    "note": (
+        "the accent sits outside the body's own bounds by the declared clearance, so "
+        "it cannot interpenetrate (a183) or pinch a sliver against it (a196); the "
+        "placement is derived from the body's bounds because a fixed one collides"
+    ),
+}
+
 #: What each family is, which icon it belongs to, and the mark it was read from.
 #: `measured` holds the numbers `tools/icons/_measure_marks.py` printed, so an
 #: endpoint's provenance can be checked against the artefact rather than trusted.
@@ -36,7 +72,8 @@ FAMILIES = {
         "object": "a toothed control disc",
         "reference": {
             "glyph": "action/settings",
-            "measured": {"teeth": 6, "bore_ratio": 0.39, "pieces": 1, "voids": 1},
+            "measured": {"teeth": 6, "bore_ratio": 0.39, "pieces": 1, "voids": 1,
+                         "fill": 0.5665},
             "note": "6 runs at 0.80 and 0.92 of R; one 646 px void ≈ 0.39 R",
         },
         "parameters": (
@@ -65,7 +102,7 @@ FAMILIES = {
         "object": "a ribbon of carriageway",
         "reference": {
             "glyph": "maps/add_road",
-            "measured": {"box": [76, 76], "pieces": 6, "voids": 0},
+            "measured": {"box": [76, 76], "pieces": 6, "voids": 0, "fill": 0.2825},
             "note": "the ribbon arrives in 6 components; its centre column carries "
                     "2 runs at 89 % ink",
         },
@@ -101,7 +138,8 @@ FAMILIES = {
         "object": "a bolt of energy",
         "reference": {
             "glyph": "content/bolt",
-            "measured": {"box": [40, 72], "aspect": 0.56, "pieces": 1, "voids": 0},
+            "measured": {"box": [40, 72], "aspect": 0.56, "pieces": 1, "voids": 0,
+                         "fill": 0.3767},
             "note": "re-pointed from action/power_settings_new (a198): a power "
                     "button asserts the switched-on state this icon forbids, and "
                     "the pylon the game means has no reference object behind it",
@@ -127,7 +165,8 @@ FAMILIES = {
         "object": "a lens with a handle",
         "reference": {
             "glyph": "action/search",
-            "measured": {"box": [69, 70], "bore_ratio": 0.51, "pieces": 1, "voids": 1},
+            "measured": {"box": [69, 70], "bore_ratio": 0.51, "pieces": 1, "voids": 1,
+                         "fill": 0.2812},
             "note": "one 1018 px void ≈ 0.51 R: the bore is what defines the object",
         },
         "parameters": (
@@ -155,7 +194,7 @@ FAMILIES = {
         "reference": {
             "glyph": "action/delete",
             "measured": {"box": [56, 72], "taper": 0.68, "pieces": 2, "voids": 0,
-                         "lid_share": 0.17},
+                         "lid_share": 0.17, "fill": 0.7946},
             "note": "the lid is a separate component (540 px of 3204) with a gap "
                     "between it and the body; the reference draws no ridges",
         },
@@ -185,7 +224,7 @@ FAMILIES = {
         "reference": {
             "glyph": "notification/confirmation_number",
             "measured": {"box": [80, 64], "notches": 3, "notch_px": 64,
-                         "notch_share": 0.0137},
+                         "notch_share": 0.0137, "fill": 0.9125},
             "note": "three notches of 64 px each, 1.37 % of the ink — the class the "
                     "3.5 % rule condemns, which is why the notches are drawn larger "
                     "(a199) and the containment divergence is recorded",
@@ -270,6 +309,36 @@ def vector(family: str, lam: float) -> dict:
     return out
 
 
+def fill_envelope(family: str) -> tuple:
+    """The fill range a candidate of this family is judged against (a201).
+
+    Its own reference's measurement, widened by the population's relative spread. The
+    corpus band is *not* used as the gate: it is recorded by the check that the
+    catalogue as a whole spans the archives, which is the claim it can actually
+    support.
+    """
+    fill = declaration(family)["reference"]["measured"].get("fill")
+    if fill is None:
+        raise KeyError(f"`{family}` records no measured fill, so it has no envelope")
+    spread = fill * POPULATION_RELATIVE_SPREAD
+    return (round(max(0.0, fill - spread), 4), round(min(1.0, fill + spread), 4))
+
+
+def accent_slot(bounds: tuple, radius: float = None, clearance: float = None) -> tuple:
+    """Where a separate accent piece goes, from the body's own bounds (a200).
+
+    Diagonally outside the body's lower-right corner by the declared clearance, so
+    the accent cannot interpenetrate the body (a183 refuses that) and cannot pinch a
+    sliver against it (a196). Derived rather than fixed, because a fixed position
+    collided with the road at three lanes and up and the two welded into one piece.
+
+    `bounds` is `(min_x, min_z, max_x, max_z)` in the icon's own plane.
+    """
+    gap = COMPOSITION["clearance"] if clearance is None else clearance
+    size = COMPOSITION["accent_radius"] if radius is None else radius
+    return (bounds[2] + gap + size, bounds[1] - gap - size)
+
+
 def describe() -> dict:
     """The families and their provenance, for the manifest."""
     return {
@@ -307,6 +376,15 @@ def check() -> dict:
             problems.append(f"`{name}` declares no reference mark")
         if not item.get("reference", {}).get("measured"):
             problems.append(f"`{name}` records no measurement of its reference")
+        fill = item.get("reference", {}).get("measured", {}).get("fill")
+        if fill is None:
+            problems.append(f"`{name}` records no measured fill, so a201 has nothing "
+                            f"to build its envelope from")
+        else:
+            low, high = fill_envelope(name)
+            if not low <= fill <= high:
+                problems.append(f"`{name}`'s own measurement {fill} falls outside the "
+                                f"envelope {low}-{high} derived from it")
         icon = item["icon"]
         if icon in seen_icons:
             problems.append(f"`{icon}` is claimed by both `{seen_icons[icon]}` and `{name}`")
@@ -331,5 +409,7 @@ def check() -> dict:
             1 for item in FAMILIES.values() for parameter in item["parameters"]
             if parameter["source"].startswith("measured")
         ),
+        "fill_envelopes": {name: fill_envelope(name) for name in sorted(FAMILIES)},
+        "composition": dict(COMPOSITION),
         "problems": problems,
     }

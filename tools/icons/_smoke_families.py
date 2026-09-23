@@ -61,8 +61,9 @@ def main():
     body = material(bpy, "metal", "natural")
     accent = material(bpy, "glass", "natural")
 
-    print(f"\n{'family':8} {'lambda':>6}  {'cover':>6} {'fill':>6} {'pieces':>6} "
-          f"{'voids':>5}  {'void shares of the object':32} count")
+    print(f"\n{'family':8} {'lambda':>6}  {'cover':>6} {'fill':>6} judged          "
+          f"{'envelope':14} {'pieces':>6} {'voids':>5}  "
+          f"{'void shares of the object':32} count")
     for family, icon in SMOKE:
         for lam in SAMPLES:
             vector = families.vector(family, lam)
@@ -70,14 +71,19 @@ def main():
                 obj = shapes.gear_body(bpy, f"smoke gear {lam}", body, vector)
             else:
                 obj = shapes.road_body(bpy, f"smoke road {lam}", body, vector)
-            # The accent sits **clear** of the body by a declared clearance (a184).
-            # Overlapping it into the body is what produced the only sliver this
-            # smoke test found: a one-pixel enclosed void at (68, 76), in the corner
-            # where the two touched — the same defect class the current review set
-            # carries (16 voids in one candidate), now with a cause on the record.
+            # The accent's slot is **derived from the body's own bounds** (a200) and
+            # sits clear by the declared clearance. Overlapping it into the body is
+            # what produced the only sliver this smoke test found — a one-pixel void
+            # at (68, 76), in the corner where the two touched — the same defect class
+            # the committed review set carries (16 voids in one candidate), now with
+            # a cause on the record and a rule that removes it.
+            corners = [tuple(corner) for corner in obj.bound_box]
+            bounds = (min(c[0] for c in corners), min(c[2] for c in corners),
+                      max(c[0] for c in corners), max(c[2] for c in corners))
+            slot_x, slot_z = families.accent_slot(bounds)
             accent_obj = shapes.cylinder(
-                bpy, f"smoke accent {lam}", accent,
-                0.80, -0.80, 0.14, depth=0.44, y=0.30)
+                bpy, f"smoke accent {lam}", accent, slot_x, slot_z,
+                families.COMPOSITION["accent_radius"], depth=0.44, y=0.30)
             path = os.path.join(generate.REVIEW, f"_smoke.{family}.{lam}.render.png")
             found, topo, small = render_and_read(scene, path)
             # Anything under the 3.5 % rule's floor is a sliver, and a sliver is only
@@ -91,7 +97,10 @@ def main():
                                        else vector["lanes"])
             shares = topo.get("hole_shares") or []
             printed = " ".join(f"{share * 100:5.2f}%" for share in shares[:4]) or "none"
-            print(f"{family:8} {lam:6.2f}  {found['coverage']:6.3f} {found['fill']:6.3f} "
+            low, high = families.fill_envelope(family)
+            judged = "in" if low <= found["fill"] <= high else "OUT"
+            print(f"{family:8} {lam:6.2f}  {found['coverage']:6.3f} "
+                  f"{found['fill']:6.3f} {judged:>3} ({low:.2f}-{high:.2f}) "
                   f"{topo.get('pieces'):6} {topo.get('holes'):5}  {printed:32} "
                   f"{families.declaration(family)['parameters'][0]['name']}="
                   f"{vector[families.declaration(family)['parameters'][0]['name']]:.2f} "
