@@ -65,9 +65,15 @@ Every stage has a **gate**: named commands with expected **readings**, the
 | Q224 | whole-game census | ✔ gameplay through delivery: simulation, content, presentation, persistence, evidence, tools, verifier, assets, release, playtests, and records all receive keep/rework/retire dispositions |
 | Q225 | meaning of “whole game first” | ✔ **design sweep first**; census and target design artifacts complete before implementation planning or Stage 1 product work — production code need not be wholly reworked first |
 | Q226 | parallel replacement | ✔ parallel executable models may serve as design artifacts; production code is still reworked in place and the old runtime is evidence, not a second target runtime |
-| Q227 | re-grill order | ✔ breadth-first by redesigned capability and dependency frontier, with complete Q1–Q210 traceability |
+| Q227 | re-grill order | ✔ breadth-first by redesigned capability and dependency frontier, with complete traceability over the normalized extracted corpus defined by Q229–Q234 |
 | Q228 | inherited artifact compatibility | ✔ artifact-by-artifact keep/migrate/retire decisions; no blanket compatibility or destruction |
+| Q229 | inherited decision identity | ✔ dense campaign-scoped canonical IDs; old local numbers and satellites remain immutable aliases |
+| Q230 | re-grill ledger | ✔ typed JSON is canonical; Markdown and GitHub are generated projections |
+| Q231 | C1–C10 authority | ✔ immutable historical evidence; dispositions and supersessions live in the redesign record |
+| Q232 | missing and reused question IDs | ✔ normalize the actual extracted corpus densely per campaign; remove phantom Q197–Q210 rather than infer questions |
+| Q233 | re-grill coverage gate | ✔ typed two-way source/ledger coverage; reused, malformed, aliased, and absent IDs are reported separately |
+| Q234 | disposition proof | ✔ every row starts unreviewed and needs the person's answer, reason, capability, stage, digest, evidence, and replacement decision when reworked |
 
-*Rounds 2–3 (Q217–Q228) are answered in `docs/GRILLING-C11.md`. The next
-frontier builds the concrete whole-system capability census and dependency
-order.*
+*Rounds 2–4 (Q217–Q234) are answered in `docs/GRILLING-C11.md`. The next
+frontier fixes the census/coverage artifact and builds the whole-system
+capability map.*

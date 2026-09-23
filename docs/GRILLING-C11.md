@@ -20,6 +20,13 @@ campaign is recorded verbatim, because the record keeps what was actually said:
 
 ## The sweep's method
 
+> **Superseded by Q229–Q234; the original claim below is preserved as
+> evidence.** A direct scan found that the sources reuse local Q numbers (C1 and
+> C9 both begin at Q1), contain alphanumeric satellites, and contain no primary
+> declarations for Q197–Q210. The canonical corpus is therefore the normalized
+> set actually extracted from C1–C10, not a numeric range. Coverage is proved by
+> a typed two-way ledger, not by grep.
+
 1. **Every used question number Q1–Q210 is re-asked** (202 numbers are in use
    across C1–C10), each with its **satellites** — the questions the earlier
    session should have asked and did not. Nothing is assumed; nothing is silently
@@ -286,6 +293,10 @@ their settled dependencies expose. A coverage ledger proves that every old
 Q1–Q210 question receives exactly one disposition, while question numbers remain
 stable and satellites stay attached to their parent question.
 
+⚠ **The numeric-range promise is superseded by Q229–Q234.** Breadth-first order
+stands; the ledger now covers the normalized corpus actually extracted from
+C1–C10, including satellites, rather than a fictional continuous Q1–Q210 range.
+
 ### Q228 — what compatibility burden inherited artifacts carry
 
 Must the redesign preserve every save and record, reset inherited data, or make
@@ -296,3 +307,90 @@ compatibility an explicit decision for each artifact?
 ✔ **A confirmed.** Every inherited save, season record, schema, manifest, review
 record, evidence artifact, and compatibility fixture receives an explicit
 `keep` / `migrate` / `retire` decision, with its reason and expected evidence.
+
+---
+
+## Round 4 — identity and coverage of the inherited record (Q229–Q234)
+
+### Q229 — what identity every inherited decision carries
+
+C1 and C9 both begin at Q1; later records reuse local ranges; satellites add
+suffixes; references are not declarations. What is the stable identity?
+
+➡️ **Campaign-scoped canonical IDs with historical aliases.** Never let a bare
+number silently choose the wrong record.
+
+✔ **Campaign-scoped IDs confirmed.** C1–C10 use dense per-campaign canonical IDs
+in source order, such as `C1-Q001` and `C9-Q001`. Every historical local number
+and satellite spelling remains an immutable searchable alias. New C11 decisions
+retain the continuing Q211+ sequence, canonically `C11-Q229`, `C11-Q230`, and so
+on.
+
+### Q230 — what the canonical re-grill ledger is
+
+Can Markdown, GitHub issues, or a generated CSV each be edited independently
+without becoming a second home?
+
+➡️ **A typed JSON ledger.** Structured fields are validated once; human views
+are generated from the same rows.
+
+✔ **Typed JSON ledger confirmed.** Each row carries canonical ID, aliases, exact
+source location and text digest, question text, review state, capability,
+disposition, reason, replacement decision, target stage, evidence, and human
+answer. Markdown and GitHub presentations are projections. The ledger's exact
+path is the next artifact decision.
+
+### Q231 — what happens to C1–C10
+
+Should inherited records be edited with disposition labels, consolidated, or
+preserved as evidence?
+
+➡️ **Immutable evidence.** The redesign ledger links the exact old answer; the
+old prose is not rewritten to make the new design look tidy.
+
+✔ **Immutable evidence confirmed.** C1–C10 remain byte-for-byte historical
+records. New dispositions, corrections, and supersessions live in the redesign
+record and ledger, linked by canonical ID and source digest.
+
+### Q232 — how missing, malformed, or reused identities are handled
+
+The old promise says Q1–Q210 and 202 numbers. The extracted record has reused
+IDs, malformed joint headings, satellites, and no primary Q197–Q210. Should the
+range survive, should missing questions be inferred, or should the actual corpus
+be normalized?
+
+➡️ **Normalize the actual corpus and remove phantom claims.** A missing number
+is not a question until a person gives it content.
+
+✔ **Dense per-campaign sequence confirmed.** Primary declarations and satellites
+are extracted, normalized to dense campaign-local canonical IDs in source order,
+and retain their historical spellings as aliases. Q197–Q210 are removed as a
+phantom range; no placeholder or inferred question is created. Completeness is
+measured against the extracted canonical corpus plus its satellites.
+
+### Q233 — what machine gate proves re-grill coverage
+
+The promised “one grep” cannot distinguish declarations from references and does
+not parse the record's multiple heading/table forms.
+
+➡️ **A typed two-way coverage gate.** Parse declarations, not every mention, and
+prove both source-to-ledger and ledger-to-source coverage.
+
+✔ **Two-way typed coverage confirmed.** The extractor recognizes the source
+formats, normalizes primary questions and satellites, rejects unclassified
+question-like declarations, requires exactly one reviewed ledger row per
+canonical ID, and separately reports reused IDs, aliases, malformed records, and
+absent numeric ranges.
+
+### Q234 — what evidence a disposition requires
+
+May old decisions default to keep because code still resembles them, or may a
+sweep classify them by majority?
+
+➡️ **Evidence-backed disposition.** `unreviewed` is the only default; the
+person's answer is required.
+
+✔ **Evidence-backed disposition confirmed.** Every inherited row begins
+`unreviewed`. It cannot become `keep`, `rework`, or `retire` without the person's
+answer, a reason, a target capability, a target stage, source digest, evidence
+links, and a replacement canonical decision when reworked.
