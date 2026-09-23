@@ -1870,6 +1870,55 @@ mod tests {
         );
     }
 
+    /// **The measured violation, pinned.** `grow()` builds out of nothing, and this is what that
+    /// costs, in the ledger's own units: a grown home appears in the audit as exactly one home's
+    /// mass of material that the ground never gave up.
+    ///
+    /// Round 6's Q45 answered (a) — growth happens because citizens acquire material and build,
+    /// through the same task system as everything else — so this test is written to **invert**
+    /// when `grow()` pays for what it builds: the assertion becomes `conserves()`. It is not
+    /// ignored, because an ignored test is a defect nobody re-reads; it is explicit, so that the
+    /// change that fixes it fails here first, naming the number, instead of passing quietly.
+    #[test]
+    fn growth_still_builds_out_of_nothing_and_the_audit_says_how_much() {
+        let mut world = small_city();
+        world.place_building(world.index(1, 3), BuildingKind::PowerPlant).expect("plant");
+        world.buildings[0].ready_tick = 0;
+        let near = world.index(1, 6);
+        world.set_zone(near, Zone::Residential);
+        world.recompute_power();
+        for _ in 0..40 {
+            world.clock.tick += 1;
+            world.recompute_demand();
+            world.grow();
+        }
+        assert!(
+            world.tiles[near as usize].building.is_some(),
+            "the growth this test measures has to actually happen"
+        );
+
+        let audit = world.mass_audit();
+        assert_eq!(audit.extracted_g, 0, "nothing was mined to build it");
+        let grown = material_ledger::structure_mass_g("home", 1).expect("declared");
+        let placed = material_ledger::structure_mass_g("power plant", 1).expect("declared");
+        assert_eq!(
+            audit.standing_g,
+            grown + placed,
+            "one grown home, plus the power plant the test placed itself"
+        );
+        assert!(
+            !audit.conserves(),
+            "while grow() creates material, the audit must say so — when it pays, invert this"
+        );
+        // The finding a player would read, and the number Q45 exists to remove.
+        let findings = audit.findings();
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains(&audit.standing_g.to_string()),
+            "the finding names the whole amount: {findings:?}"
+        );
+    }
+
     #[test]
     fn construction_finishes_before_a_home_is_occupied() {
         let mut world = small_city();
