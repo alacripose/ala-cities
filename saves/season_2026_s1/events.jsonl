@@ -711,3 +711,139 @@
 {"detail":"BLD-000158 — zone 21 tiles industrial","kind":"ticket.filed","sim_seconds":8.2,"tick":164}
 {"detail":"BLD-000159 — place power plant 6","kind":"ticket.filed","sim_seconds":8.2,"tick":164}
 {"detail":"MAT-000012 — material of power plant 6","kind":"ticket.filed","sim_seconds":8.2,"tick":164}
+{"detail":"CSE-000030 — 1 site(s) in district 0 want 1000 g of stone and the world holds 0 g: 1000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":2.0,"tick":40}
+{"detail":"CSE-000030 — 2 site(s) in district 0 want 2000 g of stone and the world holds 0 g: 2000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":4.0,"tick":80}
+{"detail":"CSE-000030 — 3 site(s) in district 0 want 3000 g of stone and the world holds 0 g: 3000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":6.0,"tick":120}
+{"detail":"CSE-000030 — 4 site(s) in district 0 want 4000 g of stone and the world holds 0 g: 4000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":8.0,"tick":160}
+{"detail":"CSE-000030 — 5 site(s) in district 0 want 5000 g of stone and the world holds 0 g: 5000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":10.0,"tick":200}
+{"detail":"CSE-000030 — 6 site(s) in district 0 want 6000 g of stone and the world holds 0 g: 6000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":12.0,"tick":240}
+{"detail":"CSE-000030 — 7 site(s) in district 0 want 7000 g of stone and the world holds 0 g: 7000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":14.0,"tick":280}
+{"detail":"CSE-000030 — 8 site(s) in district 0 want 8000 g of stone and the world holds 0 g: 8000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":16.0,"tick":320}
+{"detail":"CSE-000030 — 9 site(s) in district 0 want 9000 g of stone and the world holds 0 g: 9000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":18.0,"tick":360}
+{"detail":"CSE-000030 — 10 site(s) in district 0 want 10000 g of stone and the world holds 0 g: 10000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":20.0,"tick":400}
+{"detail":"CSE-000030 — 11 site(s) in district 0 want 11000 g of stone and the world holds 0 g: 11000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":22.0,"tick":440}
+{"detail":"BLD-000160 — lay 45 tiles of road","kind":"ticket.filed","sim_seconds":23.5,"tick":470}
+{"detail":"BLD-000160 — completed_and_validated","kind":"ticket.retired","sim_seconds":23.6,"tick":472}
+{"detail":"CSE-000030 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":24.0,"tick":480}
+{"detail":"BLD-000161 — zone 48 tiles residential","kind":"ticket.filed","sim_seconds":24.5,"tick":490}
+{"detail":"BLD-000161 — completed_and_validated","kind":"ticket.retired","sim_seconds":24.6,"tick":492}
+{"detail":"BLD-000162 — lay 24 tiles of road","kind":"ticket.filed","sim_seconds":25.15,"tick":503}
+{"detail":"BLD-000162 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.4,"tick":508}
+{"detail":"BLD-000163 — place power plant 1","kind":"ticket.filed","sim_seconds":25.55,"tick":511}
+{"detail":"MAT-000013 — material of power plant 1","kind":"ticket.filed","sim_seconds":25.55,"tick":511}
+{"detail":"BLD-000163 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.8,"tick":516}
+{"detail":"MAT-000013 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.8,"tick":516}
+{"detail":"BLD-000164 — place power plant 2","kind":"ticket.filed","sim_seconds":25.95,"tick":519}
+{"detail":"MAT-000014 — material of power plant 2","kind":"ticket.filed","sim_seconds":25.95,"tick":519}
+{"detail":"CSE-000031 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":26.0,"tick":520}
+{"detail":"CSE-000031 supersedes CSE-000003","kind":"case.supersedes","sim_seconds":26.0,"tick":520}
+{"detail":"CSE-000030 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":26.0,"tick":520}
+{"detail":"BLD-000164 — completed_and_validated","kind":"ticket.retired","sim_seconds":26.2,"tick":524}
+{"detail":"MAT-000014 — completed_and_validated","kind":"ticket.retired","sim_seconds":26.2,"tick":524}
+{"detail":"BLD-000165 — place power plant 3","kind":"ticket.filed","sim_seconds":26.35,"tick":527}
+{"detail":"MAT-000015 — material of power plant 3","kind":"ticket.filed","sim_seconds":26.35,"tick":527}
+{"detail":"BLD-000165 — completed_and_validated","kind":"ticket.retired","sim_seconds":26.6,"tick":532}
+{"detail":"MAT-000015 — completed_and_validated","kind":"ticket.retired","sim_seconds":26.6,"tick":532}
+{"detail":"BLD-000166 — lay 25 tiles of road","kind":"ticket.filed","sim_seconds":27.9,"tick":558}
+{"detail":"BLD-000166 — completed_and_validated","kind":"ticket.retired","sim_seconds":28.0,"tick":560}
+{"detail":"CSE-000031 — completed_and_validated","kind":"ticket.retired","sim_seconds":28.0,"tick":560}
+{"detail":"CSE-000030 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":28.0,"tick":560}
+{"detail":"BLD-000167 — zone 1 tiles residential","kind":"ticket.filed","sim_seconds":29.45,"tick":589}
+{"detail":"BLD-000167 — completed_and_validated","kind":"ticket.retired","sim_seconds":29.6,"tick":592}
+{"detail":"CSE-000030 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":30.0,"tick":600}
+{"detail":"BLD-000168 — zone 48 tiles industrial","kind":"ticket.filed","sim_seconds":30.55,"tick":611}
+{"detail":"BLD-000168 — completed_and_validated","kind":"ticket.retired","sim_seconds":30.8,"tick":616}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000032 supersedes CSE-000003","kind":"case.supersedes","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000033 supersedes CSE-000020","kind":"case.supersedes","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000030 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":32.0,"tick":640}
+{"detail":"CSE-000030 — blocked_and_closed","kind":"ticket.retired","sim_seconds":33.0,"tick":660}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.opened","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000034 supersedes CSE-000030","kind":"case.supersedes","sim_seconds":34.0,"tick":680}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":36.0,"tick":720}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":38.0,"tick":760}
+{"detail":"BLD-000142 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000143 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000144 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000145 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000146 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000147 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000148 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000149 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000150 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000151 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000152 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000153 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000154 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000155 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000156 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000157 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000158 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"BLD-000159 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"MAT-000010 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"MAT-000011 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"MAT-000012 — completed_but_unverified","kind":"ticket.retired","sim_seconds":39.0,"tick":780}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":40.0,"tick":800}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":40.0,"tick":800}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":40.0,"tick":800}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":42.0,"tick":840}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":44.0,"tick":880}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":46.0,"tick":920}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":48.0,"tick":960}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":50.0,"tick":1000}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":52.0,"tick":1040}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":54.0,"tick":1080}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":56.0,"tick":1120}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":58.0,"tick":1160}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":60.0,"tick":1200}
+{"detail":"CSE-000032 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000033 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":62.0,"tick":1240}
+{"detail":"CSE-000032 — blocked_and_closed","kind":"ticket.retired","sim_seconds":63.0,"tick":1260}
+{"detail":"CSE-000033 — blocked_and_closed","kind":"ticket.retired","sim_seconds":63.0,"tick":1260}
+{"detail":"CSE-000035 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000035 supersedes CSE-000003","kind":"case.supersedes","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000036 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000036 supersedes CSE-000020","kind":"case.supersedes","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000034 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":64.0,"tick":1280}
+{"detail":"CSE-000034 — blocked_and_closed","kind":"ticket.retired","sim_seconds":65.0,"tick":1300}
+{"detail":"CSE-000035 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000036 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000037 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.opened","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000037 supersedes CSE-000030","kind":"case.supersedes","sim_seconds":66.0,"tick":1320}
+{"detail":"CSE-000035 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000036 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000037 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":68.0,"tick":1360}
+{"detail":"CSE-000035 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":70.0,"tick":1400}
+{"detail":"CSE-000036 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":70.0,"tick":1400}
+{"detail":"CSE-000037 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":70.0,"tick":1400}
+{"detail":"CSE-000035 — district 35: 10 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":72.0,"tick":1440}
+{"detail":"CSE-000036 — district 36: 5 zoned tiles have no power; growth has stopped on them","kind":"case.updated","sim_seconds":72.0,"tick":1440}
+{"detail":"CSE-000037 — 12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`","kind":"case.updated","sim_seconds":72.0,"tick":1440}

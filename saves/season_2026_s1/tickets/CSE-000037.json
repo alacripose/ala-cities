@@ -1,0 +1,20 @@
+{
+  "id": "CSE-000037",
+  "contract": "CTR-CITY-0001",
+  "kind": "Case",
+  "status": "Open",
+  "objective": "12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`",
+  "gate": "the residents' condition improves, read from the world",
+  "opened_tick": 1320,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": "materials:0:ceramic:stone",
+  "count": 12,
+  "expectation": "None",
+  "roads_before": [],
+  "evidence": [],
+  "actor": "sim",
+  "corrected": null
+}

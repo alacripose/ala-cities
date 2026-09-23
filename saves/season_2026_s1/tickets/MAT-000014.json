@@ -1,0 +1,28 @@
+{
+  "id": "MAT-000014",
+  "contract": "CTR-CITY-0001",
+  "kind": "Material",
+  "status": "Open",
+  "objective": "material of power plant 2",
+  "gate": "built as metal/natural/body on power.frame",
+  "opened_tick": 519,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "MaterialOf": {
+      "tile": 35470,
+      "part": "power.frame",
+      "family": "metal",
+      "anchor": "natural",
+      "level": "body"
+    }
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

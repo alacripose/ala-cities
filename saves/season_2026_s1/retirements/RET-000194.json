@@ -1,0 +1,27 @@
+{
+  "id": "RET-000194",
+  "ticket": "CSE-000030",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "blocked_and_closed",
+  "objective": "12 site(s) in district 0 want 12000 g of stone and the world holds 0 g: 12000 g short — no tile within 3 tiles of a road holds `stone`",
+  "completion_claim": "unresolved after 31s: the condition this case describes is still present. Closed rather than left open forever; if it still holds, a new case will be filed that references this one.",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "the residents' condition improves, read from the world"
+    ],
+    "checks_run": [
+      "no world expectation (nothing to read back)"
+    ],
+    "passed": false,
+    "regressions_detected": false
+  },
+  "evidence": [],
+  "governor_version": 3,
+  "retired_at_tick": 660,
+  "retired_by": "operator"
+}

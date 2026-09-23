@@ -1,0 +1,215 @@
+{
+  "id": "BLD-000168",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 48 tiles industrial",
+  "gate": "all 48 tiles carry the zone set",
+  "opened_tick": 611,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        33910,
+        "Industrial"
+      ],
+      [
+        33911,
+        "Industrial"
+      ],
+      [
+        33912,
+        "Industrial"
+      ],
+      [
+        33913,
+        "Industrial"
+      ],
+      [
+        33914,
+        "Industrial"
+      ],
+      [
+        33915,
+        "Industrial"
+      ],
+      [
+        33916,
+        "Industrial"
+      ],
+      [
+        33917,
+        "Industrial"
+      ],
+      [
+        33918,
+        "Industrial"
+      ],
+      [
+        33919,
+        "Industrial"
+      ],
+      [
+        33920,
+        "Industrial"
+      ],
+      [
+        33921,
+        "Industrial"
+      ],
+      [
+        33922,
+        "Industrial"
+      ],
+      [
+        33923,
+        "Industrial"
+      ],
+      [
+        33924,
+        "Industrial"
+      ],
+      [
+        33925,
+        "Industrial"
+      ],
+      [
+        33926,
+        "Industrial"
+      ],
+      [
+        33927,
+        "Industrial"
+      ],
+      [
+        33928,
+        "Industrial"
+      ],
+      [
+        33929,
+        "Industrial"
+      ],
+      [
+        33930,
+        "Industrial"
+      ],
+      [
+        33931,
+        "Industrial"
+      ],
+      [
+        33932,
+        "Industrial"
+      ],
+      [
+        33933,
+        "Industrial"
+      ],
+      [
+        34166,
+        "Industrial"
+      ],
+      [
+        34167,
+        "Industrial"
+      ],
+      [
+        34168,
+        "Industrial"
+      ],
+      [
+        34169,
+        "Industrial"
+      ],
+      [
+        34170,
+        "Industrial"
+      ],
+      [
+        34171,
+        "Industrial"
+      ],
+      [
+        34172,
+        "Industrial"
+      ],
+      [
+        34173,
+        "Industrial"
+      ],
+      [
+        34174,
+        "Industrial"
+      ],
+      [
+        34175,
+        "Industrial"
+      ],
+      [
+        34176,
+        "Industrial"
+      ],
+      [
+        34177,
+        "Industrial"
+      ],
+      [
+        34178,
+        "Industrial"
+      ],
+      [
+        34179,
+        "Industrial"
+      ],
+      [
+        34180,
+        "Industrial"
+      ],
+      [
+        34181,
+        "Industrial"
+      ],
+      [
+        34182,
+        "Industrial"
+      ],
+      [
+        34183,
+        "Industrial"
+      ],
+      [
+        34184,
+        "Industrial"
+      ],
+      [
+        34185,
+        "Industrial"
+      ],
+      [
+        34186,
+        "Industrial"
+      ],
+      [
+        34187,
+        "Industrial"
+      ],
+      [
+        34188,
+        "Industrial"
+      ],
+      [
+        34189,
+        "Industrial"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

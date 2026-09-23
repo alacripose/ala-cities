@@ -1,0 +1,27 @@
+{
+  "id": "RET-000201",
+  "ticket": "BLD-000148",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_but_unverified",
+  "objective": "zone 20 tiles commercial",
+  "completion_claim": "the world did not show \"20 tiles carry the zone set\" within 31s, so this is not called validated. It is recorded as unverified, which is the honest name for it.",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "all 20 tiles carry the zone set"
+    ],
+    "checks_run": [
+      "20 tiles carry the zone set"
+    ],
+    "passed": false,
+    "regressions_detected": false
+  },
+  "evidence": [],
+  "governor_version": 3,
+  "retired_at_tick": 780,
+  "retired_by": "operator"
+}

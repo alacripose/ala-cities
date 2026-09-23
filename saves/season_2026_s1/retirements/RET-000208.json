@@ -1,0 +1,27 @@
+{
+  "id": "RET-000208",
+  "ticket": "BLD-000155",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_but_unverified",
+  "objective": "lay 4 tiles of road",
+  "completion_claim": "the world did not show \"3 tiles are road\" within 31s, so this is not called validated. It is recorded as unverified, which is the honest name for it.",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "all 4 tiles are road"
+    ],
+    "checks_run": [
+      "3 tiles are road"
+    ],
+    "passed": false,
+    "regressions_detected": false
+  },
+  "evidence": [],
+  "governor_version": 3,
+  "retired_at_tick": 780,
+  "retired_by": "operator"
+}
