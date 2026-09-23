@@ -8,6 +8,7 @@ candidate; they cannot invent a silhouette or approve one.
 import math
 import os
 
+import families
 import openpbr
 import palette
 from palette import rgba
@@ -1693,6 +1694,244 @@ def gear_mesh(bpy, name, material, x, z, radius, teeth=10, tooth=0.16, depth=0.3
     bevel.limit_method = "ANGLE"
     _smooth(obj)
     return obj
+
+
+# ---------------------------------------------------------------------------
+# The families: one body per object, from a parameter vector (C8 a179, a184)
+# ---------------------------------------------------------------------------
+
+
+def _bake(bpy, obj):
+    """Apply every modifier already on an object, in stack order.
+
+    A `box` arrives with its bevel already on the stack, and adding a boolean after
+    it and applying the boolean alone makes Blender warn that it "was not first" —
+    the operation then depends on stack order that nobody declared. Baking first
+    means the body is a mesh with no modifiers before anything is cut out of it or
+    welded to it, so the result is the declared one.
+    """
+    for modifier in list(obj.modifiers):
+        _apply_modifier(bpy, obj, modifier)
+    return obj
+
+
+def _cut(bpy, body, cutters):
+    """Subtract transient cutters from `body` and remove them.
+
+    The cutters never render: they exist to leave a *hole* in one body, which is
+    why the declared voids of a candidate (a gear's bore) are the cutters the
+    builder knew about rather than something a person has to read back out of a
+    raster.
+    """
+    _bake(bpy, body)
+    for cutter in cutters:
+        boolean = body.modifiers.new(name="declared void", type="BOOLEAN")
+        boolean.operation = "DIFFERENCE"
+        boolean.object = cutter
+        boolean.solver = "EXACT"
+    for modifier in [m for m in body.modifiers if m.type == "BOOLEAN"]:
+        _apply_modifier(bpy, body, modifier)
+    for cutter in cutters:
+        bpy.data.objects.remove(cutter, do_unlink=True)
+    return body
+
+
+def _weld(bpy, body, others):
+    """Union overlapping solids into one body, and remove the parts.
+
+    a184 builds an object as **one profile**, and a183 refuses promotion for
+    interpenetrating shells — so features that overlap the body (a marking raised
+    on a road, a curb, a junction arm) cannot simply be left sitting in it. Welding
+    resolves both at once: one shell, and the silhouette's piece count is the
+    object's rather than the part list's.
+    """
+    _bake(bpy, body)
+    for other in others:
+        if other is None:
+            continue
+        boolean = body.modifiers.new(name="welded feature", type="BOOLEAN")
+        boolean.operation = "UNION"
+        boolean.object = other
+        boolean.solver = "EXACT"
+    for modifier in [m for m in body.modifiers if m.type == "BOOLEAN"]:
+        _apply_modifier(bpy, body, modifier)
+    for other in others:
+        if other is not None:
+            bpy.data.objects.remove(other, do_unlink=True)
+    return body
+
+
+def gear_body(bpy, name, material, vector, radius=0.86, depth=0.34):
+    """One gear body, from a family vector.
+
+    The tooth count is **fractional** (a187): `whole` teeth at the family's duty,
+    plus one partial segment whose angular extent is the fraction, so the ring
+    closes exactly and a count of 7.0 has no eighth tooth rather than a threshold
+    at which one appears. The bore is a declared void cut through the body (a184),
+    and `root_ratio` is measured from the reference object (0.76 in the table's
+    own terms, 0.39 for its bore), not chosen here.
+    """
+    import math
+
+    count = vector["teeth"]
+    duty = vector["tooth_duty"]
+    root = radius * vector["root_ratio"]
+    height = radius - root
+    tip = radius + vector["tip_rise"] * height
+    whole, fraction = families.features(count)
+    pitch = 2.0 * math.pi / count
+    segments = [(1.0, index) for index in range(whole)]
+    if fraction > 0.0:
+        segments.append((fraction, whole))
+
+    points = []
+    for position, (extent, index) in enumerate(segments):
+        width = pitch * extent
+        centre = index * pitch + width * 0.5
+        land = duty * width * 0.5
+        for offset, ring in ((-land, root), (-land * 0.55, tip),
+                             (land * 0.55, tip), (land, root)):
+            angle = centre + offset
+            points.append((math.cos(angle) * ring, math.sin(angle) * ring))
+        # The root land between two teeth **follows the root circle** instead of
+        # being a straight chord across it. A chord dips inside the root radius, and
+        # at nine teeth that dip left a one-pixel enclosed void for the bevel to
+        # pinch -- the smoke test's only defect, and the class a196 refuses. Two
+        # samples across the gap are enough to keep the land on the circle, and the
+        # gap is measured so a narrow one is not over-sampled.
+        if position + 1 < len(segments):
+            next_extent, next_index = segments[position + 1]
+            gap_start = centre + land
+            gap_end = (next_index * pitch
+                       + pitch * next_extent * (1.0 - duty) * 0.5)
+            gap = gap_end - gap_start
+            if gap > math.radians(4.0):
+                for share in (1.0 / 3.0, 2.0 / 3.0):
+                    angle = gap_start + gap * share
+                    points.append((math.cos(angle) * root, math.sin(angle) * root))
+
+    # The seam that closes the ring is a gap like any other, and it is the one the
+    # loop above cannot see because it has no next segment. It was the smoke test's
+    # only defect: at nine teeth — a whole number, where the seam lands on a pixel
+    # boundary — its chord dip left a one-pixel enclosed void, the class a196 refuses.
+    last_extent, last_index = segments[-1]
+    last_width = pitch * last_extent
+    last_end = last_index * pitch + last_width * (1.0 + duty) * 0.5
+    first_width = pitch * segments[0][0]
+    seam_end = 2.0 * math.pi + first_width * (1.0 - duty) * 0.5
+    seam = seam_end - last_end
+    if seam > math.radians(4.0):
+        for share in (1.0 / 3.0, 2.0 / 3.0):
+            angle = last_end + seam * share
+            points.append((math.cos(angle) * root, math.sin(angle) * root))
+
+    half = depth * 0.5
+    vertices = [(x, -half, z) for x, z in points] + [(x, half, z) for x, z in points]
+    side = len(points)
+    faces = [tuple(range(side - 1, -1, -1)), tuple(range(side, side * 2))]
+    for index in range(side):
+        nxt = (index + 1) % side
+        faces.append((index, nxt, side + nxt, side + index))
+    mesh = bpy.data.meshes.new(f"{name} family topology")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    body = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(body)
+    # The boolean solver reads the winding, and an inside-out bore cutter turns a
+    # difference into a union silently, so the normals are made consistent before
+    # anything is cut out of this body.
+    _recalculate_normals(bpy, body)
+    body.data.materials.append(material)
+    edge = body.modifiers.new(name="authored tooth bevel", type="BEVEL")
+    edge.width = max(1e-4, vector["chamfer_ratio"] * height)
+    edge.segments = 5
+    edge.limit_method = "ANGLE"
+    _smooth(body)
+
+    bore = cylinder(bpy, f"{name} bore cutter", material,
+                    0.0, 0.0, vector["bore_ratio"] * radius,
+                    depth=depth * 2.0, vertices=64)
+    _cut(bpy, body, [bore])
+    _smooth(body)
+    return body
+
+
+def road_body(bpy, name, material, vector, span=1.72, depth=0.30):
+    """One carriageway body, from a family vector.
+
+    Lane count is fractional in the same way a tooth count is: the ribbon's width
+    is `lanes * lane_width`, so the partial lane is simply narrower and appears as
+    it grows. The **line type is a reading, not a switch**: `centre_dash_duty` at 0
+    is one unbroken strip, and above 0 the strip is cut into dashes by that duty,
+    which is how "solid", "dashed" and the rests between them stop being modes.
+    Markings are *raised and welded* rather than cut, because a dash cut into the
+    surface is an enclosed void and a small one is a sliver (a196).
+    """
+    lanes = vector["lanes"]
+    lane_width = vector["lane_width"] * span
+    half = lanes * lane_width * 0.5
+    length = span
+    body = box(bpy, f"{name} ribbon", material, 0.0, 0.0,
+               half * 2.0, length, depth=depth)
+    features = []
+
+    # Lane markings, raised on the ribbon's face and welded into it.
+    boundary = 1
+    while boundary < lanes - 1e-9:
+        x = -half + boundary * lane_width
+        if x < half - lane_width * 0.25:
+            # The boundary nearest the ribbon's own centre is the centre line, and
+            # it is the one the family's dash duty applies to; the others are lane
+            # edges and stay solid. With an odd lane count no boundary sits at the
+            # centre, so there is no dashed line at all rather than an arbitrary one.
+            dashes = abs(x) < lane_width * 0.5
+            duty = vector["centre_dash_duty"] if dashes else 0.0
+            cycle = lane_width * 3.0
+            if duty <= 0.0:
+                features.append(box(bpy, f"{name} marking {boundary}", material,
+                                    x, 0.0, lane_width * 0.10, length,
+                                    depth=vector["marking_height"] * depth))
+            else:
+                step = 0
+                while step < int(length / cycle) + 1:
+                    z = -length / 2.0 + cycle * (step + duty * 0.5)
+                    if z - cycle * duty * 0.5 < length / 2.0:
+                        features.append(box(
+                            bpy, f"{name} dash {boundary}.{step}", material,
+                            x, z, lane_width * 0.10, cycle * duty,
+                            depth=vector["marking_height"] * depth))
+                    step += 1
+        boundary += 1
+
+    # Curbs, and a shoulder if the family asks for one.
+    curb = vector["curb_width"] * span
+    if curb > 1e-6:
+        for side in (-1.0, 1.0):
+            features.append(box(bpy, f"{name} curb {side:+.0f}", material,
+                                side * (half + curb * 0.5), 0.0, curb, length,
+                                depth=depth * 1.15))
+
+    # Junction arms: whole arms plus one partial, whose length is the fraction, so
+    # an arm grows out of the ribbon rather than appearing at a threshold.
+    arm_length = vector["arm_length"] * span
+    if arm_length > 1e-6:
+        whole, fraction = families.features(vector["junction_arms"])
+        arms = [(1.0, index) for index in range(whole)]
+        if fraction > 0.0:
+            arms.append((fraction, whole))
+        for extent, index in arms:
+            if extent <= 0.0:
+                continue
+            side = 1.0 if index % 2 == 0 else -1.0
+            z = (index // 2) * (span / 3.0) - span / 6.0
+            features.append(box(bpy, f"{name} arm {index}", material,
+                                side * (half + arm_length * extent * 0.5), z,
+                                arm_length * extent, lane_width,
+                                depth=depth * 0.82))
+
+    _weld(bpy, body, features)
+    _smooth(body)
+    return body
 
 
 def build(bpy, entry, materials):

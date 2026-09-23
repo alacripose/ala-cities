@@ -947,6 +947,84 @@ mark cannot simply be pointed at as the reference for that icon's shape.
   and the bin gains the **lid gap** the reference actually has (ridge count 0 at the
   md1 end, since MD1's mark draws none).
 
+## 8.9 The supersessions, written as records
+
+Two decisions in this campaign replace earlier ones. Both are written here as
+*supersessions* — what covered what, on what evidence — because the earlier records
+are the reason the new ones can be justified, and deleting them would erase the
+argument:
+
+* **C3's retirement of the authored geometry recipes, superseded by a179.**
+  `add_pilot(...)` retired `gear_parts`, `road_parts`, `lens_parts`, `pylon_parts`
+  and their siblings into `RETIRED_PILOTS` with the reason *"the pilot form had no
+  reference object behind it; its silhouette is discarded and its recipes are kept
+  only as history"*. That reason was correct then and is answered now: the reference
+  objects exist and measure (8.7), so the recipes return as the live geometry, read
+  off those objects rather than invented. `RETIRED_PILOTS` stays exactly as it is —
+  a retirement record is a record of why something stopped, and this one is what
+  stops the same fault from being re-introduced silently.
+* **C6 a129's six discrete accent forms, superseded by a195.** Tab, seal, ribbon,
+  notch, band and corner were declared as six forms; they become six **named
+  windows** on one parametric accent, so a tab that widens is a band and nobody has
+  to decide where one ends. The six names, their intent and their renders stay
+  readable; what changes is that they stop being six objects.
+
+Both are recorded here rather than in a changelog, because the standard's own rule
+is that a record is superseded by naming it, never by overwriting it (§8).
+
+## 8.10 The families, built and smoked (Q179–a199 realised)
+
+**Built.** `tools/icons/families.py` declares the six families — 42 parameters, each
+with a type, a source and its endpoints on λ; `check()` is clean and reports 9
+endpoints that are measurements of the reference object rather than choices.
+`shapes.gear_body` and `shapes.road_body` build one body from a vector, with the
+bore cut as a **declared void** (`_cut`) and overlapping features **welded**
+(`_weld`), both after baking the modifier stack so the result is the declared one
+rather than a function of stack order. `generate.topography` now records
+`hole_shares` (each enclosed void's area over the object's coverage) and
+`void_sites` names where a void is — because a refusal has to name the fix, and for
+a sliver the fix is a place in the frame.
+
+**Smoked**, both families at the five sampled λ, rendered under the real rig and
+measured with the pipeline's own functions:
+
+| family | λ | cover | fill | pieces | voids | void shares | count |
+|---|---|---|---|---|---|---|---|
+| gear | 0.00 | 0.291 | 0.459 | 2 | 1 | 23.55 % | 6.00 → (6, 0.0) |
+| gear | 0.25 | 0.308 | 0.473 | 2 | 1 | 17.51 % | 7.50 → (7, 0.5) |
+| gear | 0.50 | 0.320 | 0.485 | 2 | 1 | 13.00 % | 9.00 → (9, 0.0) |
+| gear | 0.75 | 0.337 | 0.517 | 2 | 1 | 8.89 % | 10.50 → (10, 0.5) |
+| gear | 1.00 | 0.349 | 0.557 | 2 | 1 | 6.46 % | 12.00 → (12, 0.0) |
+| road | 0.00 | 0.494 | 0.739 | 1 | 0 | none | 2.00 → (2, 0.0) |
+| road | 0.25 | 0.519 | 0.765 | 1 | 0 | none | 2.50 → (2, 0.5) |
+| road | 0.50 | 0.573 | 0.730 | 1 | 0 | none | 3.00 → (3, 0.0) |
+| road | 0.75 | 0.601 | 0.750 | 1 | 0 | none | 3.50 → (3, 0.5) |
+| road | 1.00 | 0.609 | 0.759 | 1 | 0 | none | 4.00 → (4, 0.0) |
+
+So the interpolation is real: the count moves through a **partial feature** (7.50
+reads as seven teeth and one at half width), the gear's declared bore shrinks from
+23.6 % to 6.5 % along λ — tracking its measured 0.39 → 0.22 bore ratio — and no
+family produces a sliver in its own body at any point.
+
+**Two findings, both measured, both other people's decisions:**
+
+1. **The only sliver the smoke test found was the accent's, not the object's.** A
+   one-pixel void at (68, 76) — outside the gear's 37 px radius — was the accent
+   cylinder overlapping the body. That is the *same defect class the current review
+   set carries* (one committed candidate has 16 voids), so the cause is now on the
+   record: **the accent's clearance**. And a fixed accent position does not work:
+   at three lanes and up the road grows into it and the two weld into one piece
+   (pieces 1, not 2). The placement has to come from the body's own bounds with a
+   declared clearance, or the body has to cut a declared socket for it.
+2. **The md1 fill band is a population statistic, and three of the six reference
+   objects fall outside it.** The road's own reference mark is a thin ribbon —
+   ~28 % of its box, fill ≈ 0.28, *below* the band's 0.366 floor — while the bin
+   (0.80) and the ticket (0.95) are *above* its 0.706 ceiling. The authored slab
+   measures 0.74–0.83 for the same reason the traced candidates did: it fills its
+   own box because it is a slab. So judging an individual object against the
+   corpus's interquartile range asks the road to be a stroke drawing and the bin to
+   be something other than a bin. Put to the person in round 6.
+
 ---
 
 ## Still open, and deliberately so

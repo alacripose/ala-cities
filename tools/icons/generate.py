@@ -222,11 +222,85 @@ def topography(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
     a magnifier. Counting components of the covered mask instead, which is the
     obvious mistake, reports zero holes for a gear, because a hole is an absence and
     never a covered component.
+
+    **`hole_shares` is the number the sliver rule reads** (a183, a196): each enclosed
+    void's area as a share of the object's covered area, largest first. A count alone
+    cannot separate a declared feature from a sliver, because the ticket's notch is
+    1.37 % and a rendering sliver can be 0.59 % — both are "one hole". Recorded here
+    rather than judged, because the gate belongs with the checks that act on it and a
+    measurement that is only printed is still a measurement.
     """
+    covered = _components(pixels, px, alpha_threshold, want_covered=True)
+    voids = _components(pixels, px, alpha_threshold, want_covered=False)
+    # The denominator is the *area* the object covers, not the number of pieces it
+    # arrives in: dividing by the piece count printed a one-pixel void as 100 % and
+    # would have made every share meaningless in exactly the case the rule exists.
+    area = covered["area"]
     return {
-        "pieces": _components(pixels, px, alpha_threshold, want_covered=True)["total"],
-        "holes": _components(pixels, px, alpha_threshold, want_covered=False)["enclosed"],
+        "pieces": covered["total"],
+        "holes": voids["enclosed"],
+        "covered_px": area,
+        "hole_shares": [
+            round(void / area, 4) if area else 0.0
+            for void in sorted(voids["enclosed_areas"], reverse=True)
+        ],
     }
+
+
+def void_sites(pixels, px: int, alpha_threshold: float = 0.5) -> list:
+    """Every enclosed void as `(area_px, x, y)`, largest first.
+
+    A refusal has to name the fix, and for a sliver the fix is a *place* in the
+    frame: "a one-pixel void at (61, 34)" can be looked at, while "2 holes" cannot.
+    Top-down coordinates on the judged raster, so it matches the PNG a person opens.
+    """
+    seen = bytearray(px * px)
+    stack = []
+    for index in range(px * px):
+        x, y = index % px, index // px
+        if pixels[index * 4 + 3] / 255.0 >= alpha_threshold:
+            continue
+        if x in (0, px - 1) or y in (0, px - 1):
+            if not seen[index]:
+                seen[index] = 1
+                stack.append(index)
+    while stack:
+        index = stack.pop()
+        x, y = index % px, index // px
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if not (0 <= nx < px and 0 <= ny < px):
+                    continue
+                j = ny * px + nx
+                if not seen[j] and pixels[j * 4 + 3] / 255.0 < alpha_threshold:
+                    seen[j] = 1
+                    stack.append(j)
+    sites = []
+    for start in range(px * px):
+        if seen[start] or pixels[start * 4 + 3] / 255.0 >= alpha_threshold:
+            continue
+        stack = [start]
+        seen[start] = 1
+        area = 0
+        sum_x = sum_y = 0
+        while stack:
+            index = stack.pop()
+            x, y = index % px, index // px
+            area += 1
+            sum_x += x
+            sum_y += y
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    nx, ny = x + dx, y + dy
+                    if not (0 <= nx < px and 0 <= ny < px):
+                        continue
+                    j = ny * px + nx
+                    if not seen[j] and pixels[j * 4 + 3] / 255.0 < alpha_threshold:
+                        seen[j] = 1
+                        stack.append(j)
+        sites.append((area, round(sum_x / area), round(sum_y / area)))
+    return sorted(sites, reverse=True)
 
 
 def _components(pixels, px: int, alpha_threshold: float, want_covered: bool) -> dict:
@@ -237,17 +311,21 @@ def _components(pixels, px: int, alpha_threshold: float, want_covered: bool) -> 
     seen = bytearray(px * px)
     total = 0
     enclosed = 0
+    enclosed_areas = []
+    area_total = 0
     for start in range(px * px):
         if seen[start] or not wanted(start):
             continue
         total += 1
         stack = [start]
         touches_border = False
+        area = 0
         while stack:
             index = stack.pop()
             if seen[index] or not wanted(index):
                 continue
             seen[index] = 1
+            area += 1
             x, y = index % px, index // px
             if x == 0 or y == 0 or x == px - 1 or y == px - 1:
                 touches_border = True
@@ -260,7 +338,10 @@ def _components(pixels, px: int, alpha_threshold: float, want_covered: bool) -> 
                             stack.append(j)
         if not want_covered and not touches_border:
             enclosed += 1
-    return {"total": total, "enclosed": enclosed}
+            enclosed_areas.append(area)
+        area_total += area
+    return {"total": total, "enclosed": enclosed, "enclosed_areas": enclosed_areas,
+            "area": area_total}
 
 
 # ---------------------------------------------------------------------------
