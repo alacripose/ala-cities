@@ -27,6 +27,7 @@ pub mod icons;
 pub mod render;
 pub mod session;
 pub mod sim;
+pub mod text;
 pub mod ui;
 
 pub use gov::{Governor, Op, Season, Ticket, TicketStatus, Verdict};

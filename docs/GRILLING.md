@@ -23,8 +23,7 @@ agent's job and not the user's:
 - `wgpu` 29.0.4, `winit` 0.30.13, `glam`, `bevy_ecs` 0.19.1, `petgraph`, `serde`,
   `ron`, `ab_glyph`, `accesskit_winit` and 743 other crates were present in the
   local cargo cache.
-- `glyphon` 0.12 requires `wgpu` 30, which nothing local is verified against.
-- `cosmic-text` 0.19 is wgpu-independent and can pair with `wgpu` 29.
+- The approved text migration uses Glyphon 0.12 with `wgpu` 30; cosmic-text and etagere are brought in transitively.
 - Both installed Rust toolchains link a hello-world; the default gnu toolchain
   needs no external C compiler despite `gcc`/`ld` being absent from PATH. **A
   prediction made in the same command — that the gnu probe would fail — was
@@ -97,8 +96,8 @@ never a frame clock.
 | Q18 | Build mode vs Inspect lens | two modes, tools absent in the lens | **overridden: `b` — "just like Cities Skylines, the user should be able to build asynchronously and work on their own goals away from the agents"** |
 | Q19 | Map scale and agent budget | 256×256, ~5k agents, LOD built to scale | ✔ `a` |
 
-**Settled:** the wheel map (and its consequence — `glyphon` refused, `cosmic-text`
-taken); the case-queue as the source of work; a three-part persistence story; the
+**Settled:** the wheel map, including Glyphon as the approved text-rendering wheel;
+the case-queue as the source of work; a three-part persistence story; the
 doctrine's honesty rules mapped onto gameplay verbs; **no read-only mode**, which
 narrows the §14 mode-scoping claim; and a small city built to scale.
 
@@ -179,9 +178,8 @@ Each is recorded in `README.md` and is reversible:
 | Planned | Built | Why |
 |---|---|---|
 | `bevy_ecs` | struct-of-arrays | At this size it is less code *and* faster; adoptable later |
-| `cosmic-text` | deferred | Needed for shaping and i18n, not for the HUD's own text |
 | `noise`, `pathfinding`, `petgraph`, `rand` | hand-rolled | All determinism-critical; a dependency update must not change a replay |
-| `glyphon` | refused | Requires wgpu 30, which nothing here is verified against |
+| `glyphon` | adopted | Glyphon 0.12 provides shaping, fallback, and dynamic text atlas rendering with wgpu 30 |
 
 ## Explicitly open — deliberate deferrals, not silent assumptions
 
@@ -190,7 +188,6 @@ Each is recorded in `README.md` and is reversible:
 - Districts and policies.
 - A future replay/observer mode — the place where §14.3's absence rule would
   finally apply.
-- Migrating to `wgpu` 30 in order to adopt `glyphon`.
 - A real build identity hash for playtest records (wants a build script).
 
 ## Final confirmation

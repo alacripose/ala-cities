@@ -2061,30 +2061,18 @@ impl App {
         self.draw_world();
         self.draw_hud();
 
-        // The atlas upload is driven by the atlas itself: `Text::revision` counts
-        // every glyph rasterised, and the one glyph a frame draws for the first
-        // time is exactly the one a flag set at startup would have missed. That
-        // bug shipped in the last build — new labels, new digits and toasts drew as
-        // empty or borrowed texels — so the flag is gone rather than corrected.
-        if let Some(gpu) = self.gpu.as_mut() {
-            gpu.sync_atlas(&self.text);
-        }
-
         // Once, on the first frame: what the passes were actually asked to
         // draw. "It renders" is otherwise a claim with nothing behind it.
         if !self.logged_first_frame {
             self.logged_first_frame = true;
-            let (slots, packed_to) = self.text.occupancy();
             tracing::info!(
                 world_opaque = self.world_batch.opaque.len(),
                 world_overlay = self.world_batch.overlay.len(),
                 interface = self.batch.instances.len(),
+                text_areas = self.text.pending_area_count(),
                 yaw_degrees = self.camera.yaw.to_degrees(),
                 pitch_degrees = self.camera.pitch.to_degrees(),
                 zoom = self.camera.zoom,
-                glyph_slots = slots,
-                atlas_packed_to_row = packed_to,
-                atlas_refused = self.text.refused,
                 "first frame"
             );
         }
@@ -2095,7 +2083,7 @@ impl App {
         self.last_frame = now;
         let camera = self.camera;
         if let Some(gpu) = self.gpu.as_mut() {
-            gpu.render(&self.world_batch, &self.batch, &self.image_batch, &camera, clear, seconds);
+            gpu.render(&self.world_batch, &self.batch, &self.image_batch, &camera, clear, seconds, &mut self.text);
         }
     }
 

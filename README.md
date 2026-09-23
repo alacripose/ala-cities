@@ -142,14 +142,12 @@ Type and spacing come from `src/design.rs`, whose steps are a **closed enum**:
 | `title` | 20 px | panel headings |
 | `display` | 26 px | plaques and critical identifiers |
 
-Sizes are not passed as numbers anywhere — `draw_step` takes a `Step`, so a call
-site *cannot* carry its own size, and a test reads the sources back to catch anyone
-reintroducing the old ad-hoc constants. Spacing comes from the 4-unit scale, targets
-are ≥ 48 px (WCAG 2.5.8's 24 px is the hard floor, not the goal), and the interface
-scale re-lays out rather than stretching. Glyph positions are **snapped to whole
-pixels** and the coverage atlas is sampled `Nearest`: the first build's text was soft
-for exactly one reason — rasterised at one size, drawn at fractional positions,
-through a linear filter.
+Sizes are not passed as numbers anywhere — `Step::px(ui)` is the physical size
+used to create Glyphon's cosmic-text metrics. Spacing comes from the 4-unit scale,
+targets are ≥ 48 px (WCAG 2.5.8's 24 px is the hard floor, not the goal), and the
+interface scale re-lays out rather than stretching. Glyphon performs shaping,
+font fallback, runtime etagere atlas packing, and screen-space rendering for every
+text path.
 
 ### The check fails closed
 
@@ -188,7 +186,7 @@ first frame world_opaque=26167 world_overlay=49 interface=410 yaw_degrees=0.0
 |---|---|
 | `src/sim/` | the world: `rng` (PCG32), `terrain`, `road` (graph + A*), `citizen` (agents, commutes), and the fixed-step `World` |
 | `src/gov/` | the governance layer: tickets, evidence, retirements, the append-only season record, the sampler and the bound |
-| `src/render.rs` | the `wgpu` client: instanced quad batcher, depth, camera, inverse-projection picking, glyph atlas |
+| `src/render.rs` | the `wgpu` client: instanced quad batcher, depth, camera, inverse-projection picking, and Glyphon render pass |
 | `src/hud.rs` | the style table: OKLCH tokens, the text/panel/plaque vocabulary, measured contrast |
 | `src/design.rs` | the type and spacing scales, the target floor, and `verify` — the fail-closed gate |
 | `src/session.rs` | the session capture: what was clicked, where, and the build it happened in |
@@ -278,19 +276,17 @@ pieces a replay depends on.**
 | Piece | Decision | Why |
 |---|---|---|
 | `wgpu`, `winit` | taken | huge, and nothing about a replay depends on them |
-| `ab_glyph` | taken | glyph rasterisation; we build the atlas, not the outline maths |
 | `serde`, `ron`, `serde_json` | taken | records and saves |
 | `tracing` | taken | logs that can be read back |
 | RNG | **ours** — PCG32 | `rand`'s algorithms are not stable across majors; a replay must be |
 | terrain noise | **ours** — seeded value noise | same reason; also 40 lines |
 | road graph + A\* | **ours** | adjacency lists over a grid rebuilt on every road change |
 | `bevy_ecs` | deferred | at this size a struct-of-arrays is less code *and* faster |
-| `cosmic-text` | deferred | needed for shaping and i18n, not for the HUD's own text |
 | `noise`, `pathfinding`, `petgraph`, `rand`, `rayon` | deferred | either covered above or unjustified before a measurement |
-| `glyphon` | **refused** | it requires `wgpu` 30, and nothing here is verified against wgpu 30 |
+| `glyphon` / `cosmic-text` / `etagere` | taken | shaping, fallback, wrapping, and dynamic runtime atlas packing |
 
-Each of these is a deviation from the signed-off plan, reversible, and recorded
-rather than quietly applied.
+The text stack is deliberately delegated to Glyphon; the application owns only
+screen-space layout and solid geometry.
 
 ---
 

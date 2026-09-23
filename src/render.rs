@@ -5,35 +5,25 @@
 //! instanced quads already flattened to clip space, so the HUD is exact at any
 //! camera angle and never moves with the camera.
 //!
-//! Both sample the same single-channel coverage atlas: a solid fill samples a
-//! texel that is already 1.0, a glyph samples its own coverage, and the
-//! fragment shader multiplies the colour's alpha by what it sampled. That is
-//! still the whole renderer — what changed is that a quad now has a position, a
-//! right vector and an up vector in world space rather than a screen rectangle,
-//! which is what lets a building be a box and a camera be free.
+//! Solid geometry uses a dedicated opaque-white texel; screen-space text is
+//! shaped and rendered by Glyphon. World quads still carry a position, a right
+//! vector and an up vector rather than a screen rectangle, which lets a building
+//! be a box and a camera be free.
 //!
 //! The camera is **orthographic**, deliberately: a city builder is read at a
 //! consistent tile size, and orthographic projection keeps two tiles the same
 //! size wherever they are on screen.
 
-use std::collections::HashMap;
-
-use ab_glyph::{Font, FontVec, PxScale, ScaleFont};
+pub use crate::text::Text;
+use glyphon::{Cache as GlyphonCache, TextAtlas, TextRenderer, Viewport};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use wgpu::util::DeviceExt;
 
-use crate::design::{Step, UiScale};
 
-pub const ATLAS_SIZE: u32 = 1024;
-
-/// The solid region is a real reserved block at the origin, not a patch beside
-/// the glyphs: glyph packing starts below and to the right of it, so no UV
-/// error however large can make a panel sample a letter or a letter sample a
-/// panel. The block is deliberately over-sized for its one texel of use —
-/// what it buys is a boundary that does not depend on anybody's arithmetic.
-pub const SOLID_REGION_TEXELS: u32 = 4;
 pub const TILE: f32 = 12.0;
+/// Image-atlas sizing constant used by the picker.
+pub const ATLAS_SIZE: u32 = 1024;
 
 /// Height of one building level, in world units. One level is a visible step at
 /// the default zoom rather than a token amount of extrusion.
@@ -56,38 +46,15 @@ pub enum Layer {
 // Text
 // ---------------------------------------------------------------------------
 
-/// The `ab_glyph` scale that renders a glyph at an em size of `px` pixels.
-///
-/// This is the fix for the bug the player kept reporting as *"the text is difficult
-/// to read and inconsistently sized"*, and it is one line of arithmetic that was
-/// missing from the beginning.
-///
-/// `PxScale` is **not** the em size: the crate defines it as "the pixel-height of a
-/// font" — ascender to descender — and `Font::pt_to_px_scale` says so in as many
-/// words:
-///
-/// ```text
-/// let px_per_em = pt_size * (96.0 / 72.0);
-/// let height = self.height_unscaled();
-/// PxScale::from(px_per_em * height / units_per_em)
-/// ```
-///
-/// Segoe UI's height is 1.33 em, so `PxScale::from(16.0)` rasterised an em of
-/// 16 x 2048 / 2724 = **12 px**, and advanced the pen at 12 px too. Every step on
-/// the type scale rendered at 75 % of its declared size: the 16 px body arrived as
-/// 12 px, and the 12 px micro step arrived as 9 px — below the 12 px floor the
-/// design document sets, at a size nothing was measured at. The measurements were
-/// all honest and all of them were of the wrong size, which is why the pass that
-/// built the scale did not fix the complaint.
-fn em_scale(font: &FontVec, px: u32) -> PxScale {
-    let units_per_em = font.units_per_em().unwrap_or(1.0);
-    let height = font.height_unscaled();
-    // Inverse of the crate's own `pt_to_px_scale`, with the em given in pixels
-    // directly: pixels per em -> the font's height in pixels.
-    PxScale::from(px as f32 * height / units_per_em)
+/// Which face to shape with. Monospace keeps numeric columns stable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Face {
+    Body,
+    Mono,
 }
 
-/// One instanced quad, already in clip space.
+/// One solid UI quad in clip space. Text is no longer represented here;
+/// Glyphon owns glyph vertices and atlas packing.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct Instance {
@@ -97,11 +64,7 @@ pub struct Instance {
     pub uv: [f32; 4],
 }
 
-/// One instanced quad in world space.
-///
-/// `right` and `up` are half-extents: the quad spans `center ± right ± up`, so a
-/// box face, a ground tile and a vertical wall are the same primitive with
-/// different basis vectors and no vertices.
+/// One world-space quad instance.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct WorldInstance {
@@ -112,399 +75,7 @@ pub struct WorldInstance {
     pub uv: [f32; 4],
 }
 
-/// A glyph's place in the atlas and its metrics. `x_offset`/`y_offset` are from
-/// the text box's top-left to the bitmap's top-left, so layout never has to
-/// reason about baselines.
-#[derive(Clone, Copy, Debug)]
-pub struct Slot {
-    pub uv: [f32; 4],
-    pub w: f32,
-    pub h: f32,
-    pub x_offset: f32,
-    pub y_offset: f32,
-    pub advance: f32,
-}
 
-/// Which face to draw with. Numbers, ticket ids, governor versions and check
-/// digits use the monospace face, so a digit can be read by eye without the
-/// surrounding prose shifting under it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Face {
-    Body,
-    Mono,
-}
-
-pub struct Text {
-    fonts: [Option<FontVec>; 2],
-    /// R8 coverage. The first `SOLID_REGION_TEXELS²` block is solid white, so a
-    /// "solid" draw is the same sampling path as a glyph with no special case.
-    pub data: Vec<u8>,
-    /// How many times the atlas content has changed — bumped whenever a glyph is
-    /// rasterised for the first time, and when the UI scale moves the point size.
-    ///
-    /// This exists because the alternative is a flag somebody has to remember to
-    /// set: the first build uploaded the atlas once at startup and then sampled
-    /// empty texels for every glyph rasterised afterwards, which is what "the text
-    /// looks wrong" turned out to be. Uploads are driven by this counter, so
-    /// forgetting is not possible.
-    pub revision: u64,
-    pen_x: u32,
-    pen_y: u32,
-    row_height: u32,
-    cache: HashMap<(u8, char, u32), Slot>,
-    pub refused: bool,
-    pub missing_font: bool,
-    /// The UI scale every draw is measured at. Held here rather than threaded
-    /// through forty call sites, and set once per frame.
-    ui: UiScale,
-}
-
-impl Text {
-    /// Find an installed font and read it. The font is never copied into the
-    /// build and never redistributed: it is referenced from the operating
-    /// system at runtime, which is why there is nothing here to license.
-    pub fn new() -> Self {
-        let body_paths = [
-            "C:/Windows/Fonts/segoeui.ttf",
-            "C:/Windows/Fonts/tahoma.ttf",
-            "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/calibri.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/System/Library/Fonts/Helvetica.ttc",
-        ];
-        let mono_paths = [
-            "C:/Windows/Fonts/consola.ttf",
-            "C:/Windows/Fonts/cour.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        ];
-        let load = |paths: &[&str]| -> Option<(String, FontVec)> {
-            for path in paths {
-                if let Ok(bytes) = std::fs::read(path) {
-                    if let Ok(parsed) = FontVec::try_from_vec(bytes) {
-                        tracing::info!(font = path, "using a system font");
-                        return Some((path.to_string(), parsed));
-                    }
-                }
-            }
-            None
-        };
-        let body = load(&body_paths);
-        // A missing monospace face falls back to the body face rather than to
-        // nothing: legibility degrades, correctness does not.
-        let mono = match load(&mono_paths) {
-            Some(font) => Some(font),
-            None => body.as_ref().and_then(|(path, _)| load(&[path.as_str()])),
-        };
-        let fonts = [body.map(|(_, f)| f), mono.map(|(_, f)| f)];
-        if fonts[0].is_none() {
-            tracing::warn!("no system font found; the interface will draw without text");
-        }
-
-        let mut data = vec![0u8; (ATLAS_SIZE * ATLAS_SIZE) as usize];
-        // The reserved solid block at the origin; glyphs never pack into it.
-        for y in 0..SOLID_REGION_TEXELS {
-            for x in 0..SOLID_REGION_TEXELS {
-                data[(y * ATLAS_SIZE + x) as usize] = 255;
-            }
-        }
-
-        Self {
-            missing_font: fonts[0].is_none(),
-            fonts,
-            data,
-            // Revision 1, not 0: the empty atlas with its solid block is
-            // itself content the GPU does not have yet.
-            revision: 1,
-            // Glyph territory starts past the reserved block, on both axes.
-            pen_x: SOLID_REGION_TEXELS,
-            pen_y: SOLID_REGION_TEXELS,
-            row_height: 0,
-            cache: HashMap::new(),
-            refused: false,
-            ui: UiScale::default(),
-        }
-    }
-
-    /// Set the UI scale used by every subsequent draw and measurement.
-    pub fn set_ui_scale(&mut self, ui: UiScale) {
-        if self.ui != ui {
-            self.ui = ui;
-            // Every step now rasterises at a different point size, so the atlas is
-            // about to gain glyphs the GPU has never seen. Said here rather than
-            // left to the size miss alone, because "the atlas changed" is true the
-            // moment the scale does.
-            self.revision += 1;
-        }
-    }
-
-    pub fn ui_scale(&self) -> UiScale {
-        self.ui
-    }
-
-    /// How many glyph slots the atlas holds, and how far down it has packed.
-    ///
-    /// Reported rather than assumed: a full atlas refuses to draw new glyphs, and
-    /// the symptom of that is *missing text*, which reads as a font bug and is not
-    /// one. The number is on screen in the first-frame report for exactly that
-    /// reason.
-    pub fn occupancy(&self) -> (usize, u32) {
-        (self.cache.len(), self.pen_y)
-    }
-
-    /// Device pixels for a step at the current UI scale.
-    pub fn px(&self, step: Step) -> u32 {
-        step.px(self.ui)
-    }
-
-    /// The em size a step actually renders at, derived from the font's own metrics
-    /// rather than from the conversion that sets it.
-    ///
-    /// Read out of the rendered advance: divide the advance at this scale by the
-    /// advance in the font's unscaled units, and the result is pixels per em. A
-    /// tautology would prove nothing here — this reads the measurement back out.
-    pub fn em_px(&self, step: Step) -> Option<f32> {
-        let font = self.fonts[Face::Body as usize].as_ref()?;
-        let size = self.px(step);
-        let scaled = font.as_scaled(em_scale(font, size));
-        let id = font.glyph_id('H');
-        let unscaled = font.h_advance_unscaled(id);
-        let units_per_em = font.units_per_em()?;
-        if unscaled <= 0.0 {
-            return None;
-        }
-        Some(scaled.h_advance(id) / unscaled * units_per_em)
-    }
-
-    /// Every step that does not render at the size it declares.
-    ///
-    /// This is the check whose absence let a whole pass of typography work ship
-    /// against measurements of the wrong size: the scale was declared correctly and
-    /// rendered 25 % small, and every contrast, floor and fit check measured the
-    /// declared number rather than the drawn one. A step that declares 16 px and
-    /// rastersises at 12 px is a defect, not a nuance.
-    pub fn scale_defects(&self) -> Vec<String> {
-        let mut defects = Vec::new();
-        if self.missing_font {
-            return defects;
-        }
-        for step in Step::ALL {
-            let declared = self.px(step) as f32;
-            match self.em_px(step) {
-                Some(effective) if (effective - declared).abs() > 0.05 => defects.push(format!(
-                    "type step `{}` declares {declared:.0} px and renders at {effective:.2} px, \
-                     which is {:.0} % of the size every measurement assumes",
-                    step.name(),
-                    effective / declared * 100.0
-                )),
-                None => defects.push(format!(
-                    "type step `{}` cannot be measured: the font reports no unscaled advance",
-                    step.name()
-                )),
-                _ => {}
-            }
-        }
-        defects
-    }
-
-    /// UVs of a texel deep inside the reserved solid block — its inner texel,
-    /// sampled at a point, a full two texels from any glyph territory.
-    /// Every non-text quad uses this.
-    pub fn solid_uv() -> [f32; 4] {
-        let solid = 1.5 / ATLAS_SIZE as f32;
-        [
-            solid,
-            solid,
-            solid,
-            solid,
-        ]
-    }
-
-    fn rasterise(&mut self, face: Face, ch: char, size: u32) -> Option<Slot> {
-        let font = self.fonts[face as usize].as_ref()?;
-        let scale = em_scale(font, size);
-        let scaled = font.as_scaled(scale);
-        let id = font.glyph_id(ch);
-        let advance = scaled.h_advance(id);
-        let ascent = scaled.ascent();
-        if ch == ' ' || ch == '\t' {
-            return Some(Slot {
-                uv: Self::solid_uv(),
-                w: 0.0,
-                h: 0.0,
-                x_offset: 0.0,
-                y_offset: 0.0,
-                advance,
-            });
-        }
-
-        let glyph = id.with_scale_and_position(scale, ab_glyph::point(0.0, ascent));
-        let outline = font.outline_glyph(glyph)?;
-        let bounds = outline.px_bounds();
-        let w = bounds.width().ceil().max(1.0) as u32;
-        let h = bounds.height().ceil().max(1.0) as u32;
-
-        let mut coverage = vec![0.0f32; (w * h) as usize];
-        outline.draw(|x, y, value| {
-            let index = (y * w + x) as usize;
-            if index < coverage.len() {
-                coverage[index] = value;
-            }
-        });
-
-        // A one-pixel gutter, because the sampler clamps and a glyph's coverage
-        // reaching into its neighbour would look like a font bug and not be one.
-        let pad = 1;
-        if self.pen_x + w + pad >= ATLAS_SIZE {
-            self.pen_x = SOLID_REGION_TEXELS;
-            self.pen_y += self.row_height + pad;
-            self.row_height = 0;
-        }
-        if self.pen_y + h + pad >= ATLAS_SIZE {
-            // The atlas is full. Refusing to draw is honest; drawing a
-            // wrong glyph because the coordinates wrapped would not be.
-            if !self.refused {
-                self.refused = true;
-                tracing::error!("glyph atlas is full; further glyphs will not be drawn");
-            }
-            return None;
-        }
-
-        let at_x = self.pen_x;
-        let at_y = self.pen_y;
-        for y in 0..h {
-            for x in 0..w {
-                let value = coverage[(y * w + x) as usize];
-                let px = at_x + x;
-                let py = at_y + y;
-                self.data[(py * ATLAS_SIZE + px) as usize] = (value * 255.0) as u8;
-            }
-        }
-        self.pen_x += w + pad;
-        self.row_height = self.row_height.max(h + pad);
-
-        Some(Slot {
-            // The far edges stop half a texel short of the gutter. A rect that
-            // spans exactly `w` texels puts the quad's far column *on* the
-            // boundary at `at_x + w` — one texel past the glyph, in the zero
-            // gutter — so every glyph loses its last column and row the moment
-            // interpolation lands a hair across, which is every UI scale but
-            // 100 %. Insetting by half a texel keeps every device pixel's
-            // sample inside the glyph's own coverage.
-            uv: [
-                at_x as f32 / ATLAS_SIZE as f32,
-                at_y as f32 / ATLAS_SIZE as f32,
-                (at_x + w) as f32 / ATLAS_SIZE as f32 - 0.5 / ATLAS_SIZE as f32,
-                (at_y + h) as f32 / ATLAS_SIZE as f32 - 0.5 / ATLAS_SIZE as f32,
-            ],
-            w: w as f32,
-            h: h as f32,
-            x_offset: bounds.min.x.floor(),
-            y_offset: ascent - bounds.max.y,
-            advance,
-        })
-    }
-
-    fn slot(&mut self, face: Face, ch: char, size: u32) -> Option<Slot> {
-        let key = (face as u8, ch, size);
-        if let Some(slot) = self.cache.get(&key) {
-            return Some(*slot);
-        }
-        let slot = self.rasterise(face, ch, size)?;
-        self.cache.insert(key, slot);
-        self.revision += 1;
-        Some(slot)
-    }
-
-    pub fn measure(&mut self, face: Face, text: &str, size: u32) -> f32 {
-        let mut width = 0.0;
-        for ch in text.chars() {
-            if let Some(slot) = self.slot(face, ch, size) {
-                width += slot.advance;
-            }
-        }
-        width
-    }
-
-    /// Measure at a design step rather than a raw size.
-    /// The flat-cap offset for a step: how far a glyph's ink hangs below the
-    /// baseline at this size, read from an `H`. Layout anchors lines by their
-    /// *top*, so it needs the font's own ascent rather than a guess at one.
-    pub fn ascent(&mut self, face: Face, step: Step) -> f32 {
-        let px = self.px(step);
-        self.slot(face, 'H', px)
-            .map(|slot| slot.y_offset)
-            .unwrap_or(0.0)
-    }
-
-    pub fn measure_step(&mut self, face: Face, text: &str, step: Step) -> f32 {
-        let px = self.px(step);
-        self.measure(face, text, px)
-    }
-
-    /// Draw text with its top-left at `(x, y)` in screen pixels.
-    ///
-    /// Positions are **snapped to whole pixels** before the quad is emitted.
-    /// The pen advances in floats so the spacing stays correct, but each glyph
-    /// lands on the pixel grid — a glyph drawn at a fractional position is
-    /// resampled by the sampler and reads as blurry text, which is exactly what
-    /// the first build looked like.
-    #[allow(clippy::too_many_arguments)]
-    pub fn draw(
-        &mut self,
-        face: Face,
-        batch: &mut Batcher,
-        screen: &Screen,
-        x: f32,
-        y: f32,
-        size: u32,
-        color: [f32; 4],
-        text: &str,
-    ) -> f32 {
-        let mut pen = x;
-        for ch in text.chars() {
-            let Some(slot) = self.slot(face, ch, size) else {
-                continue;
-            };
-            if slot.w > 0.0 {
-                batch.screen_rect(
-                    screen,
-                    (pen + slot.x_offset).round(),
-                    (y + slot.y_offset).round(),
-                    slot.w,
-                    slot.h,
-                    color,
-                    slot.uv,
-                );
-            }
-            pen += slot.advance;
-        }
-        pen - x
-    }
-
-    /// Draw at a design step. The size comes from the scale, never from a
-    /// call site.
-    #[allow(clippy::too_many_arguments)]
-    pub fn draw_step(
-        &mut self,
-        face: Face,
-        batch: &mut Batcher,
-        screen: &Screen,
-        x: f32,
-        y: f32,
-        step: Step,
-        color: [f32; 4],
-        text: &str,
-    ) -> f32 {
-        let px = self.px(step);
-        self.draw(face, batch, screen, x, y, px, color, text)
-    }
-}
-
-impl Default for Text {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Batchers
@@ -638,7 +209,7 @@ impl WorldBatch {
             Vec3::new(w / 2.0, 0.0, 0.0),
             Vec3::new(0.0, h / 2.0, 0.0),
             color,
-            Text::solid_uv(),
+            SOLID_UV,
         );
     }
 
@@ -693,7 +264,7 @@ impl WorldBatch {
             Vec3::X * half,
             Vec3::Y * half,
             roof,
-            Text::solid_uv(),
+            SOLID_UV,
         );
 
         for (normal, offset, right, up) in walls {
@@ -706,7 +277,7 @@ impl WorldBatch {
                 right,
                 up,
                 shade(base, normal, alpha),
-                Text::solid_uv(),
+                SOLID_UV,
             );
         }
     }
@@ -1074,7 +645,12 @@ pub struct Gpu {
     pub camera_buffer: wgpu::Buffer,
     depth: wgpu::Texture,
     depth_view: wgpu::TextureView,
+    /// A tiny opaque-white texture used only by solid geometry. Glyphon owns
+    /// the glyph atlas now.
     pub atlas_texture: wgpu::Texture,
+    pub text_atlas: TextAtlas,
+    pub text_renderer: TextRenderer,
+    pub text_viewport: Viewport,
     instances: wgpu::Buffer,
     instance_capacity: usize,
     world_opaque_buffer: wgpu::Buffer,
@@ -1084,15 +660,13 @@ pub struct Gpu {
     pub present_modes: Vec<wgpu::PresentMode>,
     pub adapter_name: String,
     pub stats: FrameStats,
-    /// The atlas revision currently on the GPU. Uploads are driven by comparing
-    /// this against `Text::revision`, not by a flag anyone has to remember.
-    pub atlas_revision: u64,
     /// The last camera the frame was drawn with, for the picking check the
     /// client runs at startup.
     pub last_camera: Option<Camera>,
 }
 
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+const SOLID_UV: [f32; 4] = [0.5, 0.5, 0.5, 0.5];
 
 const SHADER: &str = r#"
 struct Instance {
@@ -1310,7 +884,7 @@ fn world_attributes() -> [wgpu::VertexAttribute; 5] {
 }
 
 impl Gpu {
-    pub fn new(window: std::sync::Arc<winit::window::Window>, text: &Text) -> Self {
+    pub fn new(window: std::sync::Arc<winit::window::Window>, _text: &Text) -> Self {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance
@@ -1320,6 +894,7 @@ impl Gpu {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         }))
         .expect("a GPU adapter");
 
@@ -1418,13 +993,15 @@ impl Gpu {
             ],
         });
 
+        // Solid geometry samples this one opaque texel. Glyphs are prepared
+        // and packed by Glyphon in its own atlas.
         let texture = device.create_texture_with_data(
             &queue,
             &wgpu::TextureDescriptor {
-                label: Some("coverage atlas"),
+                label: Some("solid white texel"),
                 size: wgpu::Extent3d {
-                    width: ATLAS_SIZE,
-                    height: ATLAS_SIZE,
+                    width: 1,
+                    height: 1,
                     depth_or_array_layers: 1,
                 },
                 mip_level_count: 1,
@@ -1435,14 +1012,12 @@ impl Gpu {
                 view_formats: &[],
             },
             wgpu::util::TextureDataOrder::LayerMajor,
-            &text.data,
+            &[255u8],
         );
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        // **Nearest**, not linear. The atlas is coverage data rasterised at the
-        // exact pixel size it is drawn at, and glyph positions are snapped, so
-        // linear filtering has nothing to interpolate and would only soften
-        // every edge it touches.
+        // Solid geometry samples a single texel, so nearest filtering prevents
+        // interpolation with an unintended neighbouring value.
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("atlas sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -1468,6 +1043,22 @@ impl Gpu {
                 },
             ],
         });
+
+        let glyphon_cache = GlyphonCache::new(&device);
+        let mut text_atlas = TextAtlas::new(&device, &queue, &glyphon_cache, config.format);
+        let text_viewport = Viewport::new(&device, &glyphon_cache);
+        let text_renderer = TextRenderer::new(
+            &mut text_atlas,
+            &device,
+            wgpu::MultisampleState::default(),
+            Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(wgpu::CompareFunction::Always),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+        );
 
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("camera"),
@@ -1528,7 +1119,7 @@ impl Gpu {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                buffers: &[wgpu::VertexBufferLayout {
+                buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Instance>() as u64,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &[
@@ -1553,7 +1144,7 @@ impl Gpu {
                             shader_location: 3,
                         },
                     ],
-                }],
+                })],
                 compilation_options: Default::default(),
             },
             primitive: wgpu::PrimitiveState {
@@ -1600,11 +1191,11 @@ impl Gpu {
                 vertex: wgpu::VertexState {
                     module: &world_shader,
                     entry_point: Some(entry),
-                    buffers: &[wgpu::VertexBufferLayout {
+                    buffers: &[Some(wgpu::VertexBufferLayout {
                         array_stride: std::mem::size_of::<WorldInstance>() as u64,
                         step_mode: wgpu::VertexStepMode::Instance,
                         attributes: &world_attributes(),
-                    }],
+                    })],
                     compilation_options: Default::default(),
                 },
                 primitive: wgpu::PrimitiveState {
@@ -1755,7 +1346,7 @@ impl Gpu {
             vertex: wgpu::VertexState {
                 module: &image_shader,
                 entry_point: Some("vs_image"),
-                buffers: &[wgpu::VertexBufferLayout {
+                buffers: &[Some(wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<ImageInstanceData>() as u64,
                     step_mode: wgpu::VertexStepMode::Instance,
                     attributes: &[
@@ -1780,7 +1371,7 @@ impl Gpu {
                             shader_location: 3,
                         },
                     ],
-                }],
+                })],
                 compilation_options: Default::default(),
             },
             primitive: wgpu::PrimitiveState {
@@ -1882,6 +1473,9 @@ impl Gpu {
             depth,
             depth_view,
             atlas_texture: texture,
+            text_atlas,
+            text_renderer,
+            text_viewport,
             instances,
             instance_capacity,
             world_opaque_buffer,
@@ -1891,7 +1485,6 @@ impl Gpu {
             present_modes,
             adapter_name: info.name,
             stats: FrameStats::default(),
-            atlas_revision: u64::MAX,
             last_camera: None,
         }
     }
@@ -2032,39 +1625,16 @@ impl Gpu {
         }
     }
 
-    /// Bring the GPU's copy of the coverage atlas up to date, and report whether
-    /// anything was sent. Skips the transfer when the atlas has not changed, so the
-    /// frame budget does not pay a megabyte a frame for nothing.
-    pub fn sync_atlas(&mut self, text: &Text) -> bool {
-        if text.revision == self.atlas_revision {
-            return false;
-        }
-        self.upload_atlas(text);
-        true
-    }
-
-    /// Upload the coverage atlas unconditionally.
-    pub fn upload_atlas(&mut self, text: &Text) {
-        self.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &self.atlas_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &text.data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(ATLAS_SIZE),
-                rows_per_image: Some(ATLAS_SIZE),
-            },
-            wgpu::Extent3d {
-                width: ATLAS_SIZE,
-                height: ATLAS_SIZE,
-                depth_or_array_layers: 1,
-            },
-        );
-        self.atlas_revision = text.revision;
+    pub fn prepare_text(&mut self, text: &mut Text) -> Result<(), glyphon::PrepareError> {
+        let screen = self.screen();
+        text.prepare(
+            &self.device,
+            &self.queue,
+            &mut self.text_atlas,
+            &mut self.text_renderer,
+            &mut self.text_viewport,
+            screen,
+        )
     }
 
     fn ensure_instance_capacity(&mut self, needed: usize) {
@@ -2104,6 +1674,7 @@ impl Gpu {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         world: &WorldBatch,
@@ -2112,7 +1683,12 @@ impl Gpu {
         camera: &Camera,
         clear: [f32; 4],
         frame_seconds: f32,
+        text: &mut Text,
     ) -> bool {
+        if let Err(error) = self.prepare_text(text) {
+            tracing::error!(%error, "Glyphon text preparation failed");
+            return false;
+        }
         let frame = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame) => frame,
             wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
@@ -2230,10 +1806,22 @@ impl Gpu {
                 pass.set_vertex_buffer(0, self.images.slice(..));
                 pass.draw(0..6, 0..images.instances.len() as u32);
             }
+
+            // Glyphon renders shaped screen-space text after solid and image UI
+            // geometry, using its dynamic etagere-packed atlas.
+            if let Err(error) = self.text_renderer.render(
+                &self.text_atlas,
+                &self.text_viewport,
+                &mut pass,
+            ) {
+                tracing::error!(%error, "Glyphon text rendering failed");
+            }
         }
 
         self.queue.submit(Some(encoder.finish()));
-        frame.present();
+        self.queue.present(frame);
+        self.text_atlas.trim();
+        text.clear();
         let refresh = if self
             .present_modes
             .contains(&wgpu::PresentMode::AutoNoVsync)
@@ -2464,45 +2052,6 @@ mod tests {
     }
 
     #[test]
-    fn glyphs_land_on_the_pixel_grid() {
-        // Blurry text was a real defect, not a taste question: a glyph drawn at
-        // a fractional position is resampled by the sampler.
-        let mut text = Text::new();
-        let mut batch = Batcher::default();
-        let screen = Screen {
-            w: 1600.0,
-            h: 900.0,
-        };
-        text.draw_step(
-            Face::Body,
-            &mut batch,
-            &screen,
-            10.37,
-            20.61,
-            Step::Body,
-            [1.0; 4],
-            "ticket 12",
-        );
-        assert!(!batch.instances.is_empty());
-        for instance in &batch.instances {
-            let (x, y) = screen.to_clip(0.0, 0.0);
-            let _ = (x, y);
-            let sx = (instance.pos[0] + 1.0) / 2.0 * screen.w;
-            let sy = (1.0 - instance.pos[1]) / 2.0 * screen.h;
-            // Within a thousandth of a pixel: the point is that glyphs are not
-            // resampled, not that the float round trip is exact.
-            assert!(
-                (sx - sx.round()).abs() < 1e-3,
-                "a glyph sat at a fractional x: {sx}"
-            );
-            assert!(
-                (sy - sy.round()).abs() < 1e-3,
-                "a glyph sat at a fractional y: {sy}"
-            );
-        }
-    }
-
-    #[test]
     fn a_frame_worst_case_is_not_hidden_by_the_average() {
         let mut stats = FrameStats::default();
         for _ in 0..100 {
@@ -2513,262 +2062,4 @@ mod tests {
         assert!(stats.worst_ms >= 49.0, "the worst frame is still visible");
     }
 
-    #[test]
-    fn the_solid_texel_is_inside_the_atlas() {
-        let uv = Text::solid_uv();
-        assert!(uv[0] > 0.0 && uv[0] < 1.0);
-        assert_eq!(uv[0], uv[2], "a solid draw samples one texel");
-    }
-
-    /// C6's atlas mechanism 1, as a regression: a glyph's far UV edge must stop
-    /// short of the zero-coverage gutter, because a rect that lands *on* the
-    /// boundary lets every device pixel past the glyph's last full texel sample
-    /// transparent — which is what made every stroke lose its edge at every UI
-    /// scale but 100 %.
-    #[test]
-    fn a_glyphs_far_uv_edge_stops_short_of_the_gutter() {
-        let mut text = Text::new();
-        if text.missing_font {
-            eprintln!("no system font available; the UV check is not exercised");
-            return;
-        }
-        let slot = text
-            .rasterise(Face::Body, 'H', 32)
-            .expect("a rasterisable glyph");
-        let texel = 1.0 / ATLAS_SIZE as f32;
-        assert!(
-            slot.uv[2] < slot.uv[0] + slot.w as f32 * texel,
-            "the far edge must sit strictly inside the glyph's texel span, not on the boundary"
-        );
-        assert!(
-            slot.uv[3] < slot.uv[1] + slot.h as f32 * texel,
-            "the bottom edge must sit strictly inside the glyph's texel span, not on the boundary"
-        );
-        // And the inset is the half-texel the mechanism named, on both axes.
-        assert!((slot.uv[0] + slot.w as f32 * texel - slot.uv[2] - 0.5 * texel).abs() < 1e-6);
-    }
-
-    /// C6's atlas mechanism 2, as a regression: glyph territory must start past
-    /// the reserved solid block, so a fill whose UV drifts cannot land on glyph
-    /// coverage and a glyph cannot pack into the solid block.
-    #[test]
-    fn glyph_territory_never_touches_the_solid_block() {
-        let mut text = Text::new();
-        if text.missing_font {
-            eprintln!("no system font available; the packing check is not exercised");
-            return;
-        }
-        for ch in ['H', 'e', 'm', 'g', ':', '.'] {
-            // Through `slot`, the caching path, because that is what fills the
-            // atlas; `rasterise` alone never packs.
-            text.slot(Face::Body, ch, 32)
-                .expect("a rasterisable glyph");
-        }
-        let (packed, down) = text.occupancy();
-        assert!(packed > 0, "the glyphs were packed");
-        assert!(
-            down >= SOLID_REGION_TEXELS,
-            "packing never returns above the solid block"
-        );
-        // Every glyph's own rect starts at or beyond the block on both axes.
-        for slot in text.cache.values() {
-            let x = (slot.uv[0] * ATLAS_SIZE as f32).floor() as u32;
-            let y = (slot.uv[1] * ATLAS_SIZE as f32).floor() as u32;
-            assert!(
-                x >= SOLID_REGION_TEXELS && y >= SOLID_REGION_TEXELS,
-                "a glyph packed into the reserved solid block at ({x}, {y})"
-            );
-        }
-        // The solid draw samples a texel strictly inside the block.
-        let uv = Text::solid_uv();
-        let x = (uv[0] * ATLAS_SIZE as f32).floor() as u32;
-        let y = (uv[1] * ATLAS_SIZE as f32).floor() as u32;
-        assert!(x < SOLID_REGION_TEXELS && y < SOLID_REGION_TEXELS);
-    }
-
-    /// What the quads would paint, composited on the CPU from the atlas they
-    /// reference. This is the test that can tell "the text is wrong" apart from
-    /// "the text never reached the GPU": it reads the atlas through the same UVs
-    /// the shader would, so a wrong region shows up here as a wrong letter.
-    #[test]
-    fn the_quads_paint_the_letters_they_say_they_do() {
-        let mut text = Text::new();
-        if text.missing_font {
-            eprintln!("no system font available; the composite is not exercised");
-            return;
-        }
-        let mut batch = Batcher::default();
-        let screen = Screen { w: 400.0, h: 24.0 };
-        let phrase = "Hamburgefons gyp 12.5:1";
-        for step in Step::ALL {
-            let mut probe = Batcher::default();
-            text.draw_step(Face::Body, &mut probe, &screen, 2.0, 2.0, step, [1.0; 4], phrase);
-            println!(
-                "\n{} at {} px: {} quads, measured width {:.1} px",
-                step.name(),
-                step.px(UiScale::default()),
-                probe.instances.len(),
-                text.measure_step(Face::Body, phrase, step)
-            );
-            let (w, h) = (screen.w as usize, screen.h as usize);
-            let mut canvas = vec![0.0f32; w * h];
-            for instance in &probe.instances {
-                let x0 = ((instance.pos[0] + 1.0) / 2.0 * screen.w).round() as i64;
-                let y0 = ((1.0 - instance.pos[1]) / 2.0 * screen.h).round() as i64;
-                let dw = (instance.size[0] / 2.0 * screen.w).round().max(1.0) as i64;
-                let dh = (-instance.size[1] / 2.0 * screen.h).round().max(1.0) as i64;
-                let [u0, v0, u1, v1] = instance.uv;
-                for py in 0..dh {
-                    for px in 0..dw {
-                        let u = u0 + (px as f32 + 0.5) / dw as f32 * (u1 - u0);
-                        let v = v0 + (py as f32 + 0.5) / dh as f32 * (v1 - v0);
-                        let tx = ((u * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
-                        let ty = ((v * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
-                        let (cx, cy) = (x0 + px, y0 + py);
-                        if cx >= 0 && cy >= 0 && (cx as usize) < w && (cy as usize) < h {
-                            canvas[cy as usize * w + cx as usize] =
-                                text.data[ty * ATLAS_SIZE as usize + tx] as f32 / 255.0;
-                        }
-                    }
-                }
-            }
-            let ramp: Vec<char> = " .:-=+*#%@".chars().collect();
-            for row in canvas.chunks(w) {
-                let line: String = row
-                    .iter()
-                    .map(|v| ramp[((v * 9.99).min(9.0)) as usize])
-                    .collect();
-                println!("{}", line.trim_end());
-            }
-            batch = probe;
-        }
-        let phrase = "as authored";
-
-        let (w, h) = (screen.w as usize, screen.h as usize);
-        let mut canvas = vec![0.0f32; w * h];
-        let mut painted = 0usize;
-        for instance in &batch.instances {
-            // Invert `screen_rect`: clip space back to device pixels.
-            let x0 = ((instance.pos[0] + 1.0) / 2.0 * screen.w).round() as i64;
-            let y0 = ((1.0 - instance.pos[1]) / 2.0 * screen.h).round() as i64;
-            let dw = (instance.size[0] / 2.0 * screen.w).round().max(1.0) as i64;
-            let dh = (-instance.size[1] / 2.0 * screen.h).round().max(1.0) as i64;
-            let [u0, v0, u1, v1] = instance.uv;
-            for py in 0..dh {
-                for px in 0..dw {
-                    let u = u0 + (px as f32 + 0.5) / dw as f32 * (u1 - u0);
-                    let v = v0 + (py as f32 + 0.5) / dh as f32 * (v1 - v0);
-                    let tx = ((u * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
-                    let ty = ((v * ATLAS_SIZE as f32) as usize).min(ATLAS_SIZE as usize - 1);
-                    let (cx, cy) = (x0 + px, y0 + py);
-                    if cx >= 0 && cy >= 0 && (cx as usize) < w && (cy as usize) < h {
-                        canvas[cy as usize * w + cx as usize] =
-                            text.data[ty * ATLAS_SIZE as usize + tx] as f32 / 255.0;
-                        painted += 1;
-                    }
-                }
-            }
-        }
-
-        // The scale gate itself: no step may render at a size other than the one it
-        // declares. This is the check that would have caught the defect that made
-        // every previous typography measurement a measurement of the wrong size.
-        let defects = text.scale_defects();
-        println!("\nscale gate: {}", if defects.is_empty() { "every step renders at its declared size".to_string() } else { defects.join("; ") });
-        assert!(defects.is_empty(), "the type scale does not render at the sizes it declares");
-        for step in Step::ALL {
-            let declared = step.px(UiScale::default()) as f32;
-            let effective = text.em_px(step).expect("a measurable step");
-            assert!(
-                (effective - declared).abs() <= 0.05,
-                "{} declares {declared} px and renders at {effective} px",
-                step.name()
-            );
-        }
-
-        // And independently of that: the drawn width has to agree with the font's
-        // own unscaled advances at the declared em size. A scale bug that fooled
-        // both the rasteriser and the measurement would pass the check above and
-        // fail here.
-        // Borrowed in its own scope so the measurement below can take `text` mutably.
-        let expected: Vec<f32> = {
-            let font = text.fonts[Face::Body as usize].as_ref().expect("the body face");
-            let units_per_em = font.units_per_em().expect("units per em");
-            Step::ALL
-                .iter()
-                .map(|step| {
-                    let em = step.px(UiScale::default()) as f32;
-                    phrase
-                        .chars()
-                        .map(|ch| font.h_advance_unscaled(font.glyph_id(ch)) * em / units_per_em)
-                        .sum()
-                })
-                .collect()
-        };
-        for (step, want) in Step::ALL.iter().zip(expected) {
-            let got = text.measure_step(Face::Body, phrase, *step);
-            assert!(
-                (got - want).abs() < 0.5,
-                "at {} px the drawn width is {got:.1} px; the font's own advances say {want:.1} px",
-                step.name()
-            );
-        }
-
-        let cells: usize = canvas.iter().filter(|v| **v > 0.5).count();
-        let expected_width = text.measure_step(Face::Body, phrase, Step::Body);
-        println!("\ncomposite of {phrase:?}: {} quads, {painted} pixels painted, {cells} above half coverage, measured width {expected_width:.1} px", batch.instances.len());
-        let ramp: Vec<char> = " .:-=+*#%@".chars().collect();
-        for row in canvas.chunks(w) {
-            let line: String = row
-                .iter()
-                .map(|v| ramp[((v * 9.99).min(9.0)) as usize])
-                .collect();
-            println!("{}", line.trim_end());
-        }
-
-        assert!(painted > 0, "the quads painted nothing at all");
-        assert!(cells > 20, "{cells} pixels of ink is not a phrase");
-    }
-
-    /// The bug this pins, in one sentence: a glyph rasterised *after* the one
-    /// upload is a glyph the GPU cannot draw, so an upload driven by anything but
-    /// the atlas's own content loses text. `revision` is that content, and these are
-    /// the three ways it has to move or not move.
-    #[test]
-    fn the_atlas_revision_follows_the_atlas_and_nothing_else() {
-        let mut text = Text::new();
-        if text.missing_font {
-            // No system font on this machine: the property is about rasterisation,
-            // so there is nothing to assert and saying so beats a silent pass.
-            eprintln!("no system font available; the atlas revision is not exercised");
-            return;
-        }
-        let mut batch = Batcher::default();
-        let screen = Screen { w: 800.0, h: 600.0 };
-
-        // A new glyph moves it. This is the case that shipped broken: the upload had
-        // already happened at startup, and this draw alone would have been lost.
-        let start = text.revision;
-        text.draw_step(Face::Body, &mut batch, &screen, 0.0, 0.0, Step::Body, [1.0; 4], "W");
-        let after_first = text.revision;
-        assert!(after_first > start, "a glyph drawn for the first time changes the atlas");
-
-        // The same glyph again does not: a steady frame must not re-upload a
-        // megabyte for text that is already there.
-        text.draw_step(Face::Body, &mut batch, &screen, 0.0, 40.0, Step::Body, [1.0; 4], "W");
-        assert_eq!(text.revision, after_first, "a cached glyph is not new content");
-
-        // Measuring rasterises too, so a frame that measures before it draws must
-        // not be able to lose the upload.
-        text.measure_step(Face::Body, "revision", Step::Title);
-        assert!(text.revision > after_first, "measuring new glyphs changes the atlas");
-
-        // Moving the UI scale re-rasterises every step at a new size.
-        let before_scale = text.revision;
-        text.set_ui_scale(UiScale(1.25));
-        assert!(text.revision > before_scale, "a new UI scale changes the atlas");
-        let steady = text.revision;
-        text.set_ui_scale(UiScale(1.25));
-        assert_eq!(text.revision, steady, "setting the same scale again changes nothing");
-    }
 }

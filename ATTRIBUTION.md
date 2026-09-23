@@ -37,8 +37,9 @@ The hash is an integrity check — this file is the file the manifest describes.
 * **No raster textures.** Materials are named solid fills derived from the OKLCH
   token table, and geometry. Where the design doctrine asks for real material
   textures, the absence is stated rather than filled with generated noise.
-* **No fonts.** Faces are read from the operating system at runtime and never
-  redistributed; the interface rasterises its own glyph coverage atlas.
+* **No fonts.** Faces are discovered by cosmic-text from the operating system at
+  runtime and never redistributed; Glyphon owns shaping, fallback, and its runtime
+  etagere atlas.
 * **No sampled audio.** Sound, when it lands, is synthesised rather than sampled,
   which sidesteps the licence gate rather than satisfying it.
 

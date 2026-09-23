@@ -32,12 +32,12 @@ path = "src/bin/pick.rs"
 
 [dependencies]
 # Rendering and windowing: large, non-determinism-critical, taken as wheels.
-wgpu = "29.0.4"
+wgpu = "30.0.0"
 winit = "0.30.13"
 pollster = "0.3"
 bytemuck = { version = "1.25", features = ["derive"] }
 glam = { version = "0.32", features = ["bytemuck"] }
-ab_glyph = "0.2.32"
+glyphon = "0.12.0"
 
 # Records, saves and telemetry.
 serde = { version = "1", features = ["derive"] }
@@ -57,8 +57,8 @@ rodio = "0.20"
 #   * RNG        -> hand-rolled PCG32 (src/sim/rng.rs)
 #   * noise      -> hand-rolled seeded value noise (src/sim/terrain.rs)
 #   * road graph -> hand-rolled adjacency lists (src/sim/road.rs)
-# `rand`, `noise`, `pathfinding`, `petgraph`, `bevy_ecs`, `cosmic-text` and
-# `rayon` were all considered and deferred. See README.md, "Wheel map".
+# `rand`, `noise`, `pathfinding`, `petgraph`, `bevy_ecs` and `rayon` were all
+# considered and deferred. See README.md, "Wheel map".
 
 [profile.dev]
 opt-level = 1

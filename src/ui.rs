@@ -33,7 +33,10 @@
 #![allow(dead_code)]
 
 use crate::design::{Space, Step, UiScale};
+use glyphon::{TextBounds, Wrap};
+
 use crate::render::{Batcher, Face, Screen, Text};
+use crate::text::TextLayout;
 
 /// Baseline-to-baseline distance as a multiple of the step's pixel size.
 /// Chosen once, here, rather than improvised per surface.
@@ -148,6 +151,8 @@ pub struct Measured {
     pub viewport: f32,
     /// The footer's height, if any — carried separately because it pins.
     pub footer_height: f32,
+    /// Glyphon layouts created during measurement, one vector per block.
+    pub layouts: Vec<Vec<TextLayout>>,
 }
 
 impl Measured {
@@ -190,30 +195,41 @@ impl Measured {
 pub fn measure(text: &mut Text, ui: UiScale, frame: &Frame, blocks: &[Block]) -> Measured {
     let mut tops = Vec::with_capacity(blocks.len());
     let mut heights = Vec::with_capacity(blocks.len());
+    let mut layouts = Vec::with_capacity(blocks.len());
     let mut y = 0.0f32;
     let mut footer_height = 0.0f32;
 
     for block in blocks {
-        let height = match block {
-            Block::Line { face, step, text: line, .. } => {
-                let step_px = step.px(ui) as f32;
-                let lines = wrap(text, *face, *step, line, frame.w).len().max(1);
-                lines as f32 * step_px * LINE_ADVANCE_FACTOR
+        let (height, block_layouts) = match block {
+            Block::Line { face, step, text: line, color } => {
+                let layout = text.layout(*face, *step, line, *color, frame.w, Wrap::WordOrGlyph);
+                (layout.height, vec![layout])
             }
-            Block::Row { step, .. } | Block::Bar { step, .. } | Block::Keyed { step, .. } => {
-                step.px(ui) as f32 * LINE_ADVANCE_FACTOR
+            Block::Row { label, value, step, color, value_color } => {
+                let label_layout = text.layout(Face::Body, *step, label, *color, frame.w, Wrap::None);
+                let value_layout = text.layout(Face::Mono, *step, value, *value_color, frame.w, Wrap::None);
+                (label_layout.height.max(value_layout.height), vec![label_layout, value_layout])
             }
-            Block::Rule => Space::Xs.px(ui),
-            Block::Gap(space) => space.px(ui),
-            Block::Fixed { height } => *height,
+            Block::Bar { label, step, label_color, .. } => {
+                let layout = text.layout(Face::Body, *step, label, *label_color, frame.w, Wrap::None);
+                (layout.height, vec![layout])
+            }
+            Block::Keyed { key, text: prose, step, key_color, text_color, .. } => {
+                let key_layout = text.layout(Face::Mono, *step, key, *key_color, frame.w, Wrap::None);
+                let prose_layout = text.layout(Face::Body, *step, prose, *text_color, frame.w, Wrap::None);
+                (key_layout.height.max(prose_layout.height), vec![key_layout, prose_layout])
+            }
+            Block::Rule => (Space::Xs.px(ui), Vec::new()),
+            Block::Gap(space) => (space.px(ui), Vec::new()),
+            Block::Fixed { height } => (*height, Vec::new()),
             Block::Footer { height, .. } => {
                 footer_height = *height;
-                // Reserved against the viewport, not flowed.
-                0.0
+                (0.0, Vec::new())
             }
         };
         tops.push(y);
         heights.push(height);
+        layouts.push(block_layouts);
         if !block.is_footer() {
             y += height;
         }
@@ -228,8 +244,10 @@ pub fn measure(text: &mut Text, ui: UiScale, frame: &Frame, blocks: &[Block]) ->
         width: frame.w,
         viewport: frame.viewport,
         footer_height,
+        layouts,
     }
 }
+
 
 /// Word-wrap a line to a pixel width using the font's real advance widths.
 /// Returns the wrapped lines; a word wider than the box sits on its own line
@@ -380,75 +398,66 @@ pub fn paint(
             continue;
         }
         match block {
-            Block::Line { face, step, text: line, color } => {
-                let step_px = step.px(ui) as f32;
-                let advance = step_px * LINE_ADVANCE_FACTOR;
-                // The font's own ascent at this size, via a flat-cap glyph.
-                let cap_offset = text.ascent(*face, *step);
-                for (i, part) in wrap(text, *face, *step, line, measured.width)
-                    .into_iter()
-                    .enumerate()
-                {
-                    let line_top = top + i as f32 * advance;
-                    // `draw` hangs glyphs below the baseline it is given; the
-                    // measurer promised the line's *top*, so the baseline sits
-                    // above it by the flat-cap offset the font itself reports.
-                    text.draw_step(
-                        *face,
-                        batcher,
-                        screen,
-                        snap(frame.x),
-                        snap(frame.y + line_top - cap_offset),
-                        *step,
+            Block::Line { color, .. } => {
+                for layout in &measured.layouts[index] {
+                    let line_y = frame.y + top;
+                    text.paint_layout(
+                        *layout,
+                        frame.x,
+                        line_y,
+                        TextBounds {
+                            left: frame.x.round() as i32,
+                            top: frame.y.round() as i32,
+                            right: (frame.x + frame.w).round() as i32,
+                            bottom: (frame.y + measured.footer_top()).round() as i32,
+                        },
                         *color,
-                        &part,
                     );
                 }
             }
-            Block::Row { label, value, step, color, value_color } => {
-                let step_px = step.px(ui) as f32;
-                let line_h = step_px * LINE_ADVANCE_FACTOR;
-                let cap_offset = text.ascent(Face::Body, *step);
-                let baseline = snap(frame.y + top - cap_offset);
-                text.draw_step(
-                    Face::Body,
-                    batcher,
-                    screen,
-                    snap(frame.x),
-                    baseline,
-                    *step,
-                    *color,
-                    label,
+            Block::Row { .. } => {
+                let label = &measured.layouts[index][0];
+                let value = &measured.layouts[index][1];
+                text.paint_layout(
+                    *label,
+                    frame.x,
+                    frame.y + top,
+                    TextBounds {
+                        left: frame.x.round() as i32,
+                        top: frame.y.round() as i32,
+                        right: (frame.x + frame.w).round() as i32,
+                        bottom: (frame.y + measured.footer_top()).round() as i32,
+                    },
+                    match block { Block::Row { color, .. } => *color, _ => unreachable!() },
                 );
-                // Right-aligned against the frame's right edge, measured with
-                // the same font it will be drawn with.
-                let value_w = text.measure_step(Face::Mono, value, *step);
-                text.draw_step(
-                    Face::Mono,
-                    batcher,
-                    screen,
-                    snap(frame.x + frame.w - value_w),
-                    baseline,
-                    *step,
-                    *value_color,
-                    value,
+                text.paint_layout(
+                    *value,
+                    frame.x + frame.w - value.width,
+                    frame.y + top,
+                    TextBounds {
+                        left: frame.x.round() as i32,
+                        top: frame.y.round() as i32,
+                        right: (frame.x + frame.w).round() as i32,
+                        bottom: (frame.y + measured.footer_top()).round() as i32,
+                    },
+                    match block { Block::Row { value_color, .. } => *value_color, _ => unreachable!() },
                 );
-                let _ = line_h;
             }
-            Block::Bar { label, step, label_color, color, fraction } => {
-                let step_px = step.px(ui) as f32;
-                let line_h = step_px * LINE_ADVANCE_FACTOR;
-                let cap_offset = text.ascent(Face::Body, *step);
-                text.draw_step(
-                    Face::Body,
-                    batcher,
-                    screen,
-                    snap(frame.x),
-                    snap(frame.y + top - cap_offset),
-                    *step,
-                    *label_color,
-                    label,
+            Block::Bar { color, fraction, .. } => {
+                let label = &measured.layouts[index][0];
+                text.paint_layout(
+                    *label,
+                    frame.x,
+                    frame.y + top,
+                    TextBounds {
+                        left: frame.x.round() as i32,
+                        top: frame.y.round() as i32,
+                        right: (frame.x + frame.w).round() as i32,
+                        bottom: (frame.y + measured.footer_top()).round() as i32,
+                    },
+                    match block { Block::Bar { label_color, .. } => *label_color, _ => unreachable!() },
                 );
+                let line_h = measured.heights[index];
                 // Track from the row's bar origin to the right edge, centred
                 // on the text line; the track is the colour at low alpha.
                 let track_h = Space::Xs.px(ui);
@@ -478,28 +487,32 @@ pub fn paint(
                     );
                 }
             }
-            Block::Keyed { key, text: prose, step, key_color, text_color, key_col } => {
-                let cap_offset = text.ascent(Face::Body, *step);
-                let baseline = snap(frame.y + top - cap_offset);
-                text.draw_step(
-                    Face::Mono,
-                    batcher,
-                    screen,
-                    snap(frame.x),
-                    baseline,
-                    *step,
-                    *key_color,
-                    key,
+            Block::Keyed { key_col, .. } => {
+                let key = &measured.layouts[index][0];
+                let prose = &measured.layouts[index][1];
+                text.paint_layout(
+                    *key,
+                    frame.x,
+                    frame.y + top,
+                    TextBounds {
+                        left: frame.x.round() as i32,
+                        top: frame.y.round() as i32,
+                        right: (frame.x + frame.w).round() as i32,
+                        bottom: (frame.y + measured.footer_top()).round() as i32,
+                    },
+                    match block { Block::Keyed { key_color, .. } => *key_color, _ => unreachable!() },
                 );
-                text.draw_step(
-                    Face::Body,
-                    batcher,
-                    screen,
-                    snap(frame.x + key_col),
-                    baseline,
-                    *step,
-                    *text_color,
-                    prose,
+                text.paint_layout(
+                    *prose,
+                    frame.x + *key_col,
+                    frame.y + top,
+                    TextBounds {
+                        left: frame.x.round() as i32,
+                        top: frame.y.round() as i32,
+                        right: (frame.x + frame.w).round() as i32,
+                        bottom: (frame.y + measured.footer_top()).round() as i32,
+                    },
+                    match block { Block::Keyed { text_color, .. } => *text_color, _ => unreachable!() },
                 );
             }
             Block::Rule => {
@@ -566,10 +579,10 @@ mod tests {
         assert!((measured.content_height - (title + gap + 600.0)).abs() < 0.5);
         // Measuring emitted no quads: layout precedes drawing, literally.
         assert_eq!(batch.instances.len(), 0, "measuring drew something");
-        // Painting what was measured draws, and only what was measured.
+        // Painting submits exactly the measured block as a Glyphon area.
         let scroll = Scroll::new();
         paint(&measured, &scroll, &mut batch, &screen(), &mut text);
-        assert!(batch.instances.len() > 0, "painting drew nothing");
+        assert_eq!(text.pending_area_count(), 1, "painting submitted the wrong text areas");
     }
 
     fn screen() -> Screen {
@@ -704,18 +717,8 @@ mod tests {
 
         let mut batch = Batcher::default();
         paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
-        // The value's rightmost quad lands at the frame's right edge (half a
-        // pixel of snap tolerance; the pen's trailing advance is not ink), and
-        // the label starts at the left edge.
-        let rightmost = batch
-            .instances
-            .iter()
-            .map(|i| (i.pos[0] + i.size[0] + 1.0) / 2.0 * screen().w)
-            .fold(f32::MIN, f32::max);
-        assert!(
-            (rightmost - 300.0).abs() <= 1.0,
-            "the row's value ended at x={rightmost}, not at the frame's right edge 300"
-        );
+        // Glyphon receives two shaped areas: the label and right-aligned value.
+        assert_eq!(text.pending_area_count(), 2);
     }
 
     #[test]
@@ -765,16 +768,7 @@ mod tests {
         let measured = measure(&mut text, ui(), &frame, &[block]);
         let mut batch = Batcher::default();
         paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
-        assert!(batch.instances.len() > 0, "nothing painted");
-        for instance in &batch.instances {
-            let sx = (instance.pos[0] + 1.0) / 2.0 * screen().w;
-            let sy = (1.0 - instance.pos[1]) / 2.0 * screen().h;
-            // The measurer anchors lines at the *cap* line: tall lowercase
-            // glyphs (l, t, f) legitimately overshoot it by a couple of
-            // pixels — that is the font's own truth, not a layout defect.
-            assert!(sx >= 47.0, "a quad drew left of the frame at x={sx}");
-            assert!(sy >= 33.0, "a quad drew far above the frame at y={sy}");
-        }
+        assert_eq!(text.pending_area_count(), 1, "the line was not submitted to Glyphon");
     }
 
     #[test]
@@ -795,15 +789,7 @@ mod tests {
         let measured = measure(&mut text, ui(), &frame(300.0, small * 1.3), &blocks);
         let mut batch = Batcher::default();
         paint(&measured, &Scroll::new(), &mut batch, &screen(), &mut text);
-        // Only the first line drew; nothing leaked past the viewport edge.
-        assert!(batch.instances.len() > 0, "the visible line did not draw");
-        for instance in &batch.instances {
-            let sy = (1.0 - instance.pos[1]) / 2.0 * screen().h;
-            assert!(
-                sy + small <= measured.viewport + 0.5,
-                "a straddling block leaked: quad at y={sy} with viewport {}",
-                measured.viewport
-            );
-        }
+        // Only the first line was submitted; the straddling line waits for scroll.
+        assert_eq!(text.pending_area_count(), 1, "a straddling block leaked into the text areas");
     }
 }

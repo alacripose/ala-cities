@@ -728,7 +728,6 @@ impl ApplicationHandler for Picker {
                 // `self` in between, and the two must not overlap.
                 let screen = {
                     let Some(gpu) = self.gpu.as_mut() else { return };
-                    gpu.sync_atlas(&self.text);
                     gpu.screen()
                 };
                 let mut batch = Batcher::default();
@@ -742,6 +741,7 @@ impl ApplicationHandler for Picker {
                         &winit_default_camera(),
                         [0.08, 0.08, 0.09, 1.0],
                         1.0 / 60.0,
+                        &mut self.text,
                     );
                 }
                 window.request_redraw();
