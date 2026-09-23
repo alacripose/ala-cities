@@ -674,6 +674,21 @@ pub fn sample_cases(world: &World) -> Vec<CaseFinding> {
             });
         }
     }
+
+    // Material the city wants and cannot get (C9 round 11, Q74). A refusal to build files a case
+    // rather than passing quietly, and the reading is already aggregated by district and family,
+    // so a hundred blocked builds in one district are **one** case with a count — the same rule
+    // the queue applies everywhere else. The key is the shortfall's own, so repeated refusals
+    // update one reading instead of filing a thousand tickets.
+    for starved in world.starved() {
+        findings.push(CaseFinding {
+            key: starved.case_key(),
+            district: starved.district,
+            count: starved.count,
+            objective: starved.objective(),
+        });
+    }
+
     findings
 }
 

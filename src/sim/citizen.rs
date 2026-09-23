@@ -40,6 +40,14 @@ pub struct Citizen {
     pub id: u32,
     pub home: Option<u32>,
     pub work: Option<u32>,
+    /// The task this citizen has taken, by id (round 11's Q43: a task carries who claimed it).
+    ///
+    /// Separate from `work` on purpose: a *job* is a structure the citizen is employed at, and a
+    /// *task* is work the city owes itself — a road, a build, anything with no owner to claim it.
+    /// A citizen can be between jobs and still be on a task, which is exactly the city building
+    /// itself, and collapsing the two would make one of them lie.
+    #[serde(default)]
+    pub task: Option<u32>,
     pub state: CitizenState,
     /// Tiles to walk, first to last.
     pub path: Vec<u32>,
@@ -60,6 +68,7 @@ impl Citizen {
             id,
             home: Some(home),
             work: None,
+            task: None,
             state: CitizenState::Unemployed,
             path: Vec::new(),
             path_cursor: 0,

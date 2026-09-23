@@ -8,6 +8,7 @@
 pub mod citizen;
 pub mod road;
 pub mod rng;
+pub mod task;
 pub mod terrain;
 
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,8 @@ use crate::materials::generated::REPAIR_CEILING;
 use crate::materials::generated as material_generated;
 use crate::materials::world::{self as material_world, Level};
 use citizen::{Citizen, CitizenState};
+use task as sim_task;
+use sim_task::Task;
 use rng::Pcg32;
 use road::RoadGraph;
 
@@ -312,6 +315,48 @@ pub struct MaterialShortfall {
     pub found_g: i64,
 }
 
+/// Where the city is short of material, aggregated by district and family — the reading a case
+/// is sampled from (round 11's Q74).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Starved {
+    pub district: u32,
+    pub family: String,
+    /// Total wanted across every refusal folded into this reading, in grams.
+    pub wanted_g: i64,
+    /// Total the world could supply, in grams.
+    pub found_g: i64,
+    /// How many refusals this reading stands for.
+    pub count: u32,
+}
+
+impl Starved {
+    /// The shortfall this reading stands for, in grams.
+    pub fn missing_g(&self) -> i64 {
+        (self.wanted_g - self.found_g).max(0)
+    }
+
+    /// The case key, so repeated refusals update one reading instead of filing a thousand cases —
+    /// the same dedupe the case engine already does, keyed by what is actually short.
+    pub fn case_key(&self) -> String {
+        format!("materials:{}:{}", self.district, self.family)
+    }
+
+    /// What a person reads. Round 11's Q74 asked for a refusal that says what it wanted and what
+    /// it found; round 5's Q36 said the government owns what nobody owns, so the objective names
+    /// the shortage as work rather than as a complaint.
+    pub fn objective(&self) -> String {
+        format!(
+            "{} build site(s) in district {} want {} g of {} and the world holds {} g: {} g short",
+            self.count,
+            self.district,
+            self.wanted_g,
+            self.family,
+            self.found_g,
+            self.missing_g()
+        )
+    }
+}
+
 impl MaterialShortfall {
     /// The shortfall in grams — the number a case has to carry.
     pub fn missing_g(&self) -> i64 {
@@ -564,6 +609,17 @@ pub struct World {
     pub focus: (i32, i32),
     pub next_building_id: u32,
     pub next_citizen_id: u32,
+    /// Open and claimed work (round 11's Q43).
+    #[serde(default)]
+    pub tasks: Vec<Task>,
+    #[serde(default = "first_task_id")]
+    pub next_task_id: u32,
+    /// Where the city is short of material, for the case engine to read (round 11's Q74).
+    ///
+    /// Aggregated rather than appended, so it is bounded by districts × families instead of
+    /// growing with every refused tick.
+    #[serde(default)]
+    pub starved: Vec<Starved>,
     /// Which save format wrote this. Absent (0) is a v1 save: it predates the world
     /// having materials at all.
     #[serde(default)]
@@ -611,6 +667,9 @@ impl World {
             tiles,
             buildings: Vec::new(),
             citizens: Vec::new(),
+            tasks: Vec::new(),
+            next_task_id: first_task_id(),
+            starved: Vec::new(),
             economy: Economy {
                 credits: 25_000,
                 tax_residential: 0.09,
@@ -1003,6 +1062,278 @@ impl World {
         Ok(built)
     }
 
+    /// Open a build task on a site, **or refuse and say why** (round 11's Q72).
+    ///
+    /// The material is planned here, before any citizen is asked to work, and the plan travels
+    /// with the task: a task that exists can be paid for, and one that cannot is not opened at
+    /// all. That is the whole difference between this and the `grow()` it replaces — `grow()`
+    /// decided that a building should exist and made one; this decides that a building should
+    /// exist and then asks the world whether it can supply it, which is a question the world is
+    /// allowed to answer no.
+    pub fn post_build_task(
+        &mut self,
+        site: u32,
+        kind: BuildingKind,
+    ) -> Result<u32, MaterialShortfall> {
+        let mass = material_ledger::structure_mass_g(kind.name(), 1)
+            .unwrap_or_else(|| panic!("{} declares no mass, so it cannot be built", kind.name()));
+        let claim = MaterialClaim::of_kind(kind).unwrap_or_else(|| {
+            panic!("{} has no declared material claim, so its material is unknown", kind.name())
+        });
+        let plan = self.plan_material(site, &claim.family, mass)?;
+        let id = self.next_task_id;
+        self.next_task_id += 1;
+        self.tasks.push(sim_task::Task {
+            id,
+            verb: sim_task::Verb::Build,
+            kind,
+            site,
+            family: claim.family,
+            requires_g: mass,
+            material: plan,
+            // The kind's own declared build cost is the work, so how long a structure takes is
+            // the same declared number the player's build already pays.
+            work_remaining: kind.build_cost(),
+            claimed_by: None,
+            opened_tick: self.clock.tick,
+        });
+        Ok(id)
+    }
+
+    /// Has this site already got open work on it? One task per site, so two citizens cannot raise
+    /// two buildings on one tile and the demand does not queue itself into a crowd.
+    pub fn open_task_at(&self, site: u32) -> Option<&sim_task::Task> {
+        self.tasks.iter().find(|task| task.site == site)
+    }
+
+    /// Where the city is **short of material**, deduped by district and family, in the shape the
+    /// case engine reads.
+    ///
+    /// Round 11's Q74 answered that a refusal files a case rather than passing quietly, so this is
+    /// the record the cases are sampled from. It is aggregated, not appended: four hundred blocked
+    /// builds wanting clay in one district is **one** reading with a count, exactly as a case
+    /// already reads its count.
+    pub fn starved(&self) -> &[Starved] {
+        &self.starved
+    }
+
+    /// Note a refusal, folding it into an existing reading for the same district and family.
+    fn record_starved(&mut self, shortfall: &MaterialShortfall) {
+        let district = crate::gov::district_of(self.width, shortfall.site);
+        if let Some(existing) = self
+            .starved
+            .iter_mut()
+            .find(|s| s.district == district && s.family == shortfall.family)
+        {
+            existing.count += 1;
+            existing.wanted_g += shortfall.wanted_g;
+            existing.found_g += shortfall.found_g;
+            return;
+        }
+        self.starved.push(Starved {
+            district,
+            family: shortfall.family.clone(),
+            wanted_g: shortfall.wanted_g,
+            found_g: shortfall.found_g,
+            count: 1,
+        });
+    }
+
+    /// Post build work for zoned ground that is powered, connected and wanted.
+    ///
+    /// This is what stands where `grow()` stood. It makes **no building** — it makes *work*, and
+    /// the building is the consequence of a citizen doing it with material the ground gave up.
+    /// Deleting `grow()` is round 6's Q45 answer and round 11's Q72 confirmation: the sim no
+    /// longer decides that a structure exists, it decides that the city wants one built.
+    pub fn post_demand_tasks(&mut self) {
+        if self.stats.brownout {
+            // No power, no growth. Posting work the city cannot light would file its own case.
+            return;
+        }
+        let mut posted = 0;
+        for tile in 0..self.tiles.len() as u32 {
+            if posted >= 4 {
+                break;
+            }
+            let t = self.tiles[tile as usize];
+            if t.zone == Zone::None || t.building.is_some() || t.road || !t.powered {
+                continue;
+            }
+            if self.open_task_at(tile).is_some() || !self.has_road_access(tile) {
+                continue;
+            }
+            if self.demand.for_zone(t.zone) < 0.20 {
+                continue;
+            }
+            let kind = match t.zone {
+                Zone::Residential => BuildingKind::Home,
+                Zone::Commercial => BuildingKind::Shop,
+                Zone::Industrial => BuildingKind::Factory,
+                Zone::None => continue,
+            };
+            match self.post_build_task(tile, kind) {
+                Ok(_) => {
+                    posted += 1;
+                    // Spending the demand is what stops one busy tick from zoning an entire map.
+                    match t.zone {
+                        Zone::Residential => {
+                            self.demand.residential = (self.demand.residential - 0.12).max(0.0)
+                        }
+                        Zone::Commercial => {
+                            self.demand.commercial = (self.demand.commercial - 0.12).max(0.0)
+                        }
+                        Zone::Industrial => {
+                            self.demand.industrial = (self.demand.industrial - 0.12).max(0.0)
+                        }
+                        Zone::None => {}
+                    }
+                }
+                // A blocked task is a refusal with a number, not a silence. The work is not
+                // posted, so the queue never fills with jobs nobody can do.
+                Err(shortfall) => self.record_starved(&shortfall),
+            }
+        }
+    }
+
+    /// Idle hands take the nearest open work, and walk to it.
+    ///
+    /// Round 4's Q29(b) answered that citizens decide for themselves; round 5's Q36 said the
+    /// government is the **owner of last resort** for what nobody owns — a road, a service, a
+    /// build nobody has commissioned. A build task is exactly that case, so the city's own
+    /// unemployed take it. Utility-scored choice with declared weights (Q53) arrives with the
+    /// citizen model that can score anything; today the choice is nearest-first, and this comment
+    /// is the record that it is a placeholder rather than the answer.
+    pub fn claim_tasks(&mut self) {
+        if self.tasks.is_empty() {
+            return;
+        }
+        for index in 0..self.citizens.len() {
+            let (ready, state, free, home) = {
+                let c = &self.citizens[index];
+                (c.ready, c.state, c.work.is_none() && c.task.is_none(), c.home)
+            };
+            // An idle resident is one at home or between jobs: `Unemployed` is documented in the
+            // citizen model as "a home but no work", which is exactly the labour a city has free
+            // to build itself with, and requiring `AtHome` alone would have excluded every one.
+            if !ready
+                || !free
+                || !matches!(state, CitizenState::AtHome | CitizenState::Unemployed)
+            {
+                continue;
+            }
+            let Some(home) = home else { continue };
+            let home_tile = self.buildings[home as usize].tile;
+            let (hx, hy) = (home_tile % self.width, home_tile / self.width);
+            let mut best: Option<((i64, u32), u32)> = None;
+            for task in self.tasks.iter() {
+                if task.is_claimed() {
+                    continue;
+                }
+                let (tx, ty) = (task.site % self.width, task.site / self.width);
+                let dx = tx as i64 - hx as i64;
+                let dy = ty as i64 - hy as i64;
+                let distance = dx * dx + dy * dy;
+                if best.map(|(key, _)| (distance, task.id) < key).unwrap_or(true) {
+                    best = Some(((distance, task.id), task.id));
+                }
+            }
+            let Some((_, task_id)) = best else { break };
+            if let Some(task) = self.tasks.iter_mut().find(|task| task.id == task_id) {
+                task.claimed_by = Some(self.citizens[index].id);
+            }
+            let citizen = &mut self.citizens[index];
+            citizen.task = Some(task_id);
+            // At home, so the planner's `AtHome` case routes them to the site — never straight
+            // there, because a citizen that teleports is not a citizen. Parked with no plan, so
+            // the planner picks them up on its next pass.
+            citizen.state = CitizenState::AtHome;
+            citizen.path.clear();
+            citizen.path_cursor = 0;
+            citizen.step_work = 0.0;
+        }
+    }
+
+    /// The work a claimed task gets from the citizen standing on it, and what happens when it is
+    /// finished.
+    ///
+    /// The clock is not read here on purpose, and the parameter-free shape is what keeps this a
+    /// pure function of the world's own state: how much work a task has left is a number, not a
+    /// number of seconds.
+    ///
+    /// The counter only moves while somebody is actually there — that is the "atomic and
+    /// verifiable" round 4's Q19 asked for, expressed as a rule a test can check rather than as an
+    /// intention. Completion draws the plan and raises the structure; a plan that no longer
+    /// covers the mass (because someone else mined it) is a refusal with a case, not a building.
+    pub fn work_tasks(&mut self) {
+        let width = self.width;
+        let mut finished: Vec<u32> = Vec::new();
+        let mut shortfalls: Vec<MaterialShortfall> = Vec::new();
+
+        for task in self.tasks.iter_mut() {
+            let Some(worker) = task.claimed_by else { continue };
+            let Some(citizen) = self.citizens.iter().find(|c| c.id == worker) else {
+                // The worker is gone. The work goes back to the queue rather than being lost.
+                task.claimed_by = None;
+                continue;
+            };
+            if citizen.state != CitizenState::AtWork || citizen.task != Some(task.id) {
+                continue;
+            }
+            let standing = citizen.current_tile().unwrap_or(task.site);
+            let (sx, sy) = (task.site % width, task.site / width);
+            let (cx, cy) = (standing % width, standing / width);
+            if (sx as i64 - cx as i64).abs() > 1 || (sy as i64 - cy as i64).abs() > 1 {
+                // Standing somewhere else is not working on it.
+                continue;
+            }
+            task.work_remaining -= 1;
+            if task.is_done() {
+                finished.push(task.id);
+            }
+        }
+
+        for id in finished {
+            let Some(position) = self.tasks.iter().position(|task| task.id == id) else { continue };
+            let task = self.tasks[position].clone();
+            let drawn = self.draw_material(&task.material);
+            let drawn_g: i64 = drawn.iter().map(|line| line.grams).sum();
+            let built = if drawn_g >= task.requires_g {
+                self.place_building(task.site, task.kind)
+            } else {
+                None
+            };
+            match built {
+                Some(_) => {
+                    if let Some(index) = self.tiles[task.site as usize].building {
+                        self.buildings[index as usize].material_from = drawn;
+                    }
+                }
+                None => {
+                    // Either the ground no longer covers the plan or the site stopped being
+                    // buildable. Both are refusals with a number, and the case engine reads them.
+                    shortfalls.push(MaterialShortfall {
+                        site: task.site,
+                        family: task.family.clone(),
+                        wanted_g: task.requires_g,
+                        found_g: drawn_g,
+                    });
+                }
+            }
+            self.tasks.remove(position);
+            for citizen in self.citizens.iter_mut() {
+                if citizen.task == Some(id) {
+                    citizen.task = None;
+                    citizen.state = CitizenState::ToHome;
+                    // Re-planned from where they stand, so a finished worker walks home.
+                }
+            }
+        }
+
+        for shortfall in shortfalls {
+            self.record_starved(&shortfall);
+        }
+    }
+
     /// Demolish whatever stands on a tile. The building is **retired**, not
     /// deleted, and the reason is recorded.
     pub fn demolish(&mut self, tile: u32, reason: RetirementReason) -> Option<u32> {
@@ -1099,7 +1430,9 @@ impl World {
         }
         if self.clock.tick.is_multiple_of(8) {
             self.recompute_demand();
-            self.grow();
+            self.post_demand_tasks();
+            self.claim_tasks();
+            self.work_tasks();
         }
         if self.clock.tick.is_multiple_of(16) {
             self.assign_jobs();
@@ -1302,50 +1635,13 @@ impl World {
             ((commercial_capacity * 0.6 + 30.0 - factories * 14.0) / 40.0).clamp(0.0, 1.0);
     }
 
-    /// Let zoned, road-connected, powered tiles grow. Growth is simulation, not
-    /// a player action, so it files no ticket -- but the buildings it creates
-    /// are the population the cases are sampled from.
-    fn grow(&mut self) {
-        if self.stats.brownout {
-            // No power, no growth. Silently building anyway would be a lie the
-            // player has no way to see.
-            return;
-        }
-        let mut created = 0;
-        for tile in 0..self.tiles.len() as u32 {
-            if created >= 4 {
-                break;
-            }
-            let t = self.tiles[tile as usize];
-            if t.zone == Zone::None || t.building.is_some() || t.road || !t.powered {
-                continue;
-            }
-            if !self.has_road_access(tile) {
-                continue;
-            }
-            let demand = self.demand.for_zone(t.zone);
-            if demand < 0.20 {
-                continue;
-            }
-            let kind = match t.zone {
-                Zone::Residential => BuildingKind::Home,
-                Zone::Commercial => BuildingKind::Shop,
-                Zone::Industrial => BuildingKind::Factory,
-                Zone::None => continue,
-            };
-            if self.place_building(tile, kind).is_some() {
-                created += 1;
-                // Spending the demand is what stops one busy tick from zoning
-                // an entire map at once.
-                match t.zone {
-                    Zone::Residential => self.demand.residential = (self.demand.residential - 0.12).max(0.0),
-                    Zone::Commercial => self.demand.commercial = (self.demand.commercial - 0.12).max(0.0),
-                    Zone::Industrial => self.demand.industrial = (self.demand.industrial - 0.12).max(0.0),
-                    Zone::None => {}
-                }
-            }
-        }
-    }
+    // `grow()` stood here: a function that decided a building should exist and then made one.
+    // Round 6's Q45 answered that a city grows because citizens acquire material and build, and
+    // round 11's Q72 confirmed it — so the function is **deleted, not kept beside the task system**,
+    // and what replaces it is `post_demand_tasks` (work, not buildings), `claim_tasks` (a citizen
+    // who takes it) and `work_tasks` (labour that only counts while somebody is standing on the
+    // site). The test `growth_is_work_now_and_the_audit_balances` is where the difference shows:
+    // the audit read a grown city as material nobody dug up, and reads a built one as conserved.
 
     /// Settle new residents into ready homes, then find work for the jobless.
     fn assign_jobs(&mut self) {
@@ -1537,30 +1833,51 @@ impl World {
             if planned >= tick_budget {
                 break;
             }
-            let (state, work, home, needs_plan, ready) = {
+            let (state, work, home, task, needs_plan, ready) = {
                 let c = &self.citizens[index];
                 // A parked agent (a one-tile path) is due a new plan; an agent
                 // mid-route is not.
-                (c.state, c.work, c.home, c.path.len() <= 1, c.ready)
+                (c.state, c.work, c.home, c.task, c.path.len() <= 1, c.ready)
             };
             if !needs_plan || !ready {
                 continue;
             }
-            let Some(work) = work else { continue };
-            let (Some(home), Some(job)) = (home, Some(work)) else {
-                continue;
-            };
+            let Some(home) = home else { continue };
             let from_tile = self.buildings[home as usize].tile;
-            let to_tile = self.buildings[job as usize].tile;
-            let route = match state {
-                CitizenState::AtHome => {
-                    self.roads.route_between_tiles(self.width, self.height, from_tile, to_tile, 3)
+            // Where this citizen is heading and where they are heading back to. A **task** takes
+            // precedence over a job: work the city owes itself is addressed to a site, and a site
+            // is a tile like any other, so the same routing walks a citizen to it.
+            let (origin, to_tile, onwards) = match (state, task, work) {
+                (CitizenState::AtHome, Some(task), _) => {
+                    let Some(task) = self.tasks.iter().find(|t| t.id == task) else {
+                        continue;
+                    };
+                    (from_tile, task.site, CitizenState::ToWork)
                 }
-                CitizenState::AtWork => {
-                    self.roads.route_between_tiles(self.width, self.height, to_tile, from_tile, 3)
+                (CitizenState::AtHome, None, Some(job)) => {
+                    let Some(building) = self.buildings.get(job as usize) else { continue };
+                    (from_tile, building.tile, CitizenState::ToWork)
                 }
-                _ => None,
+                (CitizenState::AtWork, _, Some(job)) => {
+                    let Some(building) = self.buildings.get(job as usize) else { continue };
+                    (
+                        self.citizens[index].current_tile().unwrap_or(from_tile),
+                        building.tile,
+                        CitizenState::ToHome,
+                    )
+                }
+                // A citizen whose task is finished walks home from wherever the work was, which is
+                // how a worker released at a build site gets back rather than standing there.
+                (CitizenState::ToHome, _, _) => (
+                    self.citizens[index].current_tile().unwrap_or(from_tile),
+                    from_tile,
+                    CitizenState::AtHome,
+                ),
+                _ => continue,
             };
+            let route = self
+                .roads
+                .route_between_tiles(self.width, self.height, origin, to_tile, 3);
             planned += 1;
             match route {
                 Some(path) => {
@@ -1568,11 +1885,7 @@ impl World {
                     citizen.path = path;
                     citizen.path_cursor = 0;
                     citizen.step_work = 0.0;
-                    citizen.state = match state {
-                        CitizenState::AtHome => CitizenState::ToWork,
-                        CitizenState::AtWork => CitizenState::ToHome,
-                        other => other,
-                    };
+                    citizen.state = onwards;
                 }
                 None => {
                     // A commute with no route is a refusal, counted and
@@ -1698,7 +2011,14 @@ impl World {
     }
 }
 
+/// The first task id. A save predating tasks starts here, and an absent `next_task_id` in an old
+/// save defaults to it — the same reasoning as a tile with no extraction having extracted nothing.
+fn first_task_id() -> u32 {
+    1
+}
+
 #[cfg(test)]
+
 pub mod tests_support {
     use super::{Terrain, Tile};
 
@@ -1827,6 +2147,11 @@ mod tests {
         let mut world = World::new(256, 256, 7);
         for tile in world.tiles.iter_mut() {
             tile.terrain = Terrain::Ground;
+        }
+        // A road down the left edge, so the tiles beside it are reachable and can be lit — the
+        // same seed road `small_city` lays, at the size a city actually is.
+        for y in 0..256u32 {
+            world.tiles[(y * 256) as usize].road = true;
         }
         world.rebuild_derived();
         world
@@ -2099,30 +2424,37 @@ mod tests {
         );
     }
 
+    /// Power and a road decide **whether the work is posted at all** — the same rule `grow()` had,
+    /// moved one step earlier: the city will not ask anyone to build where it cannot light or
+    /// reach the site, so the queue never fills with jobs that cannot be done.
     #[test]
-    fn zoned_tiles_grow_only_with_power_and_a_road() {
-        let mut world = small_city();
+    fn zoned_tiles_get_work_only_with_power_and_a_road() {
+        let mut world = worked_city();
         world.place_building(world.index(1, 3), BuildingKind::PowerPlant).expect("plant");
         world.buildings[0].ready_tick = 0;
-        // Beside the seed road: growth expected.
+        // Beside the seed road: work expected.
         let near = world.index(1, 6);
         world.set_zone(near, Zone::Residential);
-        // In the far corner with no road: growth must not happen.
-        let far = world.index(31, 31);
+        // In the far corner with no road: no work, and no building either.
+        let far = world.index(250, 250);
         world.set_zone(far, Zone::Residential);
         world.recompute_power();
+        world.recompute_demand();
         for _ in 0..40 {
             world.clock.tick += 1;
-            world.recompute_demand();
-            world.grow();
+            world.post_demand_tasks();
         }
         assert!(
-            world.tiles[near as usize].building.is_some(),
-            "a powered, road-connected zoned tile should grow"
+            world.open_task_at(near).is_some(),
+            "a powered, road-connected zoned tile should have work posted for it"
         );
         assert!(
-            world.tiles[far as usize].building.is_none(),
-            "an unpowered tile with no road must not grow"
+            world.open_task_at(far).is_none(),
+            "an unpowered tile with no road must not be given work"
+        );
+        assert!(
+            world.tiles[near as usize].building.is_none(),
+            "and work posted is not a building: the citizen has to do it"
         );
     }
 
@@ -2250,53 +2582,144 @@ mod tests {
         assert!(metal_mass > 0);
     }
 
-    /// **The measured violation, pinned.** `grow()` builds out of nothing, and this is what that
-    /// costs, in the ledger's own units: a grown home appears in the audit as exactly one home's
-    /// mass of material that the ground never gave up.
+    /// **What replaced the measured violation.** `grow()` made buildings out of nothing; a test
+    /// used to pin that as a number, and this is the same scenario through the task system, where
+    /// the audit no longer reports material that was never dug.
     ///
-    /// Round 6's Q45 answered (a) — growth happens because citizens acquire material and build,
-    /// through the same task system as everything else — so this test is written to **invert**
-    /// when `grow()` pays for what it builds: the assertion becomes `conserves()`. It is not
-    /// ignored, because an ignored test is a defect nobody re-reads; it is explicit, so that the
-    /// change that fixes it fails here first, naming the number, instead of passing quietly.
+    /// The whole chain in one place: demand posts *work*, a citizen takes it, the work only
+    /// advances while they are standing on the site, and completing it draws the plan and raises
+    /// the structure with its lineage. Every stated property has an assertion, so "growth is work
+    /// now" is a claim a reader can check rather than take.
     #[test]
-    fn growth_still_builds_out_of_nothing_and_the_audit_says_how_much() {
-        let mut world = small_city();
-        world.place_building(world.index(1, 3), BuildingKind::PowerPlant).expect("plant");
-        world.buildings[0].ready_tick = 0;
-        let near = world.index(1, 6);
-        world.set_zone(near, Zone::Residential);
+    fn growth_is_work_now_and_the_audit_balances() {
+        let mut world = worked_city();
+        // The plant and the first home are **built**, not placed: the audit at the end is the whole
+        // city's, so anything standing unpaid would (correctly) fail it. Paying for them is also a
+        // live exercise of the same path the site's work takes.
+        let plant = world.index(1, 3);
+        world
+            .build_with_material(plant, BuildingKind::PowerPlant)
+            .unwrap_or_else(|short| panic!("a power plant must be payable: {}", short.describe()));
+        let plant_index = world.tiles[plant as usize].building.expect("the plant");
+        world.buildings[plant_index as usize].ready_tick = 0;
         world.recompute_power();
-        for _ in 0..40 {
+
+        let housing = world.index(1, 6);
+        world
+            .build_with_material(housing, BuildingKind::Home)
+            .unwrap_or_else(|short| panic!("a home must be payable: {}", short.describe()));
+        let home_index = world.tiles[housing as usize].building.expect("the home");
+        world.buildings[home_index as usize].ready_tick = 0;
+        for _ in 0..4 {
             world.clock.tick += 1;
-            world.recompute_demand();
-            world.grow();
+            world.assign_jobs();
         }
+        assert!(!world.citizens.is_empty(), "the home has residents to do the work");
+
+        // A zoned, powered, connected tile. The demand posts **work**, and posts no building.
+        let site = world.index(1, 8);
+        world.set_zone(site, Zone::Residential);
+        world.recompute_power();
+        world.recompute_demand();
+        world.post_demand_tasks();
+        let task = world
+            .open_task_at(site)
+            .unwrap_or_else(|| {
+                panic!(
+                    "no work on the site: demand {}, powered {}, zone {:?}, road access {}, starved {:?}",
+                    world.demand.residential,
+                    world.tiles[site as usize].powered,
+                    world.tiles[site as usize].zone,
+                    world.has_road_access(site),
+                    world.starved()
+                )
+            })
+            .clone();
+        assert_eq!(task.verb, sim_task::Verb::Build);
+        assert_eq!(task.kind, BuildingKind::Home);
+        assert!(!task.is_claimed(), "nobody is on the work until a citizen takes it");
         assert!(
-            world.tiles[near as usize].building.is_some(),
-            "the growth this test measures has to actually happen"
+            world.tiles[site as usize].building.is_none(),
+            "posting work must not raise the building — that is the whole point"
+        );
+        assert_eq!(
+            task.lineage_total(),
+            material_ledger::structure_mass_g("home", 1).expect("declared"),
+            "and the material it will take is planned before anyone is asked to work"
+        );
+
+        // A citizen takes it, and walks. The counter must not move while they are elsewhere.
+        world.claim_tasks();
+        let worker = world
+            .tasks
+            .iter()
+            .find(|t| t.id == task.id)
+            .and_then(|t| t.claimed_by)
+            .expect("an idle resident takes work the city owes itself");
+        let before = world.tasks[0].work_remaining;
+        world.work_tasks();
+        assert_eq!(
+            world.tasks[0].work_remaining, before,
+            "work nobody is standing on does not advance"
+        );
+
+        // Now stand them on the site, and work it out. This is the atomic, verifiable part: the
+        // counter only turns while they are there.
+        let index = world.citizens.iter().position(|c| c.id == worker).expect("the worker");
+        world.citizens[index].state = CitizenState::AtWork;
+        world.citizens[index].path = vec![site];
+        world.citizens[index].path_cursor = 0;
+        for _ in 0..before.max(1) {
+            world.work_tasks();
+        }
+        assert!(world.tasks.is_empty(), "the work finished and retired itself");
+        assert!(
+            world.tiles[site as usize].building.is_some(),
+            "and the structure stands, because the work was done on it"
+        );
+        let built = &world.buildings[world.tiles[site as usize].building.unwrap() as usize];
+        assert!(
+            built.lineage_g() == built.mass_g().expect("declared"),
+            "its material came out of named tiles, to the gram"
         );
 
         let audit = world.mass_audit();
-        assert_eq!(audit.extracted_g, 0, "nothing was mined to build it");
-        let grown = material_ledger::structure_mass_g("home", 1).expect("declared");
-        let placed = material_ledger::structure_mass_g("power plant", 1).expect("declared");
-        assert_eq!(
-            audit.standing_g,
-            grown + placed,
-            "one grown home, plus the power plant the test placed itself"
-        );
         assert!(
-            !audit.conserves(),
-            "while grow() creates material, the audit must say so — when it pays, invert this"
+            audit.conserves(),
+            "the city is made of what it dug, which is what grow() could never say"
         );
-        // The finding a player would read, and the number Q45 exists to remove.
-        let findings = audit.findings();
-        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(audit.loose_g() >= 0);
+    }
+
+    /// A refusal to build is a **case with a number**, not a silence: on a world with no ceramic
+    /// at all, no work is posted, and the shortage is recorded in the shape the case engine reads.
+    #[test]
+    fn a_starved_world_posts_no_work_and_records_the_shortage() {
+        let mut world = small_city();
+        world.place_building(world.index(1, 3), BuildingKind::PowerPlant).expect("plant");
+        world.buildings[0].ready_tick = 0;
+        let site = world.index(1, 6);
+        world.set_zone(site, Zone::Residential);
+        world.recompute_power();
+        world.recompute_demand();
+        world.post_demand_tasks();
+
         assert!(
-            findings[0].contains(&audit.standing_g.to_string()),
-            "the finding names the whole amount: {findings:?}"
+            world.open_task_at(site).is_none(),
+            "the world cannot supply a ceramic home, so no work is posted"
         );
+        let starved = world.starved();
+        assert_eq!(starved.len(), 1, "one reading for the district, not one per tick");
+        assert!(starved[0].family.contains("ceramic"), "{}", starved[0].objective());
+        assert_eq!(starved[0].found_g, 0, "the world holds none of it");
+        assert!(starved[0].missing_g() > 0);
+        assert!(starved[0].objective().contains("short"), "{}", starved[0].objective());
+
+        // Filing twice is still one reading: a refusal repeated every tick must not become a
+        // thousand cases.
+        world.post_demand_tasks();
+        assert_eq!(world.starved().len(), 1);
+        assert_eq!(world.starved()[0].count, 2, "and the count is real, not decorative");
     }
 
     #[test]
