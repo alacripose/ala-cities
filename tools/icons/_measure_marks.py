@@ -203,8 +203,22 @@ def report(icon_id, glyph):
           f"({100 * ink / max(1, box[3] - box[1] + 1):.0f}% of its height)")
 
 
+#: Candidate references for `tool-power` (C8 Q198). The mark that icon declares is a
+#: power *button* — a ring and a stem — while the game means power plants and lines
+#: by `Tool::Power`, and the button reads as the switched-on state that same icon's
+#: declaration forbids. These are the other energy marks the corpus holds, measured
+#: so the choice is made against numbers rather than names.
+CANDIDATES_FOR_POWER = (
+    ("tool-power?", "content/bolt"),
+    ("tool-power?", "action/offline_bolt"),
+)
+
+
 def main():
     for icon_id, glyph in MARKS:
+        report(icon_id, glyph)
+    print("\n--- candidates for tool-power's object (Q198)")
+    for icon_id, glyph in CANDIDATES_FOR_POWER:
         report(icon_id, glyph)
     print("\nRead as evidence for the declared endpoints (a188), not as a gate.")
 
