@@ -1187,18 +1187,44 @@ when its pose ramped** and measures 0.502 with the pose held.
 
 So the fork is between three answers, and only one of them is free:
 
-1. **The road ramps its pose after all** (flat at md1, oblique at iOS 6). Measured to
-   sit inside its envelope at every λ, with the anchor still its reference's own
-   number. *This is what the code did before a205, so it is a one-line change — and it
-   makes the pose a function of λ for the one family whose pose the person asked
-   about.*
+1. **The road ramps its pose after all** (flat at md1, oblique at iOS 6). *This is what
+   the code did before a205, so it is a one-line change — and it makes the pose a
+   function of λ for the one family whose pose the person asked about.*
+
+   > **Correction (same turn, and it changed an answer).** The question offered this
+   > option as "measured to sit inside its envelope at every λ". That was **wrong**:
+   > the 0.364 it rested on was taken with the accent still in the reading, and under
+   > the honest one the flat object measures **0.424** against a 0.38 ceiling. a206
+   > was answered on my number, so the number is corrected here rather than the
+   > decision quietly re-derived — and what the ramp actually bought is measurable:
+   > 0.502 → **0.424**, a real 0.08, still short by 0.044.
+
+   **What closed it was the authored curb, and the probe says so**
+   (`_smoke_road_width.py`, flat pose, λ = 0):
+
+   | lanes | lane width | curb | fill | judged |
+   |---|---|---|---|---|
+   | 2 | 0.14 | 0.06 | 0.424 | OUT |
+   | 2 | 0.14 | 0.00 | **0.373** | in |
+   | 2 | 0.10 | 0.06 | 0.402 | OUT |
+   | 2 | 0.06 | 0.06 | 0.313 | in |
+   | 1 | 0.08 | 0.00 | 0.144 | OUT |
+
+   The lane width is **measured** from the reference (2 lanes at 0.14 of the span, its
+   21 px carriageway in a 76 px box); the curb was **authored**. Where the two
+   disagree the authored number yields, so the curb is gone (`curb_width` is now a
+   fixed zero with the refusal in its source) and the reference's own proportion
+   stands. The margin is thin and recorded as thin: 0.373 against a 0.380 ceiling.
 2. **The road holds its pose and its md1 anchor comes from its own object** (0.502
    measured), with the divergence recorded: for this family the reference supplies the
    object's reading, pose and lane proportions, not its fill, because the reference is
    a flat map symbol and the object is a tilted tile. Cost, stated plainly: the fill
    gate for this family then judges that the object is *stable along λ* rather than
    that it matches its reference — a weaker claim, recorded as weaker.
-3. **The road holds its pose and the carriageway is declared fragmented** — full-width
+3. *(rejected at a206 — the person took option 1; this is kept because it remains the
+   only way to get a **held** tilt and the reference's own anchor at the same time, and
+   because its arithmetic is stated as prediction rather than measurement.)*
+   **The road holds its pose and the carriageway is declared fragmented** — full-width
    gaps cut into it, open to the background, the way the reference's own six
    components are separated. Arithmetic: cutting interior gaps leaves the ink's box
    unchanged (the end segments set it) while removing ink, so fill scales with the
@@ -1206,6 +1232,27 @@ So the fork is between three answers, and only one of them is free:
    be measured before being built. Cost: the body is no longer one piece at the md1
    end, so a184/a202's one-piece rule becomes "no *undeclared* component" — which is
    what a183 already says, but it is an amendment and would be recorded as one.
+
+---
+
+## 8.14 Both built families are in, at every λ
+
+After a206 and the curb's refusal, the smoke reads:
+
+| family | λ | fill | envelope | pieces | voids |
+|---|---|---|---|---|---|
+| gear | 0.00 → 1.00 | 0.469 → 0.610 | 0.37–0.76 → 0.40–0.82 | 1 at every λ | 1 (its bore) |
+| road | 0.00 → 1.00 | 0.373 → 0.675 | 0.18–0.38 → 0.44–0.91 | 1 at every λ | 0 |
+
+**One piece at every λ for both families** (a184/a202), the gear's bore the only
+enclosed void (a183), float refused everywhere, and `families.check()` clean: 6
+families, 44 parameters, 12 measured endpoints, no problems.
+
+**Also recorded:** the road's iOS 6 anchor moved 0.605 → **0.675** because the pose it
+was measured under changed (held 45°/38° → ramped 24°/38°), which is the response
+curve doing its job — the endpoint is a *reading of this family's own object*, and it
+moves when the object moves. An authored endpoint cannot do that, which is the
+argument a204 made for measuring it as soon as the geometry exists.
 
 ---
 

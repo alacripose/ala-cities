@@ -131,19 +131,24 @@ FAMILIES = {
         "fill_response": {
             "md1": 0.2825,
             "md1_source": "measured: maps/add_road's own ink over its own box",
-            "ios6": 0.605,
+            "ios6": 0.675,
             "ios6_source": "measured: this family's own λ = 1 smoke render under the "
-                           "exclusion reading (0.6050, four lanes at 24° heading and "
-                           "38° pitch)",
+                           "exclusion reading (0.6750, four lanes at 24° heading and "
+                           "38° pitch, no curb)",
         },
         "pose": {
-            "response": "hold",
+            "response": "ramp",
             "parameters": ("heading", "pitch"),
-            "source": "a205: a road tile is seen obliquely, the way Cities: Skylines "
-                      "draws its UI tiles, so the pose is the object's own rather "
-                      "than a function of λ — the md1 sample keeps its reference's "
-                      "fragmentation and fill while taking its pose from that idiom, "
-                      "and both pose parameters carry equal ends",
+            "source": "a206: the pose follows the ladder after all. a205 asked the "
+                      "right question — a carried pose is an object's own rather "
+                      "than the style language's — and the measurement answered it "
+                      "the other way: holding the tilt at the md1 end puts a side "
+                      "of the tile in front of the camera that the reference mark "
+                      "does not have, and a tilted slab's fill cannot reach its "
+                      "measured 0.2825 at any lane width (0.502 at 2 lanes, 0.424 at "
+                      "one lane of 0.10). So this family ramps: a flat drawn mark "
+                      "at md1, a tilted tile at iOS 6, and the reference's own "
+                      "anchor keeps gating every λ",
         },
         "parameters": (
             {"name": "lanes", "type": "count", "md1": 2, "ios6": 4,
@@ -164,11 +169,17 @@ FAMILIES = {
              "unit": "of the ribbon depth",
              "source": "authored: raised rather than cut, because a cut dash is an "
                        "enclosed void and would be a sliver (a196)"},
-            {"name": "curb_width", "type": "continuous", "md1": 0.06, "ios6": 0.0,
+            {"name": "curb_width", "type": "fixed", "md1": 0.0, "ios6": 0.0,
              "unit": "fraction of the ribbon span",
-             "source": "authored: 0 is none. Kept small because a wide verge makes the "
-                       "object's own box a property of its edges rather than of the "
-                       "carriageway, which is what the envelope measures"},
+             "source": "measured in effect, and refused by the envelope: this family "
+                       "has no curb. It was authored at 0.06 at the md1 end, and the "
+                       "reference's own lane proportion (2 lanes at 0.14 of the "
+                       "span, read off the mark's 21 px carriageway in a 76 px box) "
+                       "plus any curb at all exceeds the fill range that same mark "
+                       "measures — 0.424 with the curb against a 0.38 ceiling, "
+                       "0.373 without, measured. Where a measurement and an authored "
+                       "number disagree, the authored number yields, so the curb goes "
+                       "rather than the lane width the reference supplies"},
             {"name": "junction_arms", "type": "count", "md1": 0, "ios6": 4,
              "unit": "whole arms", "source": "authored"},
             {"name": "arm_length", "type": "continuous", "md1": 0.0, "ios6": 0.72,
@@ -180,19 +191,19 @@ FAMILIES = {
                        "and an arm measured against the span overflowed the frame"},
             {"name": "corner_rounding", "type": "continuous", "md1": 0.0, "ios6": 0.14,
              "unit": "fraction of the ribbon span", "source": "authored"},
-            {"name": "heading", "type": "continuous", "md1": 45.0, "ios6": 45.0,
+            {"name": "heading", "type": "continuous", "md1": 45.0, "ios6": 24.0,
              "unit": "degrees in the icon's own plane",
              "source": "measured: the reference mark is diagonal (its box is 76x76 "
                        "while its ink is 17.7 % of it, so it cannot be an "
-                       "axis-aligned ribbon), which is also why its fill is 0.28. Held "
-                       "at every λ by the pose declaration below (a205)"},
-            {"name": "pitch", "type": "continuous", "md1": 38.0, "ios6": 38.0,
+                       "axis-aligned ribbon), which is also why its fill is 0.28"},
+            {"name": "pitch", "type": "continuous", "md1": 0.0, "ios6": 38.0,
              "unit": "degrees about the carriageway's length",
-             "source": "authored (a203/a205): the fake-isometric pose the person asked "
-                       "for, which is what reveals the carriageway's top face and "
-                       "its side. Held at every λ rather than ramped, because that "
-                       "is how the object is drawn rather than a property of the "
-                       "style language — so the md1 sample is an oblique md1 object"},
+             "source": "authored (a203/a206): the fake-isometric pose the person "
+                       "asked for, which is what reveals the carriageway's top face "
+                       "and its side — flat at the md1 end and tilted at the iOS 6 "
+                       "end, because the tilt is what puts a side of the tile in "
+                       "front of the camera and a tilted slab cannot reach its "
+                       "reference's measured fill at any lane width"},
         ),
     },
     "bolt": {
