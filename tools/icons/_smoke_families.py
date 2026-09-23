@@ -39,27 +39,11 @@ SMOKE = (
 )
 
 
-def family_objects(bpy, family, vector, material, name):
-    """The objects one family's body is made of, at one point on the ladder.
-
-    Most families are a single object; the bin's own reference measures its lid as a
-    separate component with a gap, so that family declares **two** parts and returns
-    both. Nothing downstream reads a part count out of this list as a *claim*: the
-    count that gets judged is the one the family declares.
-    """
-    if family == "gear":
-        return [shapes.gear_body(bpy, name, material, vector)]
-    if family == "road":
-        return [shapes.road_body(bpy, name, material, vector)]
-    if family == "bolt":
-        return [shapes.bolt_body(bpy, name, material, vector)]
-    if family == "lens":
-        return [shapes.lens_body(bpy, name, material, vector)]
-    if family == "bin":
-        return list(shapes.bin_body(bpy, name, material, vector))
-    if family == "plaque":
-        return [shapes.plaque_body(bpy, name, material, vector)]
-    raise ValueError(f"`{family}` has no geometry entry point")
+#: The smoke test builds through `shapes.build_family` — the same entry point the
+#: review pipeline uses — rather than through geometry calls of its own. Two callers
+#: deriving the accent's slot separately is exactly how the harness passed while the
+#: pipeline's first family run refused the overlap that its own stale bounds had
+#: created.
 
 
 def material(bpy, family, hue, finish=None):
@@ -136,9 +120,12 @@ def gate_self_test():
 def main():
     scene = rig.configure(bpy, device="GPU")
     # One body material and one for the accent, so the renders are readable rather
-    # than flat: the smoke test is about silhouette and topology, not surface.
-    body = material(bpy, "metal", "natural")
-    accent = material(bpy, "glass", "natural")
+    # than flat: the smoke test is about silhouette and topology, not surface. They are
+    # handed to `shapes.build_family` under the roles the pipeline's own materials use.
+    materials = {
+        "silhouette": material(bpy, "metal", "natural"),
+        "accent": material(bpy, "glass", "natural"),
+    }
 
     print(f"\n{'family':8} {'lambda':>6}  {'cover':>6} {'fill':>6} judged          "
           f"{'envelope':14} {'parts':>5} {'voids':>5}  "
@@ -150,42 +137,25 @@ def main():
                     if parameter["type"] == "count"]
         for lam in SAMPLES:
             vector = families.vector(family, lam)
-            built = family_objects(bpy, family, vector, body, f"smoke {family} {lam}")
-            obj = built[0]
-            # The accent's slot is **derived from the body's own bounds** (a200) and
-            # sits clear by the declared clearance. Overlapping it into the body is
-            # what produced the only sliver this smoke test found — a one-pixel void
-            # at (68, 76), in the corner where the two touched — the same defect class
-            # the committed review set carries (16 voids in one candidate), now with
-            # a cause on the record and a rule that removes it.
-            # World bounds, not local ones: a posed body (a203) is turned after it is
-            # welded, and a slot derived from its unposed box would sit inside it.
-            # (The same is true of the exclusion disc below, which is why the slot is
-            # read back in world space rather than from the body's local origin.)
-            corners = [part.matrix_world @ mathutils.Vector(corner)
-                       for part in built for corner in part.bound_box]
-            bounds = (min(c[0] for c in corners), min(c[2] for c in corners),
-                      max(c[0] for c in corners), max(c[2] for c in corners))
+            built = shapes.build_family(bpy, family, lam, materials, f"smoke {family} {lam}")
+            objects = built["parts"] + [built["accent"]]
+            bounds = built["bounds"]
             # The span budget (a200) is a claim about the **frame**, not a hope: an
             # object plus its accent piece has to fit the square the camera sees, and
             # a posed family can grow without any single parameter looking wrong. The
             # run says so rather than leaving it to be noticed in a render.
             frame_half = families.COMPOSITION["frame_span"] * 0.5
             reach = max(abs(bounds[0]), abs(bounds[2]), abs(bounds[1]), abs(bounds[3]))
-            slot_x, slot_z = families.accent_slot(bounds)
-            accent_edge = max(abs(slot_x), abs(slot_z)) + \
-                families.COMPOSITION["accent_radius"]
+            slot_x, slot_z = built["slot"]
+            accent_edge = max(abs(slot_x), abs(slot_z)) + built["radius"]
             if reach > frame_half or accent_edge > frame_half:
                 print(f"    ! frame half {frame_half:.2f}: body reaches {reach:.2f}, "
                       f"accent edge {accent_edge:.2f}")
-            accent_obj = shapes.cylinder(
-                bpy, f"smoke accent {lam}", accent, slot_x, slot_z,
-                families.COMPOSITION["accent_radius"], depth=0.44, y=0.30)
             # The accent's pixels are known rather than guessed: the camera is
             # orthographic, so its disc maps to a raster disc. A run prints its area
             # beside the accent's own so a wrong coordinate reads as a broken exclusion
             # instead of as a cleaner render.
-            radius = families.COMPOSITION["accent_radius"]
+            radius = built["radius"]
             disc = generate.raster_disc(slot_x, slot_z, radius, generate.DECISION_PX)
             scale = generate.DECISION_PX / rig.ORTHO_SCALE
             path = os.path.join(generate.REVIEW, f"_smoke.{family}.{lam}.render.png")
@@ -197,7 +167,7 @@ def main():
             # reimplemented: a smoke test that judges by its own rules proves the
             # harness works, not the gate.
             boxes = []
-            for part in built:
+            for part in objects:
                 corners = [part.matrix_world @ mathutils.Vector(corner)
                            for corner in part.bound_box]
                 boxes.append((part.name,
@@ -225,7 +195,7 @@ def main():
                   f"{topo.get('pieces'):5} {topo.get('holes'):5}  {printed:32} "
                   f"excl {found['excluded_px']:5} of ~{3.14159 * (radius * scale) ** 2:6.0f}  "
                   f"{counter}={vector[counter]:.2f} -> {counts}")
-            for item in built + [accent_obj]:
+            for item in objects:
                 bpy.data.objects.remove(item, do_unlink=True)
     gate_self_test()
     print("\nThe rendered frame is measured with the pipeline's own functions, so a\n"

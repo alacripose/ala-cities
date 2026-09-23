@@ -35,6 +35,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import bpy  # noqa: E402  (only available inside Blender)
+import mathutils  # noqa: E402
 
 import families  # noqa: E402
 import openpbr  # noqa: E402
@@ -619,7 +620,20 @@ def generate(device: str, tier: str, limit=None):
             gen_id = generation["generation"]
             generation_entries[gen_id] = generation
             materials, material_records = build_materials(bpy, generation)
-            objects = shapes.build(bpy, generation, materials)
+            # A family candidate is built from its declaration — the object's geometry
+            # and its derived accent piece (a184/a200) — while anything else still
+            # goes through the authored-parts path.
+            built = None
+            accent_disc = None
+            if generation.get("family"):
+                built = shapes.build_family(
+                    bpy, generation["family"], generation["lambda"], materials,
+                    f"{entry['id']} {gen_id}",
+                )
+                objects = built["parts"] + [built["accent"]]
+                accent_disc = raster_disc(*built["slot"], built["radius"], DECISION_PX)
+            else:
+                objects = shapes.build(bpy, generation, materials)
 
             pixels = render_to(
                 bpy, scene, os.path.join(REVIEW, f"{entry['id']}.{gen_id}.render.png")
@@ -628,10 +642,21 @@ def generate(device: str, tier: str, limit=None):
 
             sizes = []
             decision_small = None
+            judged_small = None
+            judged_discs = ()
             for px in (DECISION_PX, RECOGNITION_PX, CONTEXT_PX):
                 small = rig.downsample(pixels, rig.RENDER_PX, px)
+                # What is *judged* is the body: the reference marks are bare objects,
+                # so a reading that averaged the accent in would not be the same
+                # quantity (a202/a204). The exclusion happens inside the measurement,
+                # so the run also reports how many pixels it removed -- an exclusion
+                # that landed somewhere else would otherwise read as a cleaner render.
+                discs = ([] if accent_disc is None
+                         else [raster_disc(*built["slot"], built["radius"], px)])
                 if px == DECISION_PX:
                     decision_small = small
+                    judged_small = small
+                    judged_discs = discs
                 save_png(
                     bpy,
                     os.path.join(REVIEW, f"{entry['id']}.{gen_id}.{px}.png"),
@@ -645,12 +670,13 @@ def generate(device: str, tier: str, limit=None):
                 write_raw(
                     os.path.join(REVIEW, f"{entry['id']}.{gen_id}.{px}.rgba"), small
                 )
-                measurements = measure(small, px)
+                measurements = measure(small, px, exclude=discs)
                 if px == DECISION_PX:
                     # Counted at the decision size only: it is the size the corpus
                     # anchors were measured at, and topology at 24 px is a property
                     # of the downsampler rather than of the mark.
-                    measurements.update(topography(small, px))
+                    measurements.update(topography(small, px, exclude=discs,
+                                                   with_sites=True))
                 sizes.append({"px": px, "measurements": measurements})
 
             swatch_measurements = {}
@@ -660,10 +686,40 @@ def generate(device: str, tier: str, limit=None):
                     bpy, scene, materials[role], key, swatches, counter
                 )
 
+            # The geometric validity gate's inputs (a183-a204), measured here because
+            # they are measurements: the rail between the built objects, the sliver
+            # sites, and the fill the gate judges at this λ.
+            geometry = None
+            if built is not None:
+                decision = next(s for s in sizes if s["px"] == DECISION_PX)["measurements"]
+                boxes = []
+                for part in objects:
+                    corners = [part.matrix_world @ mathutils.Vector(corner)
+                               for corner in part.bound_box]
+                    boxes.append((part.name, (
+                        min(c[0] for c in corners), min(c[1] for c in corners),
+                        min(c[2] for c in corners), max(c[0] for c in corners),
+                        max(c[1] for c in corners), max(c[2] for c in corners))))
+                geometry = {
+                    "family": generation["family"],
+                    "lam": generation["lambda"],
+                    "fill": decision["fill"],
+                    "topography": decision,
+                    "sites": decision.get("piece_sites") or [],
+                    "void_sites": void_sites(judged_small, DECISION_PX,
+                                             exclude=judged_discs),
+                    "parts": interference(boxes),
+                    "excluded_px": decision.get("excluded_px", 0),
+                }
+
             record = {
                 "generation": gen_id,
                 "generation_label": generation["generation_label"],
-                "part_count": len(generation["parts"]) + (4 if entry.get("framed") else 0),
+                # A family candidate's parts are the declaration's, plus the accent the
+                # object carries: the count is a reading of the declaration rather
+                # than of whatever the builder happened to leave in the scene.
+                "part_count": (built["declared_parts"] + 1 if built is not None
+                               else len(generation["parts"]) + (4 if entry.get("framed") else 0)),
                 "primary_role": primary_role(generation),
                 "generation_why": generation["generation_why"],
                 "brief": generation.get("brief", {}),
@@ -675,9 +731,26 @@ def generate(device: str, tier: str, limit=None):
                 # C3's two additions, measured against the declared mark at the
                 # decision size rather than at 24 px, because MD1's largest raster
                 # is 96 px and neither side should have to be resampled.
-                "silhouette": silhouette_check(bpy, entry, decision_small),
+                "silhouette": silhouette_check(
+                    bpy, entry, decision_small,
+                    # Compared at the span the object was actually built to: the budget
+                    # sets the body span (a200) and the frame fit may shrink it further,
+                    # so a comparison at either hard-coded number would be measuring a
+                    # scale rather than a shape.
+                    span=((families.COMPOSITION["body_span"] * built["fit"]["scale"])
+                          if built is not None else None),
+                ),
                 "composition": composition_check(entry, generation),
-                "authored_under": "c3-composition",
+                "authored_under": ("family-declaration" if built is not None
+                                  else "c3-composition"),
+                "slots": entry.get("slots") or len(shapes.generations_of(entry)),
+                "lambda": generation.get("lambda"),
+                "family": generation.get("family"),
+                "surface": generation.get("surface"),
+                # The fit to the frame is measured per candidate, not assumed from a
+                # table of inflation factors (a200).
+                "frame_fit": built["fit"] if built is not None else None,
+                "geometry": geometry,
                 "promoted": None,
             }
             record["checks"] = judge_generation(entry, record)
@@ -767,7 +840,7 @@ def alpha_occupancy(pixels, px: int, alpha_threshold: float = 0.5, grid_side: in
     return [cell / area for cell in cells]
 
 
-def silhouette_check(bpy, entry, decision_pixels) -> dict:
+def silhouette_check(bpy, entry, decision_pixels, span=None) -> dict:
     """Does the render actually carry the silhouette the brief declares?
 
     Containment, not equality: every cell the declared mark covers must be covered
@@ -798,7 +871,10 @@ def silhouette_check(bpy, entry, decision_pixels) -> dict:
             "judged": False,
             "why": f"`{entry['id']}` declares no silhouette on disk; nothing to compare",
         }
-    mark = shapes.glyph_mask(bpy, glyph)
+    # The span the mark is fitted to before it is compared (a200): a family's object
+    # is built to the composition budget, not to the traced marks' old 1.72, and a
+    # comparison at the old span would measure that size change as a shape failure.
+    mark = shapes.glyph_mask(bpy, glyph, span=span or shapes.GLYPH_SPAN)
     render_cells = alpha_occupancy(decision_pixels, DECISION_PX)
     covered, missing = 0, 0
     for index, cell in enumerate(mark["occupancy"]):
@@ -895,9 +971,22 @@ def composition_check(entry, generation) -> dict:
     rather than counting the parts, because a candidate with six parts in three
     colours is a composition and a candidate with three parts in two is not.
     """
-    roles = sorted({part.get("role", "ink") for part in generation.get("parts", [])})
+    family = generation.get("family")
+    if family:
+        # A family candidate is its object plus the accent it carries (a200). The
+        # object's own detail — teeth, lanes, ridges, rulings — is **welded into the
+        # body** (a184), so it wears the body's material: a welded feature cannot keep
+        # a material of its own, and a feature left separate to keep one would be the
+        # interpenetration the same decision refuses. The three declared colours are
+        # still declared and still distinct; two of them are drawn, and that is
+        # recorded here rather than raised as a refusal of the object the person asked
+        # for.
+        roles = ["silhouette", "accent"]
+    else:
+        roles = sorted({part.get("role", "ink") for part in generation.get("parts", [])})
     materials = generation.get("materials", {}) or {}
-    missing = [role for role in shapes.COMPOSITION_ROLES if role not in roles]
+    missing = [role for role in shapes.COMPOSITION_ROLES
+               if role not in roles and not family]
     colours = {}
     for role in shapes.COMPOSITION_ROLES:
         parameters = materials.get(role)
@@ -918,6 +1007,13 @@ def composition_check(entry, generation) -> dict:
     if accidental:
         notes.append(f"undeclared roles in the composition: {', '.join(accidental)}")
     return {"roles": roles, "missing_roles": missing, "distinct_colours": distinct,
+            "declared_roles": list(shapes.COMPOSITION_ROLES),
+            "roles_drawn": list(roles),
+            "welded_detail_note": (
+                "the object's detail is welded into the body (a184), so it wears the "
+                f"body's material and the candidate draws {len(roles)} of "
+                f"{len(shapes.COMPOSITION_ROLES)} declared colours: recorded, not judged"
+            ) if family else None,
             "colours": {role: list(value) for role, value in colours.items()},
             "notes": notes}
 
@@ -931,6 +1027,10 @@ def primary_role(generation) -> str:
     the material checks compare against this role's swatch, so returning the wrong
     one would measure a material the candidate is not made of.
     """
+    if generation.get("family"):
+        # The object carries the silhouette and the accent is the accent: the parts
+        # list is empty because the geometry lives in the family declaration.
+        return "silhouette"
     present = {part.get("role", "ink") for part in generation.get("parts", [])}
     for role in shapes.COMPOSITION_ROLES:
         if role in present:
@@ -1314,10 +1414,20 @@ def candidate_gate_notes(entry, generation, all_generations) -> list:
             notes.append(f"surface `{entry['locates']}` is not declared by the pilot registry")
         if entry.get("identity") in STATE_IDENTITY_TOKENS:
             notes.append(f"static identity `{entry['identity']}` is a live state token")
-        if generation.get("part_count", 0) < MIN_SURFACE_PARTS:
-            notes.append(f"candidate has {generation.get('part_count', 0)} authored parts, below the {MIN_SURFACE_PARTS}-part floor")
-        if len(all_generations) != 6:
-            notes.append("the candidate set must contain exactly six authored concepts")
+        # The floors are the declaration's, not a constant's: a family's object is
+        # made of the parts its family declares plus the accent it carries (a184/a200),
+        # so "below the part floor" means below what that object is declared to be.
+        family = families.ICON_FAMILY.get(entry["id"])
+        floor = (families.declaration(family)["declared_parts"]["count"] + 1
+                 if family else MIN_SURFACE_PARTS)
+        if generation.get("part_count", 0) < floor:
+            notes.append(f"candidate has {generation.get('part_count', 0)} authored parts, below the {floor}-part floor")
+        expected = len(families.SAMPLES) if family else 6
+        if len(all_generations) != expected:
+            notes.append(
+                f"the candidate set must contain exactly {expected} authored "
+                + ("points on the ladder" if family else "concepts")
+            )
         brief = generation.get("brief", {})
         for field in ("candidate_role", "semantic_cues", "material_family", "motion", "fallback", "acceptance"):
             if not brief.get(field):
@@ -1346,10 +1456,21 @@ def _separation_notes(generations) -> list:
     fill_span, gloss_span = _ladder_span()
     floor = (fill_span * LADDER_SEPARATION_FRACTION, gloss_span * LADDER_SEPARATION_FRACTION)
     measured = []
+    anchors = 0
     for generation in generations:
         character = (generation.get("checks") or {}).get("character")
-        if character:
-            measured.append((generation["generation"], character["measured"]))
+        if not character:
+            continue
+        # The rule guards against two *concepts* being the same reading. On a ladder a
+        # family's intermediate samples are interpolations by declaration -- two
+        # adjacent points being close is the whole point of sampling a continuum
+        # (a194) -- so what must stay apart are the named anchors, and the
+        # intermediates are excluded and counted rather than silently dropped.
+        if generation.get("family"):
+            if generation.get("lambda") not in families.LANGUAGE_AT:
+                continue
+            anchors += 1
+        measured.append((generation["generation"], character["measured"]))
     notes = []
     for index, (name_a, a) in enumerate(measured):
         for name_b, b in measured[index + 1:]:
@@ -1536,11 +1657,23 @@ def build_record(tier: str) -> dict:
             "not_mapped": openpbr.UNSUPPORTED,
         },
         "rig": rig.rig_record(),
-        "generations": shapes.TREATMENTS,
+        "generations": shapes.FAMILY_TREATMENTS,
         "candidate_model": (
-            "six total: three emphases — MD1-led, TouchWiz-led and iOS 6-led — each in "
-            "two constructions, so the family spread is a choice rather than a note"
+            "five total: one object per sampled point on the ladder (λ = 0, 0.25, 0.5, "
+            "0.75, 1). The three anchors are the named languages and the two between "
+            "them are interpolations, which a180 makes legitimate objects rather than "
+            "gaps. The retired six-slot grid (three emphases x two constructions) is "
+            "recorded beside this as history."
         ),
+        "retired_candidate_model": {
+            "generations": shapes.TREATMENTS,
+            "retired_because": (
+                "a191: the plateau|stack construction axis is a discrete choice, and a "
+                "construction that follows the ladder is not a choice; a194 replaced the "
+                "grid with five samples"
+            ),
+        },
+        "concept_set_why": shapes.CONCEPT_SET_WHY,
         "composition": {
             "roles": list(shapes.COMPOSITION_ROLES),
             "tiers": shapes.TIERS,
@@ -1783,8 +1916,9 @@ def build_review(rendered) -> tuple:
             for name in ("Desk", "Panel", "PanelRaised", "Ink", "Warning", "Nature", "TextBody")
         },
         "host_fills": {host: list(palette.linear(host)) for host in palette.HOSTS},
-        "generations": shapes.TREATMENTS,
-        "candidate_count": 6,
+        "generations": shapes.FAMILY_TREATMENTS,
+        "candidate_count": len(shapes.FAMILY_TREATMENTS),
+        "concept_set_why": shapes.CONCEPT_SET_WHY,
         "awaiting_decision": awaiting,
         "decided": decided,
         "blender": {

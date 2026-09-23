@@ -17,7 +17,17 @@ from palette import rgba
 #: check's frame and the traced outline both changed, so every render in the review
 #: set is a different artifact and the six promotions taken in C7 are void by the
 #: standard's own rule (§8) — re-decided in the picker, by a person.
-CONCEPT_SET = "pilot-six-c8-v1"
+CONCEPT_SET = "family-ladder-c8-v2"
+#: Why the set moved: the six-slot grid (three emphases x two constructions) is
+#: superseded. a191 removed the construction axis and a194 put the review set on five
+#: sampled points of the ladder instead, so the candidates a person was shown are
+#: different objects. A concept-set change reopens old targets by the standard's own
+#: rule — the append-only decision log stays as history, and only records from this set
+#: may promote an asset.
+CONCEPT_SET_WHY = (
+    "the reviewed objects changed: five points on the ladder at λ = 0, 0.25, 0.5, "
+    "0.75, 1 instead of three emphases in two constructions (a191/a194)"
+)
 CATALOGUE_STAGE = "pilot-six"
 
 #: The rule that settles an icon's form, settled in C3 and recorded in
@@ -486,7 +496,12 @@ MD1_SIDE_PX = MD1_SIZE_DP * 2
 
 SILHOUETTES = {
     "tool-road": {"glyph": "maps/add_road", "mode": "md1-adapted"},
-    "tool-power": {"glyph": "action/power_settings_new", "mode": "md1-adapted"},
+    # Re-pointed by a198, and this is the other half of that decision: the *family's*
+    # reference was moved to `content/bolt` while the icon's declared silhouette still
+    # named the power button, so the containment check compared a bolt against a button
+    # and read 0.13. One decision, one home: the mark an icon declares and the
+    # reference object its family is built from are the same thing.
+    "tool-power": {"glyph": "content/bolt", "mode": "md1-adapted"},
     "tool-inspect": {"glyph": "action/search", "mode": "md1-adapted"},
     "tool-demolish": {"glyph": "action/delete", "mode": "md1-adapted"},
     "ticket": {"glyph": "notification/confirmation_number", "mode": "md1-adapted"},
@@ -832,8 +847,8 @@ def glyph_outline(bpy, glyph: str, minimum_cells: int = 24) -> dict:
         "enclosed_fraction": round(
             sum(len(component) for component in holes) / len(cells), 4
         ),
-        "placement": "own bounds, fitted to GLYPH_SPAN",
-        "span": GLYPH_SPAN,
+        "placement": "own bounds, fitted to the span it is compared at",
+        "span": span,
         "simplify_tolerance_px": 0.34,
         "grow_cells": OUTLINE_GROW_CELLS,
         "grow_why": (
@@ -964,19 +979,27 @@ def _apply_modifier(bpy, obj, modifier):
 _MASK_CACHE = {}
 
 
-def glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5) -> dict:
+def glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5,
+               span: float = GLYPH_SPAN) -> dict:
     """A glyph's mask record, measured once per run.
 
-    Cached because the check asks for the same mark six times per icon, and the
+    Cached because the check asks for the same mark several times per icon, and the
     measurement walks every pixel of a 96x96 raster in Python.
+
+    `span` is the world size the mark is fitted to. It is a parameter because the
+    **composition budget** (a200) deliberately builds objects smaller than the traced
+    marks' old 1.72 — so a check that placed the mark at the old span would compare a
+    mark to an object drawn at a different scale and read the difference as a failure
+    to be that shape. A family's candidate is compared at the span it was built in.
     """
-    key = (glyph, alpha_threshold)
+    key = (glyph, alpha_threshold, span)
     if key not in _MASK_CACHE:
-        _MASK_CACHE[key] = _glyph_mask(bpy, glyph, alpha_threshold)
+        _MASK_CACHE[key] = _glyph_mask(bpy, glyph, alpha_threshold, span)
     return _MASK_CACHE[key]
 
 
-def _glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5) -> dict:
+def _glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5,
+                span: float = GLYPH_SPAN) -> dict:
     """Read an MD1 mark as coverage, centroid and an occupancy grid.
 
     Inside Blender because nothing in this pipeline has a PNG decoder: the runtime
@@ -1014,7 +1037,7 @@ def _glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5) -> dict:
     grid = [0] * (grid_side * grid_side)
     placed = [0] * (grid_side * grid_side)
     outside = 0
-    to_frame = placed_frame(bounds)
+    to_frame = placed_frame(bounds, span=span)
     for column, y in covered_at:
         grid[min(grid_side - 1, y * grid_side // height) * grid_side
              + min(grid_side - 1, column * grid_side // width)] += 1
@@ -1029,7 +1052,7 @@ def _glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5) -> dict:
     cell_area = (width / grid_side) * (height / grid_side)
     # In the placed frame one mask pixel covers `scale` world units, and the frame is
     # ICON_FRAME_SPAN across, so a cell holds this many mask pixels.
-    scale = placement_scale(bounds)
+    scale = placement_scale(bounds, span=span)
     placed_cell_area = (ICON_FRAME_SPAN / (grid_side * scale)) ** 2
     return {
         "glyph": glyph,
@@ -1066,7 +1089,7 @@ def lead_families(tier: str) -> dict:
 
 
 def composition_materials(tier: str, hues: dict, accent_finish: str = "skeuomorph",
-                          body_finish: str = None) -> dict:
+                          body_finish: str = None, surfaces: dict = None) -> dict:
     """A candidate's three materials, from the tier, its hues and the matrix.
 
     Exactly three base colours, and the accent is one of them told apart by finish —
@@ -1093,6 +1116,11 @@ def composition_materials(tier: str, hues: dict, accent_finish: str = "skeuomorp
         parameters = {"base_color": rgba(palette.material_name(family, hue, level)),
                       "family": family}
         parameters.update(openpbr.family_surface(family, finish))
+        if surfaces is not None:
+            # The ladder's own surface (a180), already blended between two declared
+            # finishes. It replaces the per-emphasis numbers rather than merging with
+            # them, so there is exactly one home for what a body is made of.
+            parameters.update(surfaces["accent" if role == "accent" else "body"])
         materials[role] = parameters
     materials["ink"] = {"base_color": rgba("TextBody"), "family": "paper",
                         **openpbr.family_surface("paper", "matte")}
@@ -1342,9 +1370,9 @@ INVENTORY = (
         "id": "tool-power", "tier": "tool", "locates": "Tool::Power",
         "meaning": "the power tool",
         "reading": "the power tool, in the toolbar",
-        "source": "MD1 action/power_settings_new silhouette; TouchWiz surface intent",
+        "source": "MD1 content/bolt silhouette; TouchWiz surface intent",
         "hues": {"silhouette": "amber", "secondary": "natural", "accent": "red"},
-        "cues": ["power ring", "open gap", "warm amber body"],
+        "cues": ["bolt of energy", "tapered strike", "warm amber body"],
         "forbidden": ["authority grant", "a live supply reading"],
     },
     {
@@ -1422,6 +1450,62 @@ def emphasis_finish(emphasis_id: str) -> str:
     if emphasis_id not in LAYERS:
         raise KeyError(f"`{emphasis_id}` has no declared layer")
     return LAYERS[emphasis_id]["finish"]
+
+
+def _blend_numbers(lower: dict, upper: dict, mix: float) -> dict:
+    """A numeric blend of two surface dictionaries, key by key.
+
+    A finish's *name* cannot be blended and is not blended: the caller names the
+    blend instead, so a reader is told the surface is between two declared ones rather
+    than which of them it happened to round to.
+    """
+    blended = {}
+    for key, value in lower.items():
+        other = upper.get(key, value)
+        if isinstance(value, (int, float)) and isinstance(other, (int, float)):
+            blended[key] = round(value + (other - value) * mix, 6)
+        else:
+            blended[key] = value
+    return blended
+
+
+def ladder_surfaces(lam: float, tier: str) -> dict:
+    """The body and accent surfaces at a point on the ladder (a178/a180).
+
+    a178 put the finish on the *emphasis*, because the gloss anchor is a per-language
+    measurement — and a180 then made the emphasis a position rather than a choice. So
+    a candidate at λ = 0.25 cannot wear one language's surface over another
+    language's geometry: the two neighbouring languages' surface numbers are blended
+    and the blend names both ends. A surface that *stepped* at the anchors would be
+    the discrete axis a191 removed, one level down.
+    """
+    if not 0.0 <= lam <= 1.0:
+        raise ValueError(f"ladder position {lam} is outside [0, 1]")
+    points = sorted(EMPHASES, key=lambda emphasis: emphasis["ladder"])
+    families_by_role = lead_families(tier)
+    for lower, upper in zip(points, points[1:]):
+        if lower["ladder"] <= lam <= upper["ladder"]:
+            span = upper["ladder"] - lower["ladder"]
+            mix = 0.0 if span == 0.0 else (lam - lower["ladder"]) / span
+            lower_finish = LAYERS[lower["id"]]["finish"]
+            upper_finish = LAYERS[upper["id"]]["finish"]
+            body_family = families_by_role["silhouette"]
+            accent_family = families_by_role["accent"]
+            return {
+                "body": _blend_numbers(
+                    openpbr.family_surface(body_family, lower_finish),
+                    openpbr.family_surface(body_family, upper_finish), mix,
+                ),
+                # The accent's own finish is the skeuomorph one at every point, so
+                # there is nothing to blend: what carries the ladder is the body.
+                "accent": openpbr.family_surface(accent_family, "skeuomorph"),
+                "note": (
+                    f"{lower_finish}" if mix == 0.0 else
+                    f"{upper_finish}" if mix == 1.0 else
+                    f"{lower_finish}→{upper_finish} at {mix:.2f}"
+                ),
+            }
+    raise ValueError(f"ladder position {lam} fell outside every declared segment")
 
 
 def composition_parts(entry, emphasis: dict, construction: dict) -> list:
@@ -1583,14 +1667,34 @@ for _entry in INVENTORY:
 # C3 opened the session complaining about.
 DECLARED_SURFACES = tuple(entry["locates"] for entry in ICONS)
 
-#: The six review slots, as the manifest states them: three emphases, each in two
-#: constructions. The letters are the slot order the files are named by.
+#: The review slots, as the manifest states them: one per sampled point on the
+#: ladder (a191/a194). The plate|stack axis is **gone** — a191 removed it because two
+#: discrete construction modes are the same defect as three discrete emphases, one
+#: level down, and a construction that follows λ is not a choice.
+FAMILY_TREATMENTS = [
+    {
+        "slot": slot,
+        "id": f"l{int(round(lam * 100)):03d}",
+        "label": families.sample_label(lam),
+        "candidate_role": "interpolation",
+        "lambda": lam,
+        "language": families.LANGUAGE_AT.get(lam),
+    }
+    for slot, lam in enumerate(families.SAMPLES, start=1)
+]
+
+#: The retired six-slot grid, kept because the manifest and the record both refer to
+#: it and a table that vanished would make the old review set unreadable.
 TREATMENTS = [
     {
         "slot": slot, "id": f"{chr(ord('a') + slot - 1)}-{emphasis['id']}-{construction['id']}",
         "label": f"{emphasis['label']} · {construction['label']}",
         "candidate_role": emphasis["id"],
         "emphasis": emphasis["id"], "construction": construction["id"],
+        "retired_because": (
+            "a191: the plate|stack axis is a discrete choice the ladder has to carry "
+            "instead; superseded by the five λ samples in FAMILY_TREATMENTS"
+        ),
     }
     for slot, (emphasis, construction) in enumerate(
         [(emphasis, construction)
@@ -1601,8 +1705,80 @@ TREATMENTS = [
 ]
 
 
+def family_compositions(entry) -> list:
+    """The five candidate records for one icon: one per sampled point (a191/a194).
+
+    Each carries its family and its λ, because everything downstream reads those
+    rather than a variant name: the geometry comes from `families.vector`, the surface
+    from `ladder_surfaces`, and the gate judges the body against the family's own
+    declaration. `parts` is empty on purpose — the parts *are* the family's geometry,
+    and a parts list here would be a second home for the object's shape.
+    """
+    family = families.family_of(entry["id"])
+    declaration = families.declaration(family)
+    candidates = []
+    for lam in families.SAMPLES:
+        surfaces = ladder_surfaces(lam, entry["tier"])
+        candidates.append({
+            # `materials` travels with every candidate: the generator builds the
+            # render's materials from the candidate it is rendering, and a candidate
+            # without them would silently fall back to nothing.
+            **{key: entry[key] for key in (
+                "id", "kind", "meaning", "source", "locates", "sits_on",
+                "identity", "identity_as", "framed", "lineage",
+                "forbidden_readings", "notes", "alternate", "tier", "hues",
+                "cues", "silhouette",
+            )},
+            "materials": composition_materials(entry["tier"], entry["hues"],
+                                               surfaces=surfaces),
+            "parts": [],
+            "family": family,
+            "lambda": lam,
+            "surface": surfaces["note"],
+            "generation": f"l{int(round(lam * 100)):03d}",
+            "generation_label": families.sample_label(lam),
+            "generation_why": (
+                f"{declaration['object']}, interpolated on the ladder: "
+                f"{len(declaration['parameters'])} parameters move together, so this "
+                f"is a whole object rather than a labelled variant. Surface: "
+                f"{surfaces['note']}. "
+                + (f"It sits at the {families.LANGUAGE_AT[lam].upper()} anchor."
+                   if lam in families.LANGUAGE_AT else
+                   "It sits between two anchors and is an interpolation by declaration.")
+            ),
+            "brief": {
+                "candidate_role": "interpolation",
+                "identity": f"{entry['identity']} at λ {lam:.2f}",
+                "semantic_cues": list(entry["cues"]),
+                "material_family": declaration["object"],
+                "size_read": "silhouette at 32px; the object alone at 24px",
+                "motion": {"eligibility": "static-ready",
+                           "trigger": "store-backed only",
+                           "reduced_motion": "static frame"},
+                "fallback": "named solid with the same object and role token",
+                "acceptance": ["recognisable at 32px", "the same object at 24px"],
+                "lineage": list(REFERENCE_STUDY["grammar"]),
+            },
+        })
+    return candidates
+
+
 def generations_of(entry):
-    """Return the six explicit candidate records for one pilot icon."""
+    """The candidate records for one icon: five ladder samples, or the old grid.
+
+    An icon whose object has a declared family is sampled at the five points on the
+    ladder. Anything else keeps whatever it had, because inventing five samples for an
+    object nobody has declared would be exactly the "no reference object behind it"
+    fault C3 recorded.
+    """
+    if entry["id"] in families.ICON_FAMILY:
+        candidates = family_compositions(entry)
+        if len(candidates) != len(families.SAMPLES):
+            raise ValueError(
+                f"{entry['id']} has {len(candidates)} samples; exactly "
+                f"{len(families.SAMPLES)} are required"
+            )
+        return candidates
     candidates = PILOT_CANDIDATES[entry["id"]]
     if len(candidates) != 6:
         raise ValueError(f"{entry['id']} has {len(candidates)} concepts; exactly six are required")
@@ -2253,6 +2429,108 @@ def plaque_body(bpy, name, material, vector, width=None, depth=0.20):
         _cut(bpy, card, cutters)
     _smooth(card)
     return card
+
+
+#: One entry point per family, so a family's geometry has exactly one way to exist.
+FAMILY_BUILDERS = {
+    "gear": lambda bpy, name, material, vector: [gear_body(bpy, name, material, vector)],
+    "road": lambda bpy, name, material, vector: [road_body(bpy, name, material, vector)],
+    "bolt": lambda bpy, name, material, vector: [bolt_body(bpy, name, material, vector)],
+    "lens": lambda bpy, name, material, vector: [lens_body(bpy, name, material, vector)],
+    "bin": lambda bpy, name, material, vector: list(bin_body(bpy, name, material, vector)),
+    "plaque": lambda bpy, name, material, vector: [plaque_body(bpy, name, material, vector)],
+}
+
+
+#: How deep the accent piece is cut, and how far forward it sits. Declared here rather
+#: than in either caller, because the accent's *placement* is derived (a200) and two
+#: callers deriving it twice is how the pipeline and the harness drift apart.
+ACCENT_DEPTH = 0.44
+ACCENT_FORWARD = 0.30
+
+
+def world_bounds(bpy, objects) -> tuple:
+    """`(min_x, min_z, max_x, max_z)` of a set of objects, in the icon's own plane.
+
+    World space, not local: a posed body (a203) is turned after it is welded, and a
+    slot derived from an unposed box would sit inside it.
+
+    **And the depsgraph is updated first.** Setting `rotation_euler` does not change
+    `matrix_world` until Blender re-evaluates the scene, so reading a posed body's
+    matrix immediately returned the *pre-turn* one: the pipeline's first family run
+    derived the accent's slot from the unposed box and the gate then refused the
+    overlap it had just created (0.0037 of the icon's own units at λ = 0.5). The smoke
+    harness never saw it because it renders between builds, and a render updates the
+    scene — one more reason the two callers share this function instead of each
+    deriving bounds its own way.
+    """
+    import mathutils
+
+    bpy.context.view_layer.update()
+    corners = [obj.matrix_world @ mathutils.Vector(corner)
+               for obj in objects for corner in obj.bound_box]
+    return (min(c[0] for c in corners), min(c[2] for c in corners),
+            max(c[0] for c in corners), max(c[2] for c in corners))
+
+
+def build_family(bpy, family, lam, materials, name):
+    """One family's candidate at a point on the ladder: its parts and its accent.
+
+    The accent is a **separate declared part** whose slot is derived from the body's
+    own bounds under the composition budget (a200), and it is returned separately so
+    the caller can exclude its pixels from a measurement (a202/a204) rather than
+    having to find it again in the raster.
+    """
+    if family not in FAMILY_BUILDERS:
+        raise KeyError(f"`{family}` has no geometry entry point")
+    vector = families.vector(family, lam)
+    body_material = materials.get("silhouette") or materials.get("ink")
+    accent_material = materials.get("accent") or body_material
+    parts = FAMILY_BUILDERS[family](bpy, name, body_material, vector)
+    bounds = world_bounds(bpy, parts)
+    radius = families.COMPOSITION["accent_radius"]
+    slot_x, slot_z = families.accent_slot(bounds)
+    accent = cylinder(bpy, f"{name} accent", accent_material, slot_x, slot_z, radius,
+                      depth=ACCENT_DEPTH, y=ACCENT_FORWARD)
+
+    # **The composed object is fitted to the frame, and the fit is measured rather
+    # than assumed.** The budget's arithmetic used a 1.30x inflation for a rotated
+    # body, and the pipeline's first family run found the bolt at **1.47x** (a wide
+    # aspect turned 16 degrees), which pushed its accent's edge to 1.21 against a frame
+    # half of 1.125 — the accent clipped again, this time by a per-family number the
+    # budget could not have known. Scaling is the honest fix: the object shrinks until
+    # the frame holds it, the factor is recorded, and `fill` — a ratio — does not move.
+    objects = parts + [accent]
+    frame_half = families.COMPOSITION["frame_span"] * 0.5
+    target = frame_half - families.COMPOSITION["clearance"]
+    reach = max([abs(value) for value in bounds]
+                + [abs(slot_x) + radius, abs(slot_z) + radius])
+    fit = {"scale": 1.0, "reach_before": round(reach, 4), "reach_after": round(reach, 4),
+           "target": round(target, 4), "applied": False}
+    if reach > target + 1e-9:
+        scale = target / reach
+        for obj in objects:
+            obj.scale = tuple(component * scale for component in obj.scale)
+        fit.update({"scale": round(scale, 4), "reach_after": round(reach * scale, 4),
+                    "applied": True})
+        bounds = world_bounds(bpy, parts)
+        slot_x, slot_z = families.accent_slot(bounds)
+        # **And the accent is moved to the slot the fitted bounds derive**, not left
+        # where it was built. Scaling an object shrinks its own mesh about its own
+        # origin, so the accent kept its pre-fit position while this function reported
+        # the post-fit one — and the exclusion disc, which is derived from the reported
+        # slot, then landed in empty space. The run showed it as two refusals at once:
+        # the accent's antialiased fringe left behind as an 11-16 px "undeclared "
+        # component at (86, 94), and a fill reading 0.34 where the object measures 0.64
+        # because the accent was still inside the measured box.
+        accent.location.x = slot_x
+        accent.location.z = slot_z
+    return {
+        "parts": parts, "accent": accent, "vector": vector,
+        "bounds": bounds, "slot": (slot_x, slot_z), "radius": radius * fit["scale"],
+        "fit": fit,
+        "declared_parts": families.declaration(family)["declared_parts"]["count"],
+    }
 
 
 def build(bpy, entry, materials):

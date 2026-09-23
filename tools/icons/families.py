@@ -85,6 +85,34 @@ COMPOSITION = {
     ),
 }
 
+#: The five sampled points on the ladder (a194). Three of them are the named
+#: languages and two are the interpolations between them, which is the whole point of
+#: a180: an intermediate point is a legitimate object rather than a gap between three
+#: variants, so the review set has to show them.
+SAMPLES = (0.0, 0.25, 0.5, 0.75, 1.0)
+
+#: The language each anchor sits at, and `None` for a point that is between two.
+LANGUAGE_AT = {0.0: "md1", 0.5: "touchwiz", 1.0: "ios6"}
+
+
+#: What the objects at the anchors are called, for a label a person reads.
+LANGUAGE_LABELS = {"md1": "MD1", "touchwiz": "TouchWiz", "ios6": "iOS 6"}
+
+
+def sample_label(lam: float) -> str:
+    """The label for one sampled point, naming the language where it sits at one.
+
+    "interpolated" is not a shrug: a point between two languages is exactly what
+    a180 declared legitimate, and the label says which two it is between.
+    """
+    if lam in LANGUAGE_AT:
+        return f"{LANGUAGE_LABELS[LANGUAGE_AT[lam]]} · λ {lam:.2f}"
+    lower = max((point for point in SAMPLES if point < lam), default=SAMPLES[0])
+    upper = min((point for point in SAMPLES if point > lam), default=SAMPLES[-1])
+    return (f"{LANGUAGE_LABELS[LANGUAGE_AT[lower]]} → "
+            f"{LANGUAGE_LABELS[LANGUAGE_AT[upper]]} · λ {lam:.2f}")
+
+
 #: What each family is, which icon it belongs to, and the mark it was read from.
 #: `measured` holds the numbers `tools/icons/_measure_marks.py` printed, so an
 #: endpoint's provenance can be checked against the artefact rather than trusted.

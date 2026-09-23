@@ -1340,6 +1340,84 @@ and with it the whole family set still measures **30 of 30 inside their envelope
 now judged by the same code that will judge the reviewed renders rather than by the
 harness's own rules.
 
+## 8.17 The reviewed set is the ladder: 30 renders, and one number that now has no
+meaning
+
+The pipeline renders the family path. `plate|stack` is gone, the concept set is
+`family-ladder-c8-v2` (old targets reopen by the standard's own rule), and every
+reviewed icon now has five candidates — λ = 0, 0.25, 0.5, 0.75, 1 — built from
+`families.py`, surfaced by a blended `ladder_surfaces`, and gated by `geometry_gate`.
+**All thirty pass the gate**: part counts equal to their declarations, no sliver, no
+interpenetration, every fill inside its family's own envelope at that λ, and the
+concept-set change recorded rather than announced.
+
+**Chain five defects the runs caught, none of which a render would have shown:**
+
+1. **A stale matrix derived the accent's slot from the unposed box.** Setting
+   `rotation_euler` does not update `matrix_world` until Blender re-evaluates, and the
+   smoke harness never saw it because it renders between builds — the pipeline did, as
+   `interpenetration` on the road at λ = 0.5, 0.75 and 1.0. `world_bounds` now updates
+   the view layer first, and both callers share it.
+2. **The budget's inflation factor was a guess that the bolt disproved.** The budget
+   assumed 1.30x for a rotated body; the bolt at λ = 1 measures **1.47x** (a wide
+   aspect turned 16°), which put its accent's edge at 1.21 against a frame half of
+   1.125 — the accent clipped again. The composed object is now **fitted to the frame
+   by measurement** (`frame_fit`, per candidate, recorded), not by a table of factors.
+3. **Scaling an object shrinks it about its own origin**, so the accent kept its
+   pre-fit position while the function reported the post-fit slot — and the exclusion
+   disc, derived from the reported slot, landed in empty space. Two refusals came out
+   of that at once: the accent's fringe as an 11–16 px "undeclared component" at
+   (86, 94), and a fill of 0.34 where the object measures 0.64. The accent is now
+   moved to the slot the fitted bounds derive.
+4. **`tool-power`'s declared mark was still the power button.** a198 re-pointed the
+   *family's* reference to `content/bolt` and the icon's declared silhouette kept
+   naming `action/power_settings_new`, so containment compared a bolt against a button
+   and read 0.13. One decision, one home: they are the same thing, and with the
+   reference corrected the same object reads **0.58 at λ = 0 and 0.92 at λ = 1**.
+5. **The mark was being compared at the wrong scale.** The containment check placed
+   the declared mark at the traced marks' old 1.72 while the composition budget builds
+   objects at 1.16 — so it measured a size the budget deliberately changed. The mark
+   is now fitted to the span the object was actually built to, including its frame fit.
+
+**And the number that has lost its meaning.** With all of that fixed, containment —
+the share of the declared mark's ink each candidate carries — reads:
+
+| icon | λ = 0 | 0.25 | 0.5 | 0.75 | 1 |
+|---|---|---|---|---|---|
+| tool-power | 0.581 | 0.821 | **0.908** | **0.955** | **0.916** |
+| tool-inspect | 0.282 | 0.540 | 0.714 | 0.846 | **0.940** |
+| vocab-settings | 0.888 | 0.821 | 0.843 | 0.851 | 0.870 |
+| ticket | 0.877 | 0.868 | 0.859 | 0.855 | 0.859 |
+| tool-demolish | 0.741 | 0.751 | 0.758 | 0.760 | 0.760 |
+| tool-road | 0.374 | 0.402 | 0.603 | 0.736 | 0.824 |
+
+(`bold` = at or above the 0.90 floor.) The floor was calibrated when the mark **was**
+the geometry: the traced-silhouette path extruded the declared mark itself, so
+"carries 0.9 of the mark" was a statement about tracing fidelity. The objects are now
+authored families with the mark as their **reference** (a179), and the author of that
+reference is a *different idiom* in several cases — `maps/add_road` is a fragmented map
+symbol with six components while a206 settled that our carriageway is one solid piece,
+and no solid ribbon can carry 90 % of six disconnected strokes. So the floor as
+written refuses the objects the person approved, for a reason that is not about their
+authoring.
+
+Three ways to resolve it, and this one is the person's because it decides what the
+mark's authority *is*:
+
+1. **The floor becomes per family, measured from its own object at the md1 end** —
+   the same move a204 already made for fill, for the same reason (a reference is one
+   measurement, and a shared threshold built from a different idiom's marks is a
+   population statistic). Cost, stated: for this family the check then says the object
+   is *stable along λ* rather than that it is the mark — the weaker claim a206 declined
+   for the road's fill.
+2. **The objects are tuned toward their marks until containment passes at λ = 0** —
+   a189's "declared and checked" read literally, per family. Real geometry work, and
+   for the road it is **unavailable while the body is one piece** (a206), because the
+   mark's own fragmentation cannot be carried by a solid.
+3. **Containment stops gating for family candidates and is recorded** — the mark
+   stays the reference object and its number is printed beside every candidate, while
+   the validity gate and the per-family fill response do the judging.
+
 ---
 
 ## Still open, and deliberately so
