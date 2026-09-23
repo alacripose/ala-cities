@@ -1420,6 +1420,104 @@ mark's authority *is*:
 
 ---
 
+## 8.18 The external validator: built, calibrated, and three forms it refused
+
+**a197's instrument now exists**: `tools/icons/validate.py` asks a model outside the
+pipeline the three questions arithmetic cannot answer, and records every answer
+append-only in `assets/icons/validation.jsonl` with the model's identity, the packet
+digest, the tokens and the matte. It promotes nothing; a promotion stays a person's
+decision in the picker.
+
+**Four measurements shaped it, and three of them are the tool refusing a form that
+looked reasonable:**
+
+1. **A boolean question about a declared object is a form the model fills in.** The
+   first version asked *"does it read as the object its family names?"* per icon. It
+   answered `reads_as_object: true` for **six of six** families with an **empty `notes`
+   field** — not one object named — and then answered `true` for **pure noise** carrying
+   the real declarations, while its own blind naming pass on the same image said
+   *"unrecognisable: dots"* **five times out of five**. A gate that passes everything is
+   not evidence (a196's lesson, in a new medium), so the yes/no form is not the default.
+2. **The contact strip is a measurement artefact for the reading question.** Five
+   samples of one object in a row are parallel bands: the same model scored the strip
+   **3/6** and answered *"a ribbon of carriageway"* for the bin, the ticket **and the
+   noise**. On single renders it scored the same set **4/6** and correctly refused the
+   noise. The strip is now used only where a *sequence* is the subject.
+3. **Transparency composites to black for this model, and the corpus's own marks are
+   black on transparency.** Its answer was literally *"black screen"* for **six of six**
+   reference marks. So the matte is declared, both sides are flattened onto it, and the
+   comparison is about the drawing rather than about alpha.
+4. **The served window is not the model's window.** The model card declares 128,000
+   tokens; the endpoint serves **4,096**. Measured cost: **≈1,092 tokens per image**,
+   independent of image size (96 px and 24 px both cost the same), and **2,336 tokens**
+   for one icon's evidence text. The packet therefore walks a ladder — ten renders, the
+   five decision-size renders, one strip, one strip with the record trimmed — and the
+   **endpoint's own refusal picks the rung**: *"request (5515 tokens) exceeds the
+   available context size (4096 tokens)"*, with both numbers recorded as the reason.
+   Nothing here estimates a token count.
+
+**The instrument is a forced choice among the six declared object phrases**, rotated so
+the correct answer's letter moves, with **NONE** offered — and the pipeline scores it
+rather than believing it. Nothing is quoted until the instrument is calibrated **in the
+same run, with the same matte, on the corpus marks each icon was built against**:
+
+| judged | read as | expected |
+|---|---|---|
+| calibration ceiling (corpus marks) | **5 of 6** identified | — |
+| control (noise, real declarations) | **refused** | must refuse |
+| `tool-demolish` (bin) | bin, λ 0 → 1 | **5/5** |
+| `vocab-settings` (gear) | gear, λ 0 → 1 | **5/5** |
+| `tool-inspect` (lens) | **gear** at **every** λ | 0/5 |
+| `tool-road` (road) | road at λ 0, **bin** 0.25, **gear** 0.5–0.75, road 1.0 | 2/5 |
+| `tool-power` (bolt) | **gear** 0, **road** 0.25–0.75, bolt 1.0 | 1/5 |
+| `ticket` (plaque) | **gear** ×4, plaque at λ 0.5 | 1/5 |
+
+**Ours: 2 of 6 read as their own object at every λ; 3 of 6 are one object across λ.**
+Against a ceiling of 5 of 6 on the corpus's own marks, measured in the same run.
+
+**What this does and does not establish, stated plainly.** It establishes that the
+instrument can identify corpus objects and can refuse a non-object, and that under it two
+families read reliably while four do not. It does **not** yet establish that the four are
+the drawing's fault, because the ceiling is measured on *flat, high-contrast glyphs*
+against *shaded 3D renders* — the comparison is not like for like, and part of the gap is
+that difference rather than the geometry. Two local cross-checks ran and neither settles
+it: the lens↔gear mask overlap is the third-highest in the set (IoU **0.537**), but
+bin↔gear is the highest (**0.571**) and that pair reads correctly 5/5; and a radial rim
+profile is **confounded by the accent piece** (which sits off-centre, so the "swing" it
+reports is mostly the accent) and is therefore not quoted as evidence at all.
+
+Three things this leaves to the person, and they are genuinely theirs because each one
+decides what a validator's verdict *is*:
+
+* **Q206 — Does the validator gate, or record?** (a) **Record only**: the ledger carries
+the verdicts and the picker shows them, nothing refuses. (b) **Gate at promotion**: a
+candidate must be read as its own object at every sampled λ or a person records an
+explicit override with the reason. (c) **Gate the family, not the candidate**: the set
+must read, and a family that never reads is a declaration to revisit.
+➡️ **(b)**, because it is the same shape as the geometry gate — a refusal with a named
+reason and a recorded override — while (a) leaves a number nobody is obliged to look at.
+
+* **Q207 — Whose eyes are the validator's?** (a) **The local 3B model, with every number
+read against its own ceiling** — available, free, and weak, and its ceiling is printed
+beside every verdict so a person can discount it. (b) **A larger local vision model** —
+several GB to pull, and it changes the ceiling, which is a decision about capacity rather
+than about the pipeline. (c) **Both**, the small one as the always-available floor and the
+larger one named in the ledger when it is used.
+➡️ **(c)**, with the caveat that nothing in this tree downloads a multi-GB model
+unasked.
+
+* **Q208 — The lens reads as the gear at every λ, and they are two of the six.** (a) **The
+lens's rim is changed until it reads as a lens**, remeasuring its containment and fill
+against its own reference. (b) **Accepted and recorded**, on the grounds that the
+validator is weak and the two are distinguished by their labels. (c) **The lens's declared
+object is re-pointed** to something its geometry can carry, which is a declaration change
+and would be recorded as one (the same move a198 made for the bolt).
+➡️ **(a)**, because a HUD where two tool marks read as the same object is a defect
+whatever the model is worth, and the collision is between two of *our* families rather
+than between ours and a reference.
+
+---
+
 ## Still open, and deliberately so
 
 * **`tool-zone`** — the locator half, unchanged by this campaign (a166).
@@ -1434,5 +1532,6 @@ mark's authority *is*:
   decision ledger; whether the picker should rewrite it or the pipeline should
   regenerate before opening is not settled here, because the concept-set bump makes
   the six awaiting again anyway.
-* **A hosted validator model** — the interface accepts one; no key exists and none
-  is being bought in this campaign.
+* **A hosted validator model** — the interface accepts one and `VALIDATOR_BASE_URL`
+  points at it; no key exists and none is being bought in this campaign. The local model
+  it runs against today is reported with its own ceiling beside every verdict (§8.18).
