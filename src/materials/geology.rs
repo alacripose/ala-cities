@@ -175,7 +175,15 @@ const SALT_KIND: u64 = 0xD3_02;
 ///
 /// Integer, not float, and that is a decision rather than a style: see this module's header.
 fn noise(seed: u64, salt: u64, x: u32, y: u32) -> i64 {
-    let span = GEOLOGY_CELL as i64;
+    noise_at(seed, salt, x, y, GEOLOGY_CELL as i64)
+}
+
+/// The same field at any lattice width, so that the world's **surfaces** (C9's Q102: the
+/// brush and the stands) can be patchier than its geology without a second noise function.
+///
+/// Two implementations of one field is how a replay starts disagreeing with its own seed,
+/// which is why this is a parameter rather than a copy.
+pub(crate) fn noise_at(seed: u64, salt: u64, x: u32, y: u32, span: i64) -> i64 {
     let cx = (x as i64) / span;
     let cy = (y as i64) / span;
     let fx = (x as i64) % span;

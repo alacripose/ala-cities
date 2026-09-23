@@ -1,0 +1,103 @@
+{
+  "id": "BLD-000147",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 20 tiles residential",
+  "gate": "all 20 tiles carry the zone set",
+  "opened_tick": 164,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        35182,
+        "Residential"
+      ],
+      [
+        35183,
+        "Residential"
+      ],
+      [
+        35438,
+        "Residential"
+      ],
+      [
+        35439,
+        "Residential"
+      ],
+      [
+        35694,
+        "Residential"
+      ],
+      [
+        35695,
+        "Residential"
+      ],
+      [
+        35950,
+        "Residential"
+      ],
+      [
+        35951,
+        "Residential"
+      ],
+      [
+        36206,
+        "Residential"
+      ],
+      [
+        36207,
+        "Residential"
+      ],
+      [
+        36462,
+        "Residential"
+      ],
+      [
+        36463,
+        "Residential"
+      ],
+      [
+        36718,
+        "Residential"
+      ],
+      [
+        36719,
+        "Residential"
+      ],
+      [
+        36974,
+        "Residential"
+      ],
+      [
+        36975,
+        "Residential"
+      ],
+      [
+        37230,
+        "Residential"
+      ],
+      [
+        37231,
+        "Residential"
+      ],
+      [
+        37486,
+        "Residential"
+      ],
+      [
+        37487,
+        "Residential"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

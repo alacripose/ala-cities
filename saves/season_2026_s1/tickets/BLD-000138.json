@@ -1,0 +1,103 @@
+{
+  "id": "BLD-000138",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 20 tiles industrial",
+  "gate": "all 20 tiles carry the zone set",
+  "opened_tick": 102,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        35179,
+        "Industrial"
+      ],
+      [
+        35180,
+        "Industrial"
+      ],
+      [
+        35435,
+        "Industrial"
+      ],
+      [
+        35436,
+        "Industrial"
+      ],
+      [
+        35691,
+        "Industrial"
+      ],
+      [
+        35692,
+        "Industrial"
+      ],
+      [
+        35947,
+        "Industrial"
+      ],
+      [
+        35948,
+        "Industrial"
+      ],
+      [
+        36203,
+        "Industrial"
+      ],
+      [
+        36204,
+        "Industrial"
+      ],
+      [
+        36459,
+        "Industrial"
+      ],
+      [
+        36460,
+        "Industrial"
+      ],
+      [
+        36715,
+        "Industrial"
+      ],
+      [
+        36716,
+        "Industrial"
+      ],
+      [
+        36971,
+        "Industrial"
+      ],
+      [
+        36972,
+        "Industrial"
+      ],
+      [
+        37227,
+        "Industrial"
+      ],
+      [
+        37228,
+        "Industrial"
+      ],
+      [
+        37483,
+        "Industrial"
+      ],
+      [
+        37484,
+        "Industrial"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

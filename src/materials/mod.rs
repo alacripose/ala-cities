@@ -27,6 +27,7 @@ pub mod chain;
 pub mod effects;
 pub mod generated;
 pub mod geology;
+pub mod surface;
 pub mod ledger;
 pub mod schema;
 pub mod world;
@@ -206,6 +207,55 @@ pub fn verify() -> Report {
                 format!(
                     "`{}` sits at lightness {:.4}, outside the declared bounds ({low}, {high})",
                     entry.name, entry.lightness
+                ),
+            );
+        }
+    }
+
+    // Every surface kind grows something the table declares as **gathered**, and says how fast it
+    // comes back. C9's Q102 took these by hand and Q108 made them renew, so a kind that named a
+    // mineral, or a renewable with no declared cycle, is a declaration the world cannot honour —
+    // the same check `surface`'s own test makes, repeated here because this is the gate a run
+    // prints and a hand-edited table is the case a test cannot see.
+    report.lines.push(format!(
+        "materials: {} surface kind(s) — {}",
+        surface::SURFACE_KINDS.len(),
+        surface::SURFACE_KINDS
+            .iter()
+            .map(|kind| format!(
+                "{} ({:.1} t, {:.1} kg/day)",
+                kind.substance,
+                kind.base_g as f64 / 1_000_000.0,
+                kind.regrowth_g_per_day as f64 / 1000.0
+            ))
+            .collect::<Vec<_>>()
+            .join(", ")
+    ));
+    for kind in surface::SURFACE_KINDS {
+        match schema::substance(kind.substance) {
+            None => defect(
+                &mut report,
+                format!("surface kind `{}` is not a declared substance", kind.substance),
+            ),
+            Some(entry) if entry.source != "gathered" => defect(
+                &mut report,
+                format!(
+                    "`{}` grows on the ground and the table declares it `{}`: a surface kind is \
+                     what the world grows by hand, and a mineral belongs in the deposit kinds",
+                    kind.substance, entry.source
+                ),
+            ),
+            Some(_) => {}
+        }
+        if kind.base_g <= 0 {
+            defect(&mut report, format!("surface kind `{}` holds nothing", kind.substance));
+        }
+        if kind.regrowth_g_per_day <= 0 {
+            defect(
+                &mut report,
+                format!(
+                    "`{}` is a renewable with no declared cycle, so Q108 has no answer for it",
+                    kind.substance
                 ),
             );
         }

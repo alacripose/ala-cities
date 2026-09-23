@@ -1,0 +1,22 @@
+{
+  "id": "BLD-000140",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "place power plant 2",
+  "gate": "a structure stands on the tile",
+  "opened_tick": 104,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "BuildingAt": 34668
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

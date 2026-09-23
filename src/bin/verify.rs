@@ -211,15 +211,21 @@ fn main() -> ExitCode {
                 let audit = world.mass_audit();
                 let kg = |grams: i64| format!("{:.3} t", grams as f64 / 1_000_000.0);
                 println!(
-                    "  mass — ground {} taken, {} standing, {}",
+                    "  mass — ground {} taken, {} standing, {} held at sites and in carriers, {}",
                     kg(audit.extracted_g),
                     kg(audit.standing_g),
+                    kg(audit.held_g),
                     if audit.conserves() {
-                        format!("{} held loose or spent: the city is made of what it dug", kg(audit.loose_g()))
+                        format!("{} spent or loose: the city is made of what it dug", kg(audit.loose_g()))
                     } else {
                         format!("{} THAT WAS NEVER DUG UP", kg(-audit.loose_g()))
                     }
                 );
+                // Where the loose mass **is**, account by account, because "held" is a total and
+                // *"the iron is at site 412"* is a sentence a reader can act on (Q77/Q82).
+                for (account, grams) in world.holdings.holdings() {
+                    println!("  holding — {account}: {}", kg(grams));
+                }
                 for finding in audit.findings() {
                     println!("  material finding — {finding}");
                     findings.push(finding);

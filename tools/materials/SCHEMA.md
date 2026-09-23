@@ -5,10 +5,18 @@
 > is the gate; `emit.py` runs it and **refuses to write** while it reports a defect;
 > and `src/materials/schema.rs` is the runtime's typed view with the same checks
 > mirrored at the point of use. `SCHEMA_OPEN` carries what the tables do not decide
-> into the game's own report. What is *not* built is the second half of phase 3 — the
-> MAKE/MAINTAIN machinery that runs a process, and the process structures themselves
+> into the game's own report.
+>
+> **The rows now run.** `src/materials/chain.rs` reduces a wanted good to what the world
+> gives up for it, `src/materials/surface.rs` is where the *gathers* draw from — Q102's
+> brush and stands, seed-derived, taken by hand, regrowing on Q108's declared cycle — and
+> the sim runs a step as a citizen's task: a `Gather` takes a leaf out of a patch or a
+> seam and carries it to the site, and a `Make` consumes material the site is **holding**
+> and produces what the row says, into the same holding. The claim rule is what makes the
+> plan's order emergent: a make is not claimable until its inputs are there. What is still
+> *not* built is the MAINTAIN half of phase 3 and the process structures themselves
 > (`VOCABULARY["structure"]` is deliberately empty, which is a declaration rather than
-> an oversight). See the build note at the end of `docs/GRILLING-C9.md`.
+> an oversight). See the build notes at the end of `docs/GRILLING-C9.md`.
 
 The campaign's claim is that **nothing is made from nothing**, and this document is where that
 becomes checkable rather than asserted. Two data tables, one gate, and one worked chain proven in

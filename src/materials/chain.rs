@@ -210,7 +210,7 @@ fn output_grams(process: &Process, substance: &str) -> Option<i64> {
 /// Written out rather than using `div_ceil`, which the pinned toolchain does not have:
 /// this crate compiles against the toolchain in `rust-toolchain.toml`, and a plan's
 /// arithmetic is not worth a version bump.
-fn runs_for(grams: i64, per_run: i64) -> i64 {
+pub fn runs_for(grams: i64, per_run: i64) -> i64 {
     (grams + per_run - 1) / per_run
 }
 

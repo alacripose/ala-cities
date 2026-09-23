@@ -16,10 +16,23 @@
 //!   declaring it complete — which is what "acceptance is a test that passed" means when the
 //!   worker is a citizen rather than a ticket.
 //!
-//! The verb list is **closed on purpose and grows by decision**. One variant today, because a verb
-//! with no implementation is a claim with no number: `Build` is the verb that has a mechanism.
+//! The verb list is **closed on purpose and grows by decision**. Three verbs today, each with a
+//! mechanism behind it: `Build` raises a structure out of the ground, `Gather` takes a leaf out
+//! of the world by hand and carries it to the site, and `Make` runs a declared process on material
+//! that is already there.
+//!
+//! # Why `Make` is not `Build`
+//!
+//! A build's mass comes out of the ground under its own site, which is C9's *drawn but not
+//! hauled* step. A make is the next link: its inputs must **already be held** at the site
+//! (round 13's Q77), which is what makes a gather a real predecessor rather than a formality —
+//! and it is what makes the plan's order emerge instead of having to be scheduled. A make whose
+//! inputs are not there is not posted, and if they vanish it stalls with a case naming what is
+//! missing (Q92).
 
 use serde::{Deserialize, Serialize};
+
+use crate::materials::generated::{Process, Rational};
 
 use super::{BuildingKind, MaterialLineage};
 
@@ -28,15 +41,22 @@ use super::{BuildingKind, MaterialLineage};
 pub enum Verb {
     /// Raise a structure on a site, out of material the world gives up.
     Build,
+    /// Take a leaf out of the world by hand — a patch the ground grows, or a substance a deposit
+    /// holds — and carry it to the site.
+    Gather,
+    /// Run a declared process at a site, on material **already held there**.
+    Make,
 }
 
 impl Verb {
     /// The declared list, quoted in refusals so the vocabulary is never implied.
-    pub const ALL: &'static [Verb] = &[Verb::Build];
+    pub const ALL: &'static [Verb] = &[Verb::Build, Verb::Gather, Verb::Make];
 
     pub fn name(self) -> &'static str {
         match self {
             Verb::Build => "build",
+            Verb::Gather => "gather",
+            Verb::Make => "make",
         }
     }
 
@@ -49,6 +69,50 @@ impl Verb {
     pub fn builds(self) -> bool {
         matches!(self, Verb::Build)
     }
+}
+
+/// How far along a task is, and where the worker therefore has to be.
+///
+/// A gather is the only verb that needs this: it takes from one tile and leaves at another, and
+/// a stage is what keeps *walk to the patch* and *walk to the site* from being the same trip.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Stage {
+    /// Working where the task's work is: a build site, a make's site, always.
+    #[default]
+    Working,
+    /// Walking to the patch a gather takes from.
+    Fetching,
+    /// Carrying what was taken to the site the task is addressed to.
+    Delivering,
+}
+
+impl Stage {
+    pub fn name(self) -> &'static str {
+        match self {
+            Stage::Working => "working",
+            Stage::Fetching => "fetching",
+            Stage::Delivering => "carrying",
+        }
+    }
+}
+
+/// Work-ticks a declared hour of labour is worth.
+///
+/// The declared number, and the only place a duration becomes work: `labour_hours` is a real
+/// ratio from the tables (Q42), and how long a *game* hour takes is a declared design choice
+/// that has to live somewhere visible. Eight ticks is a fifth of a sim-second per work-tick, so
+/// a gather of a quarter-hour is two work-ticks.
+pub const WORK_TICKS_PER_LABOUR_HOUR: i64 = 8;
+
+/// The work a process's declared mechanism is worth, in work-ticks, rounded **up**: half a tick
+/// of work is still work somebody has to do, and rounding down would make a short process free.
+pub fn work_of_process(process: &Process) -> i64 {
+    let Rational { num, den } = process.mechanism.labour_hours;
+    if den == 0 || num <= 0 {
+        return 1;
+    }
+    let ticks = (num * WORK_TICKS_PER_LABOUR_HOUR + den - 1) / den;
+    ticks.max(1)
 }
 
 /// One unit of work: what is wanted, where, by whom, and how much is left.
@@ -71,6 +135,21 @@ pub struct Task {
     /// mass the plan promised rather than a second search that could differ from the first.
     pub material: Vec<MaterialLineage>,
     pub work_remaining: i64,
+    /// The process this task runs, by its declared name — a `Make`'s work, and a `Gather`'s too,
+    /// because a gather *is* a declared process (`gather timber`). Empty for a `Build`, whose
+    /// work is the kind's own declared build cost.
+    #[serde(default)]
+    pub process: String,
+    /// The substance a `Gather` takes, in the table's vocabulary. Empty for the other verbs.
+    #[serde(default)]
+    pub substance: String,
+    /// Where a `Gather` takes it from: the tile the worker has to stand by. `None` for the other
+    /// verbs, whose material is either under the site or already held there.
+    #[serde(default)]
+    pub fetch_from: Option<u32>,
+    /// How far along the task is. See [`Stage`].
+    #[serde(default)]
+    pub stage: Stage,
     /// The citizen doing the work, by id. `None` means the task is open and nobody has taken it.
     pub claimed_by: Option<u32>,
     pub opened_tick: u64,
@@ -80,6 +159,28 @@ impl Task {
     /// Whether anybody has taken this work.
     pub fn is_claimed(&self) -> bool {
         self.claimed_by.is_some()
+    }
+
+    /// The tile the worker has to be at **now**: the patch while fetching, the site otherwise.
+    ///
+    /// One method rather than a `site` read at each call site, because a gather that walked to
+    /// its site first and then to its patch would be a task the citizen cannot finish — and the
+    /// place that decides where to walk is the only place that has to know.
+    pub fn destination(&self) -> u32 {
+        match self.stage {
+            Stage::Fetching => self.fetch_from.unwrap_or(self.site),
+            Stage::Working | Stage::Delivering => self.site,
+        }
+    }
+
+    /// Whether this task is a gather that still has to walk to its patch.
+    pub fn is_fetching(&self) -> bool {
+        self.verb == Verb::Gather && self.stage == Stage::Fetching
+    }
+
+    /// Whether this task is a gather carrying its load to the site.
+    pub fn is_delivering(&self) -> bool {
+        self.verb == Verb::Gather && self.stage == Stage::Delivering
     }
 
     /// Whether the work is done. For `Build` that means the counter reached zero *and* the plan
@@ -96,19 +197,45 @@ impl Task {
 
     /// What a person reads in a listing.
     pub fn describe(&self) -> String {
-        format!(
-            "{} {} at tile {} ({} g of {}, {} work left{})",
-            self.verb.name(),
-            self.kind.name(),
-            self.site,
-            self.requires_g,
-            self.family,
-            self.work_remaining,
-            match self.claimed_by {
-                Some(who) => format!(", claimed by citizen {who}"),
-                None => String::new(),
-            }
-        )
+        // A build is described by the structure it raises and the family the ground supplies; a
+        // gather by the substance and the patch; a make by the process and the site. One line per
+        // verb, because a listing that described a make as "build  at tile 14" would be a record
+        // nobody could read.
+        match self.verb {
+            Verb::Build => format!(
+                "build {} at tile {} ({} g of {}, {} work left{})",
+                self.kind.name(),
+                self.site,
+                self.requires_g,
+                self.family,
+                self.work_remaining,
+                self.claim_line()
+            ),
+            Verb::Gather => format!(
+                "gather {} at tile {} for the site at tile {} ({} g, {} work left, {}{})",
+                self.substance,
+                self.fetch_from.unwrap_or(self.site),
+                self.site,
+                self.requires_g,
+                self.work_remaining,
+                self.stage.name(),
+                self.claim_line()
+            ),
+            Verb::Make => format!(
+                "make `{}` at tile {} ({} work left{})",
+                self.process,
+                self.site,
+                self.work_remaining,
+                self.claim_line()
+            ),
+        }
+    }
+
+    fn claim_line(&self) -> String {
+        match self.claimed_by {
+            Some(who) => format!(", claimed by citizen {who}"),
+            None => String::new(),
+        }
     }
 }
 
@@ -125,6 +252,50 @@ mod tests {
         }
         assert_eq!(Verb::named("demolish"), None, "not declared, so not a task verb");
         assert_eq!(Verb::named(""), None);
-        assert_eq!(Verb::ALL.len(), 1, "a verb arrives with an implementation, not before");
+        assert_eq!(Verb::ALL.len(), 3, "a verb arrives with an implementation, not before");
+    }
+
+    /// A gather has two destinations and a make has one, and the difference is the whole reason
+    /// the stage exists: the worker walks to the patch, then to the site, and never the reverse.
+    #[test]
+    fn a_gather_walks_to_its_patch_before_its_site() {
+        let mut task = Task {
+            id: 1,
+            verb: Verb::Gather,
+            kind: BuildingKind::Home,
+            site: 40,
+            family: "organic".to_string(),
+            requires_g: 3000,
+            material: Vec::new(),
+            process: "gather timber".to_string(),
+            substance: "timber".to_string(),
+            fetch_from: Some(9),
+            stage: Stage::Fetching,
+            work_remaining: 2,
+            claimed_by: None,
+            opened_tick: 0,
+        };
+        assert_eq!(task.destination(), 9, "the patch comes first");
+        assert!(task.is_fetching() && !task.is_delivering());
+        task.stage = Stage::Delivering;
+        assert_eq!(task.destination(), 40, "then the site the work is for");
+        assert!(task.is_delivering() && !task.is_fetching());
+        task.stage = Stage::Working;
+        assert_eq!(task.destination(), 40);
+    }
+
+    /// Work is a declared multiple of a declared duration, rounded up: a process that takes an
+    /// eighth of an hour is not free, and the number is the same in every replay.
+    #[test]
+    fn a_process_declares_its_work_in_ticks() {
+        for process in crate::materials::generated::PROCESSES {
+            let work = work_of_process(process);
+            assert!(work >= 1, "`{}` takes no work at all", process.name);
+        }
+        // The stone rung's own numbers, so an edit to the rate announces itself here.
+        let gather = crate::materials::schema::process("gather timber").expect("declared");
+        assert_eq!(work_of_process(gather), 2, "a quarter-hour is two work-ticks at 8 per hour");
+        let assemble = crate::materials::schema::process("assemble the hatchet").expect("declared");
+        assert_eq!(work_of_process(assemble), 4, "half an hour is four");
     }
 }

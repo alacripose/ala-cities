@@ -1,0 +1,29 @@
+{
+  "id": "RET-000180",
+  "ticket": "MAT-000009",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "material of power plant 3",
+  "completion_claim": "the world shows the power.frame on tile 37996 is metal/natural/body",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "built as metal/natural/body on power.frame"
+    ],
+    "checks_run": [
+      "the power.frame on tile 37996 is metal/natural/body"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000167"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 108,
+  "retired_by": "operator"
+}

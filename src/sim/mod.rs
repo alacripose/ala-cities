@@ -14,9 +14,12 @@ pub mod terrain;
 use serde::{Deserialize, Serialize};
 
 use crate::gov::RetirementReason;
+use crate::materials::chain as material_chain;
 use crate::materials::effects as material_effects;
 use crate::materials::geology as material_geology;
+use crate::materials::schema as material_schema;
 use crate::materials::ledger as material_ledger;
+use crate::materials::surface as material_surface;
 use crate::materials::generated::REPAIR_CEILING;
 use crate::materials::generated as material_generated;
 use crate::materials::world::{self as material_world, Level};
@@ -146,6 +149,21 @@ pub const BUILD_TICKS: u64 = 40;
 /// Tiles within this distance of the camera focus are simulated as full agents.
 /// Stored in the save so a replay reproduces the same level-of-detail split.
 pub const LOD_RADIUS: i32 = 48;
+/// How far a worker can reach from where they stand (C9 phase 3).
+///
+/// One declared number, used by both halves of the question: the router walks a citizen to the
+/// end of the road, and this is how far past it their hands reach. Making the two agree is what
+/// stops a tile from being **postable but unworkable** — a site three tiles off a road could be
+/// posted under the old one-tile check and never worked, which is a stall with no case against
+/// it.
+pub const WORK_REACH: u32 = 3;
+
+/// The good the first rung ends in (Q7's hatchet, Q102's first-tier rung).
+///
+/// A named constant rather than a literal, because the audit's "does this city have one yet"
+/// question and the plan that makes it have to agree about what *one* is.
+pub const RUNG_GOOD: &str = "hatchet";
+
 /// A power plant lights this many road-distance tiles.
 pub const POWER_RADIUS: u32 = 14;
 pub const POWER_PER_PLANT: u32 = 60;
@@ -193,6 +211,26 @@ pub struct Tile {
     /// would be a lie needs a migration, and this one would not be.
     #[serde(default)]
     pub extracted_g: i64,
+    /// How much of this tile's **surface** patch has been taken, in grams (C9, Q102).
+    ///
+    /// The patch itself is derived from the seed — `materials::surface` — and never stored. Two
+    /// deltas rather than one because the two are different resources on the same tile: a stand
+    /// of timber can stand over a seam of stone, and working one says nothing about the other.
+    ///
+    /// This is the patch's **take total**, not its shortfall: it never goes down when the patch
+    /// grows back, so the mass audit cannot read regrowth as material the city never dug.
+    #[serde(default)]
+    pub harvested_g: i64,
+    /// The sim-day of the last take from this patch, which is what makes regrowth a function of
+    /// elapsed time rather than of ticks (C9 round 9, Q61).
+    #[serde(default)]
+    pub harvested_day: u64,
+    /// Whether this patch has been **stripped to the soil** (Q108): the remainder is soil rather
+    /// than a standing patch, so it grows nothing back until it is planted. Planting is a task
+    /// this rung does not build; the flag is what makes stripping a decision rather than a
+    /// thing you can do forever without noticing.
+    #[serde(default)]
+    pub stripped: bool,
 }
 
 impl Tile {
@@ -220,6 +258,9 @@ impl Default for Tile {
             building: None,
             powered: false,
             extracted_g: 0,
+            harvested_g: 0,
+            harvested_day: 0,
+            stripped: false,
         }
     }
 }
@@ -301,6 +342,41 @@ pub struct MaterialLineage {
     pub grams: i64,
 }
 
+/// What a tile's **surface patch** stands right now (C9, Q102): what grows there, and how much
+/// of it is there to take.
+///
+/// `stripped` is carried rather than recomputed by the caller because it is a *reading of the
+/// tile*, not a second opinion about it — see `materials::surface` for why stripping is what
+/// stops a renewable from renewing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Standing {
+    pub substance: &'static str,
+    pub mass_g: i64,
+    pub stripped: bool,
+}
+
+/// Whether a worker standing on one tile is at work on another: [`WORK_REACH`] in both axes.
+///
+/// A free function rather than a method because the work loop holds the task list mutably while
+/// it asks the question, and a borrow of the whole world to compare two tile indices would be a
+/// worse trade than a width parameter.
+pub fn within_reach(width: u32, standing: u32, target: u32) -> bool {
+    let (sx, sy) = (standing % width, standing / width);
+    let (tx, ty) = (target % width, target / width);
+    (sx as i64 - tx as i64).abs() <= WORK_REACH as i64
+        && (sy as i64 - ty as i64).abs() <= WORK_REACH as i64
+}
+
+/// The grams one run of a gather process yields of a substance, or `None` when that process does
+/// not produce it at all — which is a table defect rather than a shortage.
+fn gather_per_run(process: &material_generated::Process, substance: &str) -> Option<i64> {
+    process
+        .outputs
+        .iter()
+        .find(|(name, _)| *name == substance)
+        .and_then(|(name, amount)| material_schema::quantity_grams(name, *amount))
+}
+
 /// A refusal to build, because the world could not supply the mass.
 ///
 /// Round 11's Q74 answered that a refusal **files a case** rather than passing quietly: the
@@ -310,9 +386,28 @@ pub struct MaterialLineage {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MaterialShortfall {
     pub site: u32,
+    /// What was wanted: a substance (`timber`), a family (`ceramic`), or the name of the thing
+    /// that refused — a process that cannot run, or a rung that cannot be planned.
     pub family: String,
     pub wanted_g: i64,
     pub found_g: i64,
+    /// The sentence a defect would print, when the refusal is a defect rather than a shortage.
+    /// A refusal a reader cannot act on is a refusal nobody can act on (Q74).
+    pub note: String,
+}
+
+impl MaterialShortfall {
+    /// A refusal naming what was wanted and how much of it was there.
+    pub fn of(site: u32, name: impl Into<String>, wanted_g: i64, found_g: i64) -> Self {
+        Self { site, family: name.into(), wanted_g, found_g, note: String::new() }
+    }
+
+    /// The same refusal, with the defect that caused it named — used where the reason is a broken
+    /// row rather than an empty world.
+    pub fn noting(mut self, note: impl Into<String>) -> Self {
+        self.note = note.into();
+        self
+    }
 }
 
 /// Where the city is short of material, aggregated by district and family — the reading a case
@@ -321,6 +416,16 @@ pub struct MaterialShortfall {
 pub struct Starved {
     pub district: u32,
     pub family: String,
+    /// The **substance** the refusal names, when it can name one — a leaf's shortage is a
+    /// substance (`timber`), not the family it presents as (`organic`), and a reader who cannot
+    /// size a refusal cannot act on it (Q74). Empty for a structure's family-level shortage, whose
+    /// substance is genuinely several.
+    #[serde(default)]
+    pub substance: String,
+    /// The defect behind the refusal, when there was one: a process that does not balance, or a
+    /// rung that cannot be planned. Empty for a plain shortage.
+    #[serde(default)]
+    pub note: String,
     /// Total wanted across every refusal folded into this reading, in grams.
     pub wanted_g: i64,
     /// Total the world could supply, in grams.
@@ -338,7 +443,16 @@ impl Starved {
     /// The case key, so repeated refusals update one reading instead of filing a thousand cases —
     /// the same dedupe the case engine already does, keyed by what is actually short.
     pub fn case_key(&self) -> String {
-        format!("materials:{}:{}", self.district, self.family)
+        format!("materials:{}:{}:{}", self.district, self.family, self.substance)
+    }
+
+    /// What the refusal is short of: the substance when one is named, the family otherwise.
+    pub fn wanted_name(&self) -> &str {
+        if self.substance.is_empty() {
+            &self.family
+        } else {
+            &self.substance
+        }
     }
 
     /// What a person reads. Round 11's Q74 asked for a refusal that says what it wanted and what
@@ -346,13 +460,18 @@ impl Starved {
     /// the shortage as work rather than as a complaint.
     pub fn objective(&self) -> String {
         format!(
-            "{} build site(s) in district {} want {} g of {} and the world holds {} g: {} g short",
+            "{} site(s) in district {} want {} g of {} and the world holds {} g: {} g short{}",
             self.count,
             self.district,
             self.wanted_g,
-            self.family,
+            self.wanted_name(),
             self.found_g,
-            self.missing_g()
+            self.missing_g(),
+            if self.note.is_empty() {
+                String::new()
+            } else {
+                format!(" — {}", self.note)
+            }
         )
     }
 }
@@ -620,6 +739,16 @@ pub struct World {
     /// growing with every refused tick.
     #[serde(default)]
     pub starved: Vec<Starved>,
+    /// Where the city's **loose mass** is: what stands at a site and what a carrier is holding
+    /// (C9 round 13, Q77).
+    ///
+    /// A `Ledger` rather than a second table of stocks, because a holding is an account like any
+    /// other and the audit is the thing that has to read it: `site:<tile>:<substance>` and
+    /// `carried:carrier-<id>:<substance>` are the two names Q77 settled, and mass moves between
+    /// them, the ground and a structure without ever having one side. Nothing here is a second
+    /// source of truth — it is the world's own mass, written down where it is standing.
+    #[serde(default)]
+    pub holdings: material_ledger::Ledger,
     /// Which save format wrote this. Absent (0) is a v1 save: it predates the world
     /// having materials at all.
     #[serde(default)]
@@ -670,6 +799,7 @@ impl World {
             tasks: Vec::new(),
             next_task_id: first_task_id(),
             starved: Vec::new(),
+            holdings: material_ledger::Ledger::new(),
             economy: Economy {
                 credits: 25_000,
                 tax_residential: 0.09,
@@ -865,6 +995,107 @@ impl World {
         taken
     }
 
+    /// What this tile's **surface patch** stands right now, or `None` where the ground grows
+    /// nothing, where it has been paved or built over, or where the patch is stripped to the
+    /// soil.
+    ///
+    /// Derived like the deposit — seed plus the tile's own delta — with Q108's regrowth folded
+    /// in as a function of elapsed **sim-days**, never of ticks.
+    pub fn surface_at(&self, tile: u32) -> Option<Standing> {
+        let (x, y) = self.coords(tile);
+        let found = material_surface::surface(self.seed, x, y)?;
+        let state = self.tiles[tile as usize];
+        // A patch the city paved or built on is not a stand of timber any more. Saying so here
+        // is cheaper than letting a gather take a road's worth of brush out of a road.
+        if state.terrain != Terrain::Ground || state.road || state.building.is_some() {
+            return None;
+        }
+        let rate = material_surface::tile_regrowth_g_per_day(found.kind, found.base_g);
+        let mass_g = material_surface::standing_g(
+            found.base_g,
+            rate,
+            state.harvested_g,
+            state.harvested_day,
+            state.stripped,
+            self.clock.day(),
+        );
+        (mass_g > 0).then_some(Standing {
+            substance: material_surface::kind_substance(found.kind),
+            mass_g,
+            stripped: state.stripped,
+        })
+    }
+
+    /// Take up to `grams` off a tile's surface patch, recording the delta and returning **only
+    /// what was actually growing there** — the same rule [`Self::extract`] follows, for the same
+    /// reason.
+    ///
+    /// This is a *gather* (Q102): no mine, no structure, just hands on a patch. Mass enters the
+    /// world here — `SCHEMA.md` says gathering is the one place it legitimately does — and the
+    /// tile's `harvested_g` is the take total the audit reads back.
+    pub fn harvest(&mut self, tile: u32, grams: i64) -> i64 {
+        let Some(standing) = self.surface_at(tile) else {
+            return 0;
+        };
+        let (x, y) = self.coords(tile);
+        let Some(found) = material_surface::surface(self.seed, x, y) else {
+            return 0;
+        };
+        let state = self.tiles[tile as usize];
+        let rate = material_surface::tile_regrowth_g_per_day(found.kind, found.base_g);
+        let day = self.clock.day();
+        debug_assert_eq!(standing.mass_g, material_surface::standing_g(found.base_g, rate, state.harvested_g, state.harvested_day, state.stripped, day));
+        let take = material_surface::take(
+            found.base_g,
+            rate,
+            state.harvested_g,
+            state.harvested_day,
+            state.stripped,
+            day,
+            grams,
+        );
+        let updated = &mut self.tiles[tile as usize];
+        updated.harvested_g = take.harvested_g;
+        updated.harvested_day = day;
+        updated.stripped = take.stripped;
+        take.taken_g
+    }
+
+    /// What one account is holding, in grams — a site holding or a carrier's load.
+    pub fn holding_of(&self, account: &str) -> i64 {
+        self.holdings.of(account)
+    }
+
+    /// Credit loose mass to a holding: what a gather has just taken, or what a process has just
+    /// produced.
+    ///
+    /// **One-sided on purpose, and it is not the bug** the ledger exists to catch: the ground's
+    /// side of a gather is the tile's own delta rather than an account, and the audit reconciles
+    /// the two. A move *between* holdings is [`Self::move_holding`], which cannot forget a side.
+    pub fn credit_holding(&mut self, account: &str, grams: i64) {
+        self.holdings.record(account, grams);
+    }
+
+    /// Move held mass from one account to another, both sides in one call. `None` means it
+    /// happened; `Some(defect)` means the source could not cover it.
+    ///
+    /// A holding that cannot cover a move is refused rather than overdrawn: unlike the ground,
+    /// which is allowed to run out, a holding going negative would be mass that nobody has — and
+    /// the ledger would report it as a finding instead of preventing it.
+    pub fn move_holding(&mut self, from: &str, to: &str, grams: i64) -> Option<String> {
+        if grams < 0 {
+            return Some(format!("a move of {grams} g is not a move"));
+        }
+        let held = self.holdings.of(from);
+        if held < grams {
+            return Some(format!(
+                "`{from}` holds {held} g and cannot give {grams} g: the move would make mass \
+                 that nobody has"
+            ));
+        }
+        self.holdings.convert(from, grams, to, grams)
+    }
+
     /// The world's mass audit, assembled from what is actually here (C9 phase 2).
     ///
     /// Two sides, and nothing else: the ground's depletion, per tile, at the substance its own
@@ -884,22 +1115,44 @@ impl World {
         let mut standing_g = 0;
 
         // The ground, from what each tile has given up — read back through the same derivation
-        // that produced it, so the substance cannot be remembered wrongly.
+        // that produced it, so the substance cannot be remembered wrongly. **Both halves of the
+        // ground**: the seam under the tile, and the patch growing on it. They are two resources
+        // on one tile, and a tile that has given up neither is a tile with nothing to report.
         for (index, tile) in self.tiles.iter().enumerate() {
-            if tile.extracted_g == 0 {
-                continue;
-            }
             let (x, y) = (index as u32 % self.width, index as u32 / self.width);
-            let Some(deposit) = material_geology::deposit(self.seed, x, y) else {
-                // Taken from a tile whose deposit no longer derives: the take is still real, so
-                // it is recorded against the ground itself rather than dropped.
-                ledger.record(&material_ledger::ground_account("unattributed"), -tile.extracted_g);
+            if tile.extracted_g != 0 {
+                match material_geology::deposit(self.seed, x, y) {
+                    // Taken from a tile whose deposit no longer derives: the take is still real,
+                    // so it is recorded against the ground itself rather than dropped.
+                    None => ledger
+                        .record(&material_ledger::ground_account("unattributed"), -tile.extracted_g),
+                    Some(deposit) => {
+                        let substance = material_geology::kind_substance(deposit.kind);
+                        ledger.record(&material_ledger::ground_account(substance), -tile.extracted_g);
+                    }
+                }
                 extracted_g += tile.extracted_g;
-                continue;
-            };
-            let substance = material_geology::kind_substance(deposit.kind);
-            ledger.record(&material_ledger::ground_account(substance), -tile.extracted_g);
-            extracted_g += tile.extracted_g;
+            }
+            if tile.harvested_g != 0 {
+                match material_surface::surface(self.seed, x, y) {
+                    None => ledger
+                        .record(&material_ledger::ground_account("unattributed"), -tile.harvested_g),
+                    Some(found) => {
+                        let substance = material_surface::kind_substance(found.kind);
+                        ledger.record(&material_ledger::ground_account(substance), -tile.harvested_g);
+                    }
+                }
+                extracted_g += tile.harvested_g;
+            }
+        }
+
+        // The city's **loose mass**: what stands at a site and what a carrier is holding. It is
+        // the city's, it came out of the ground, and leaving it out of the audit would report a
+        // city that is holding three tonnes of timber as three tonnes nobody dug.
+        let mut held_g = 0;
+        for (account, grams) in self.holdings.holdings() {
+            ledger.record(account, grams);
+            held_g += grams;
         }
 
         // The city, standing and in ruins, at the mass each structure derives to. A structure
@@ -929,7 +1182,7 @@ impl World {
             standing_g += mass;
         }
 
-        material_ledger::MassAudit { ledger, extracted_g, standing_g, defects }
+        material_ledger::MassAudit { ledger, extracted_g, standing_g, held_g, defects }
     }
 
     /// Plan where a structure's material would come from, **without touching the ground**.
@@ -954,12 +1207,7 @@ impl World {
         family: &str,
         need_g: i64,
     ) -> Result<Vec<MaterialLineage>, MaterialShortfall> {
-        let shortfall = |found_g: i64| MaterialShortfall {
-            site,
-            family: family.to_string(),
-            wanted_g: need_g,
-            found_g,
-        };
+        let shortfall = |found_g: i64| MaterialShortfall::of(site, family, need_g, found_g);
         if need_g <= 0 {
             return Ok(Vec::new());
         }
@@ -1050,12 +1298,9 @@ impl World {
         let family = claim.family;
         let plan = self.plan_material(tile, &family, mass)?;
         let drawn = self.draw_material(&plan);
-        let built = self.place_building(tile, kind).ok_or_else(|| MaterialShortfall {
-            site: tile,
-            family: family.clone(),
-            wanted_g: mass,
-            found_g: 0,
-        })?;
+        let built = self
+            .place_building(tile, kind)
+            .ok_or_else(|| MaterialShortfall::of(tile, family.clone(), mass, 0))?;
         if let Some(index) = self.tiles[tile as usize].building {
             self.buildings[index as usize].material_from = drawn;
         }
@@ -1094,10 +1339,284 @@ impl World {
             // The kind's own declared build cost is the work, so how long a structure takes is
             // the same declared number the player's build already pays.
             work_remaining: kind.build_cost(),
+            // A build draws from the ground under its own site: no process, no patch, and the
+            // stage that matters to a gather is a stage a build is never in.
+            process: String::new(),
+            substance: String::new(),
+            fetch_from: None,
+            stage: sim_task::Stage::Working,
             claimed_by: None,
             opened_tick: self.clock.tick,
         });
         Ok(id)
+    }
+
+    /// Where a substance is held by the world, **nearest to `site`** — a patch the ground grows,
+    /// or a seam it holds — among the tiles a worker can actually stand beside.
+    ///
+    /// Round 11's Q73 chose nearest-matching-family for a build's material and this is the same
+    /// rule one link up: nearest first, ties by tile index so the choice is a function of the
+    /// world alone, and **only tiles within work reach of a road**, because a patch nobody can
+    /// stand at is a patch nobody can gather (Q102 takes these by hand, and a hand has to get
+    /// there).
+    pub fn plan_source(&self, site: u32, substance: &str) -> Option<u32> {
+        let (sx, sy) = self.coords(site);
+        let mut best: Option<((i64, u32), u32)> = None;
+        for index in 0..self.tiles.len() as u32 {
+            // **Reach first, substance second**, and the order is the cheap half of the search: a
+            // tile with no road within reach cannot be gathered from whatever it holds, and this
+            // costs a ring of road-graph lookups instead of deriving a patch the search will
+            // throw away.
+            if self
+                .roads
+                .nearest_node_within(self.width, self.height, index, WORK_REACH)
+                .is_none()
+            {
+                continue;
+            }
+            let holds = self
+                .surface_at(index)
+                .is_some_and(|standing| standing.substance == substance)
+                || self
+                    .deposit_at(index)
+                    .is_some_and(|deposit| material_geology::kind_substance(deposit.kind) == substance);
+            if !holds {
+                continue;
+            }
+            let (x, y) = self.coords(index);
+            let distance = (x as i64 - sx as i64).pow(2) + (y as i64 - sy as i64).pow(2);
+            if best.map(|(key, _)| (distance, index) < key).unwrap_or(true) {
+                best = Some(((distance, index), index));
+            }
+        }
+        best.map(|(_, index)| index)
+    }
+
+    /// Whether a worker standing on `standing` is at work on `target`.
+    ///
+    /// A declared reach rather than adjacency, and it is the same number the router uses: a
+    /// worker walks the road to the end of the street and works the tile it reaches. Before this
+    /// existed the check was one tile, while the planter, the router and `has_road_access` all
+    /// worked within two or three — so a site two tiles off a road could be posted and never
+    /// worked, which is a stall nobody can see.
+    pub fn within_reach(&self, standing: u32, target: u32) -> bool {
+        within_reach(self.width, standing, target)
+    }
+
+    /// Whether the site is holding what a make needs for one run of its process.
+    ///
+    /// The rule round 13's Q77 decision needs: **a process consumes material that is already
+    /// held**, so a process nobody has supplied is not work — it is a wish. Checked at claim time
+    /// (so nobody walks to a step they cannot do) and again at completion (because a holding can
+    /// be emptied between the two).
+    pub fn inputs_present(&self, process: &material_generated::Process, site: u32) -> bool {
+        process.inputs.iter().all(|(name, amount)| {
+            material_schema::quantity_grams(name, *amount).is_some_and(|grams| {
+                self.holdings.of(&material_ledger::site_account(site, name)) >= grams
+            })
+        })
+    }
+
+    /// Whether a task can be started at all — Q74's rule applied to *beginning* work rather than
+    /// to posting it: a build and a gather are always startable (the world plans their material
+    /// before they are posted), and a make is startable when its site holds its inputs.
+    pub fn task_can_start(&self, task: &Task) -> bool {
+        if task.verb != sim_task::Verb::Make {
+            return true;
+        }
+        material_schema::process(&task.process)
+            .is_some_and(|process| self.inputs_present(process, task.site))
+    }
+
+    /// The site a city works at by hand when nobody owns a workshop: the first ground tile with
+    /// road access and nothing on it, in tile order.
+    ///
+    /// Deterministic on purpose, and deliberately dull: *where the works is* has to be a function
+    /// of the world, and the first road-reachable tile is one. A player-proposed site (Q87/Q98's
+    /// tender) is the later answer, and this is the placeholder the record asks to be *named*
+    /// rather than left to look like the answer.
+    pub fn works_site(&self) -> Option<u32> {
+        (0..self.tiles.len() as u32).find(|index| {
+            let tile = self.tiles[*index as usize];
+            tile.terrain == Terrain::Ground
+                && !tile.road
+                && tile.building.is_none()
+                && tile.extracted_g == 0
+                && tile.harvested_g == 0
+                && self.has_road_access(*index)
+        })
+    }
+
+    /// Post the work that makes **one hatchet** — the stone rung, end to end (Q66's first rung,
+    /// Q102's first-tier kinds, Q7's own example of a tool fashioned from natural materials).
+    ///
+    /// The plan comes from `materials::chain`, so what has to come out of the ground and in what
+    /// order is the declaration's answer rather than this function's opinion. Two kinds of task
+    /// fall out of it: a **gather** per leaf, addressed to the patch the world holds it in, and a
+    /// **make** per step, addressed to the site. Nothing here schedules them: a make is not
+    /// claimable until its inputs are held, so the order the plan states is the order the world
+    /// enforces.
+    pub fn post_rung_tasks(&mut self, site: u32) -> Result<Vec<u32>, MaterialShortfall> {
+        // One hatchet, in grams, from the table's own declared unit mass: a counted good without
+        // one cannot enter a ledger, so this is a refusal rather than a default.
+        let grams = material_schema::quantity_grams(RUNG_GOOD, material_generated::Rational { num: 1, den: 1 })
+            .unwrap_or_else(|| {
+                panic!("`{RUNG_GOOD}` declares no unit mass, so one of it is not an amount of mass")
+            });
+        let plan = match material_chain::plan(RUNG_GOOD, grams) {
+            Ok(plan) => plan,
+            // A rung that cannot be planned is a defect in the declaration rather than a shortage
+            // in the world, and the refusal says which — named here so it reaches a case instead
+            // of a silent nothing.
+            Err(refusal) => {
+                return Err(MaterialShortfall::of(site, RUNG_GOOD, grams, 0)
+                    .noting(refusal.describe()))
+            }
+        };
+        let mut posted = Vec::new();
+
+        // A gather per leaf: one trip to one patch, carrying what it took to the site. `kind` is
+        // the build verb's field and is left at its default here — a gather raises nothing, and a
+        // placeholder that read as a structure would be worse than one that is documented as
+        // ignored.
+
+        for leaf in &plan.leaves {
+            let Some(process) = material_schema::process(leaf.process.unwrap_or("")) else {
+                return Err(MaterialShortfall::of(site, leaf.substance, leaf.grams, 0)
+                    .noting(format!("the reduction names a gather process `{}` that the tables do not declare", leaf.process.unwrap_or(""))));
+            };
+            let Some(patch) = self.plan_source(site, leaf.substance) else {
+                // A leaf the world cannot supply is a refusal with a substance on it (Q74), not a
+                // task somebody fails at later — and a patch with no road within reach is that
+                // same refusal, which is why the search is by *reachable* source.
+                return Err(MaterialShortfall::of(site, leaf.substance, leaf.grams, 0)
+                    .noting(format!(
+                        "no tile within {WORK_REACH} tiles of a road holds `{}`",
+                        leaf.substance
+                    )));
+            };
+            // Whole runs of the declared gather, and the surplus that leaves over is real mass
+            // the city keeps — the same arithmetic `chain` reports (one armful is 3000 g).
+            let per_run = gather_per_run(process, leaf.substance).unwrap_or(0);
+            let runs = if per_run > 0 { material_chain::runs_for(leaf.grams, per_run) } else { 1 };
+            let take_g = if per_run > 0 { runs * per_run } else { leaf.grams };
+            let id = self.next_task_id;
+            self.next_task_id += 1;
+            self.tasks.push(Task {
+                id,
+                verb: sim_task::Verb::Gather,
+                kind: BuildingKind::Home,
+                site,
+                family: material_schema::substance(leaf.substance)
+                    .map(|entry| entry.family.to_string())
+                    .unwrap_or_default(),
+                requires_g: take_g,
+                material: Vec::new(),
+                process: process.name.to_string(),
+                substance: leaf.substance.to_string(),
+                fetch_from: Some(patch),
+                stage: sim_task::Stage::Fetching,
+                work_remaining: sim_task::work_of_process(process) * runs,
+                claimed_by: None,
+                opened_tick: self.clock.tick,
+            });
+            posted.push(id);
+        }
+
+        // A make per step, dependencies already ordered by the reduction. A **gather** is a step
+        // of the plan and not a make: it is already posted above as work in the world, and posting
+        // it here as well would be a process that produces out of nothing — the one thing the
+        // tables refuse.
+        for step in &plan.steps {
+            let Some(process) = material_schema::process(step.process) else {
+                continue;
+            };
+            if process.inputs.is_empty() {
+                continue;
+            }
+            let id = self.next_task_id;
+            self.next_task_id += 1;
+            self.tasks.push(Task {
+                id,
+                verb: sim_task::Verb::Make,
+                kind: BuildingKind::Home,
+                site,
+                family: String::new(),
+                requires_g: step.output_g,
+                material: Vec::new(),
+                process: step.process.to_string(),
+                substance: String::new(),
+                fetch_from: None,
+                stage: sim_task::Stage::Working,
+                work_remaining: sim_task::work_of_process(process) * step.runs,
+                claimed_by: None,
+                opened_tick: self.clock.tick,
+            });
+            posted.push(id);
+        }
+        Ok(posted)
+    }
+
+    /// The city's first want is a tool (Q7, Q99, Q102): post the rung's work if the city has none
+    /// of it and nothing else is open.
+    ///
+    /// This is the owner-of-last-resort case (Q36) in its purest form — no citizen owns a works, so
+    /// the city does — and it is what stands where a founding endowment would be (Q5 asked for hands
+    /// instead). Returns whether work was posted.
+    pub fn post_works_tasks(&mut self) -> bool {
+        // **Where a city's first tool is wanted is a daily decision, not a per-tick one.** The
+        // search reads the whole map — reach, patches, seams — so asking it every eight ticks would
+        // be scanning the world two and a half times a second for an answer that changes when
+        // somebody lays a road. One sim-day is the declared cadence (Q14's timescale, applied to a
+        // decision rather than to a process), and the first tick is allowed so a city that already
+        // can work starts immediately.
+        if self.clock.tick != 0 && !self.clock.tick.is_multiple_of(TICKS_PER_DAY) {
+            return false;
+        }
+        if !self.tasks.is_empty() {
+            // One works at a time. A queue that grows faster than it drains is a queue nobody can
+            // read, which is the same rule the case engine's dedupe follows.
+            return false;
+        }
+        if self.holds(RUNG_GOOD) {
+            return false;
+        }
+        let Some(site) = self.works_site() else {
+            // No ground within reach of a road to work on. That is a refusal like any other, and
+            // it is filed rather than passed over: a city that does nothing with no reason on the
+            // record is the complaint this campaign opened with (`docs/GRILLING-C9.md`, *What
+            // prompted it*).
+            self.record_starved(&MaterialShortfall::of(0, "a works site", 0, 0).noting(format!(
+                "every tile within {WORK_REACH} tiles of a road is paved, built on or already \
+                 worked, so the city has nowhere to put its first rung"
+            )));
+            return false;
+        };
+        match self.post_rung_tasks(site) {
+            Ok(_) => true,
+            Err(shortfall) => {
+                // A rung the world cannot supply is a case with a number: which substance, how
+                // much, and where it was wanted.
+                self.record_starved(&shortfall);
+                false
+            }
+        }
+    }
+
+    /// Whether any holding anywhere holds a gram of `substance`.
+    pub fn holds(&self, substance: &str) -> bool {
+        self.holdings
+            .entries()
+            .any(|(account, grams)| grams > 0 && account.ends_with(&format!(":{substance}")))
+    }
+
+    /// How much of a substance is held in total, in grams, wherever it is.
+    pub fn held_g(&self, substance: &str) -> i64 {
+        self.holdings
+            .entries()
+            .filter(|(account, _)| account.ends_with(&format!(":{substance}")))
+            .map(|(_, grams)| grams)
+            .sum()
     }
 
     /// Has this site already got open work on it? One task per site, so two citizens cannot raise
@@ -1119,12 +1638,19 @@ impl World {
 
     /// Note a refusal, folding it into an existing reading for the same district and family.
     fn record_starved(&mut self, shortfall: &MaterialShortfall) {
+        // A refusal names either a **substance** (a leaf the world cannot supply: `timber`) or a
+        // **family** (a structure's material: `ceramic`). Keeping the two apart is what makes
+        // "no timber" readable as timber rather than as the family it presents as — and what
+        // keeps two refusals about different substances from folding into one reading.
+        let named = material_schema::substance(&shortfall.family);
+        let (family, substance) = match named {
+            Some(entry) => (entry.family.to_string(), shortfall.family.clone()),
+            None => (shortfall.family.clone(), String::new()),
+        };
         let district = crate::gov::district_of(self.width, shortfall.site);
-        if let Some(existing) = self
-            .starved
-            .iter_mut()
-            .find(|s| s.district == district && s.family == shortfall.family)
-        {
+        if let Some(existing) = self.starved.iter_mut().find(|s| {
+            s.district == district && s.family == family && s.substance == substance
+        }) {
             existing.count += 1;
             existing.wanted_g += shortfall.wanted_g;
             existing.found_g += shortfall.found_g;
@@ -1132,7 +1658,9 @@ impl World {
         }
         self.starved.push(Starved {
             district,
-            family: shortfall.family.clone(),
+            family,
+            substance,
+            note: shortfall.note.clone(),
             wanted_g: shortfall.wanted_g,
             found_g: shortfall.found_g,
             count: 1,
@@ -1229,7 +1757,15 @@ impl World {
                 if task.is_claimed() {
                     continue;
                 }
-                let (tx, ty) = (task.site % self.width, task.site / self.width);
+                // A **make whose site is not holding its inputs is not work yet**: nobody walks
+                // to a step they cannot take. This is Q74's rule applied to starting rather than
+                // to posting, and it is what makes the plan's order emerge — a later step becomes
+                // claimable exactly when an earlier one has delivered (round 13's Q77).
+                if !self.task_can_start(task) {
+                    continue;
+                }
+                let target = task.destination();
+                let (tx, ty) = (target % self.width, target / self.width);
                 let dx = tx as i64 - hx as i64;
                 let dy = ty as i64 - hy as i64;
                 let distance = dx * dx + dy * dy;
@@ -1265,9 +1801,13 @@ impl World {
     /// intention. Completion draws the plan and raises the structure; a plan that no longer
     /// covers the mass (because someone else mined it) is a refusal with a case, not a building.
     pub fn work_tasks(&mut self) {
-        let width = self.width;
         let mut finished: Vec<u32> = Vec::new();
-        let mut shortfalls: Vec<MaterialShortfall> = Vec::new();
+        let mut stalled: Vec<(u32, MaterialShortfall)> = Vec::new();
+        // Refusals that do **not** stop the work: a gather that came back with less than the plan
+        // asked for still delivered what the world had, and the shortage is a reading rather than
+        // a failure. Recorded separately from `stalled` because the two do different things to
+        // the task.
+        let mut refusals: Vec<MaterialShortfall> = Vec::new();
 
         for task in self.tasks.iter_mut() {
             let Some(worker) = task.claimed_by else { continue };
@@ -1280,10 +1820,9 @@ impl World {
                 continue;
             }
             let standing = citizen.current_tile().unwrap_or(task.site);
-            let (sx, sy) = (task.site % width, task.site / width);
-            let (cx, cy) = (standing % width, standing / width);
-            if (sx as i64 - cx as i64).abs() > 1 || (sy as i64 - cy as i64).abs() > 1 {
-                // Standing somewhere else is not working on it.
+            if !within_reach(self.width, standing, task.destination()) {
+                // Standing somewhere else is not working on it — and a gather's **patch** is the
+                // somewhere else that matters: the work is done at the patch, not at the site.
                 continue;
             }
             task.work_remaining -= 1;
@@ -1295,42 +1834,266 @@ impl World {
         for id in finished {
             let Some(position) = self.tasks.iter().position(|task| task.id == id) else { continue };
             let task = self.tasks[position].clone();
-            let drawn = self.draw_material(&task.material);
-            let drawn_g: i64 = drawn.iter().map(|line| line.grams).sum();
-            let built = if drawn_g >= task.requires_g {
-                self.place_building(task.site, task.kind)
-            } else {
-                None
-            };
-            match built {
-                Some(_) => {
-                    if let Some(index) = self.tiles[task.site as usize].building {
-                        self.buildings[index as usize].material_from = drawn;
+            match (task.verb, task.stage) {
+                (sim_task::Verb::Build, _) => {
+                    let drawn = self.draw_material(&task.material);
+                    let drawn_g: i64 = drawn.iter().map(|line| line.grams).sum();
+                    let built = if drawn_g >= task.requires_g {
+                        self.place_building(task.site, task.kind)
+                    } else {
+                        None
+                    };
+                    match built {
+                        Some(_) => {
+                            if let Some(index) = self.tiles[task.site as usize].building {
+                                self.buildings[index as usize].material_from = drawn;
+                            }
+                        }
+                        None => {
+                            // Either the ground no longer covers the plan or the site stopped
+                            // being buildable. Both are refusals with a number, and the case
+                            // engine reads them.
+                            stalled.push((id, MaterialShortfall::of(
+                                task.site,
+                                task.family.clone(),
+                                task.requires_g,
+                                drawn_g,
+                            )));
+                            continue;
+                        }
                     }
+                    self.release(id, CitizenState::ToHome);
+                    self.tasks.remove(position);
                 }
-                None => {
-                    // Either the ground no longer covers the plan or the site stopped being
-                    // buildable. Both are refusals with a number, and the case engine reads them.
-                    shortfalls.push(MaterialShortfall {
-                        site: task.site,
-                        family: task.family.clone(),
-                        wanted_g: task.requires_g,
-                        found_g: drawn_g,
-                    });
+                // Taking from the world, by hand, into the carrier's arms (Q77's `carried:`).
+                (sim_task::Verb::Gather, sim_task::Stage::Fetching) => {
+                    let patch = task.fetch_from.unwrap_or(task.site);
+                    let taken = self.take_from_world(&task);
+                    if taken <= 0 {
+                        // A patch that is bare — or a seam worked out — is not a failure, it is
+                        // Q92's *refused until something changes*: the case names it and the work
+                        // waits, because a patch grows back (Q108) and a mine does not.
+                        stalled.push((id, MaterialShortfall::of(patch, task.substance.clone(), task.requires_g, 0)));
+                        continue;
+                    }
+                    if taken < task.requires_g {
+                        // A thin edge of a patch gives less than an armful. The take is real, so
+                        // it is carried and delivered — and the shortage is a reading, because a
+                        // gather that brought back what was there is not a failure.
+                        refusals.push(MaterialShortfall::of(
+                            patch,
+                            task.substance.clone(),
+                            task.requires_g,
+                            taken,
+                        ));
+                    }
+                    let worker = task.claimed_by.unwrap_or(0);
+                    let account = material_ledger::carried_account(worker, &task.substance);
+                    self.credit_holding(&account, taken);
+                    if let Some(task) = self.tasks.iter_mut().find(|t| t.id == id) {
+                        task.stage = sim_task::Stage::Delivering;
+                    }
+                    // Sent to the site with what they took: cleared so the planner routes the
+                    // **next leg** rather than finishing the last one.
+                    self.replan_for_task(id);
                 }
-            }
-            self.tasks.remove(position);
-            for citizen in self.citizens.iter_mut() {
-                if citizen.task == Some(id) {
-                    citizen.task = None;
-                    citizen.state = CitizenState::ToHome;
-                    // Re-planned from where they stand, so a finished worker walks home.
+                // Carrying it to the site, where it stays as a holding (Q77's `site:`).
+                (sim_task::Verb::Gather, sim_task::Stage::Delivering) => {
+                    let worker = task.claimed_by.unwrap_or(0);
+                    let from = material_ledger::carried_account(worker, &task.substance);
+                    let to = material_ledger::site_account(task.site, &task.substance);
+                    // Whatever is actually in their arms, rather than what the plan asked for:
+                    // the take was bounded by the patch, and the plan's number is a want.
+                    let carried = self.holding_of(&from);
+                    if carried <= 0 {
+                        stalled.push((id, MaterialShortfall::of(task.site, task.substance.clone(), task.requires_g, 0)));
+                        continue;
+                    }
+                    if let Some(defect) = self.move_holding(&from, &to, carried) {
+                        // The worker is not carrying what the task says they are: a defect worth
+                        // reading rather than a negative holding nobody notices.
+                        stalled.push((
+                            id,
+                            MaterialShortfall::of(task.site, task.substance.clone(), task.requires_g, 0)
+                                .noting(defect),
+                        ));
+                        continue;
+                    }
+                    self.release(id, CitizenState::ToHome);
+                    self.tasks.remove(position);
+                }
+                // A gather is always fetching or carrying. A `Working` gather would be a task the
+                // world posted wrong, and saying so is cheaper than a silent no-op.
+                (sim_task::Verb::Gather, sim_task::Stage::Working) => {
+                    stalled.push((
+                        id,
+                        MaterialShortfall::of(task.site, task.substance.clone(), task.requires_g, 0)
+                            .noting("a gather in the working stage has no patch to take from"),
+                    ));
+                }
+                // Running a declared process on material **already held at the site**.
+                (sim_task::Verb::Make, _) => {
+                    let Some(process) = material_schema::process(&task.process) else {
+                        stalled.push((
+                            id,
+                            MaterialShortfall::of(task.site, task.process.clone(), task.requires_g, 0)
+                                .noting(format!("`{}` is not a declared process", task.process)),
+                        ));
+                        continue;
+                    };
+                    if !self.inputs_present(process, task.site) {
+                        // The inputs went somewhere between the claim and the finish. Q92: the
+                        // task stalls with a case naming what is missing, rather than finishing
+                        // into a holding that cannot pay for it.
+                        let short = process
+                            .inputs
+                            .first()
+                            .map(|(name, _)| (*name).to_string())
+                            .unwrap_or_else(|| task.process.clone());
+                        let want = process
+                            .inputs
+                            .first()
+                            .and_then(|(name, amount)| material_schema::quantity_grams(name, *amount))
+                            .unwrap_or(0);
+                        let have = process
+                            .inputs
+                            .first()
+                            .map(|(name, _)| self.holding_of(&material_ledger::site_account(task.site, name)))
+                            .unwrap_or(0);
+                        stalled.push((
+                            id,
+                            MaterialShortfall::of(task.site, short, want, have)
+                                .noting("the site is no longer holding what the process takes in"),
+                        ));
+                        continue;
+                    }
+                    if let Some(defect) = self.run_process(&task) {
+                        stalled.push((
+                            id,
+                            MaterialShortfall::of(task.site, task.process.clone(), task.requires_g, 0)
+                                .noting(defect),
+                        ));
+                        continue;
+                    }
+                    self.release(id, CitizenState::ToHome);
+                    self.tasks.remove(position);
                 }
             }
         }
 
-        for shortfall in shortfalls {
+        // A stall is work that is still real: the task goes back to the queue with its work
+        // intact, and the case stays open until the world changes (Q92 — *refused until something
+        // changes*).
+        for (id, shortfall) in stalled {
+            if let Some(task) = self.tasks.iter_mut().find(|task| task.id == id) {
+                task.claimed_by = None;
+            }
+            self.release(id, CitizenState::AtHome);
             self.record_starved(&shortfall);
+        }
+        for shortfall in refusals {
+            self.record_starved(&shortfall);
+        }
+    }
+
+    /// Take a gather's substance out of the world at the tile it stands at.
+    ///
+    /// Two routes, one rule: a **patch** the ground grows is harvested (Q102, by hand, no mine),
+    /// and a **seam** is extracted — which is the same take `plan_material` already performs, done
+    /// at the tile the worker is standing by rather than at the site.
+    fn take_from_world(&mut self, task: &Task) -> i64 {
+        let Some(tile) = task.fetch_from else { return 0 };
+        let patches = self
+            .surface_at(tile)
+            .is_some_and(|standing| standing.substance == task.substance);
+        if patches {
+            return self.harvest(tile, task.requires_g);
+        }
+        let seam = self
+            .deposit_at(tile)
+            .is_some_and(|deposit| material_geology::kind_substance(deposit.kind) == task.substance);
+        if seam {
+            return self.extract(tile, task.requires_g);
+        }
+        0
+    }
+
+    /// Run a task's declared process at its site: consume what is held there, and produce what
+    /// the row says, **both into the same holding**.
+    ///
+    /// The balance is re-checked here rather than assumed, because this is the function that
+    /// would turn an unbalanced row into a city that creates matter — the same reasoning the
+    /// emitting gate and `materials::schema` both follow. `Some(defect)` means nothing moved.
+    fn run_process(&mut self, task: &Task) -> Option<String> {
+        let process = material_schema::process(&task.process)?;
+        if process.inputs.is_empty() {
+            // A process that takes nothing in is a **gather**: the world hands it over, and the
+            // only place that may happen is a patch or a seam, through a gather task. Running one
+            // at a site would be `grow()` wearing a process name.
+            return Some(format!(
+                "`{}` takes nothing in, so it is a gather: it is taken from the world rather than \
+                 run at a site",
+                process.name
+            ));
+        }
+        let (Some(into), Some(out)) = material_schema::process_totals(process) else {
+            return Some(format!("`{}` has a quantity that does not reach grams", process.name));
+        };
+        if into != out {
+            return Some(format!(
+                "`{}` does not balance: {into} g in and {out} g out, so running it would make or \
+                 lose {} g",
+                process.name,
+                (into - out).abs()
+            ));
+        }
+        // One run of the row, exactly as declared. A make task is one run: whole runs are the rule
+        // (`chain` states it for the plan), and a task that needed two would be two tasks.
+        for (name, amount) in process.inputs {
+            let Some(grams) = material_schema::quantity_grams(name, *amount) else {
+                return Some(format!("`{name}` in `{}` does not reach grams", process.name));
+            };
+            let account = material_ledger::site_account(task.site, name);
+            self.holdings.record(&account, -grams);
+        }
+        for (name, amount) in process.outputs {
+            let Some(grams) = material_schema::quantity_grams(name, *amount) else {
+                return Some(format!("`{name}` in `{}` does not reach grams", process.name));
+            };
+            let account = material_ledger::site_account(task.site, name);
+            self.holdings.record(&account, grams);
+        }
+        None
+    }
+
+    /// A worker lets go of a task: their claim goes, and they are sent on from where they stand.
+    fn release(&mut self, id: u32, state: CitizenState) {
+        for citizen in self.citizens.iter_mut() {
+            if citizen.task == Some(id) {
+                citizen.task = None;
+                citizen.state = state;
+                // Parked with no plan, so the planner picks them up on its next pass — a released
+                // worker walks home from wherever the work was rather than standing there.
+                citizen.path.clear();
+                citizen.path_cursor = 0;
+                citizen.step_work = 0.0;
+            }
+        }
+    }
+
+    /// Send a worker on to the next leg of their task.
+    ///
+    /// The stage moved (a gather finished fetching), so the destination changed: clearing the path
+    /// is what lets the planner route the **new** leg instead of finishing the old one, and the
+    /// state stays `AtWork` so the planner knows to route rather than to retire them.
+    fn replan_for_task(&mut self, id: u32) {
+        for citizen in self.citizens.iter_mut() {
+            if citizen.task == Some(id) {
+                citizen.state = CitizenState::AtWork;
+                citizen.path.clear();
+                citizen.path_cursor = 0;
+                citizen.step_work = 0.0;
+            }
         }
     }
 
@@ -1431,6 +2194,9 @@ impl World {
         if self.clock.tick.is_multiple_of(8) {
             self.recompute_demand();
             self.post_demand_tasks();
+            // The city's first want is a tool, and nobody owns a works: the owner of last resort
+            // posts it (Q36), which is what stands where `grow()`'s endowment would have been.
+            self.post_works_tasks();
             self.claim_tasks();
             self.work_tasks();
         }
@@ -1852,7 +2618,25 @@ impl World {
                     let Some(task) = self.tasks.iter().find(|t| t.id == task) else {
                         continue;
                     };
-                    (from_tile, task.site, CitizenState::ToWork)
+                    // Where the task's **current leg** is: a gather walks to its patch first and
+                    // to its site second, and which one it is now is the task's own answer.
+                    (from_tile, task.destination(), CitizenState::ToWork)
+                }
+                // A citizen on a task who is standing still is between legs: a gather that has
+                // just taken from a patch walks to the site it is carrying it to. Routed from
+                // where they stand, and left `AtWork` so their next arrival is at the site.
+                (CitizenState::AtWork, Some(task), _) => {
+                    let Some(task) = self.tasks.iter().find(|t| t.id == task) else {
+                        continue;
+                    };
+                    let here = self.citizens[index].current_tile().unwrap_or(from_tile);
+                    // Already on the leg's tile: there is nothing to walk, and the work loop owns
+                    // them from here. Planning anyway would hand them a one-tile path and spend
+                    // the tick budget re-deciding that every pass.
+                    if within_reach(self.width, here, task.destination()) {
+                        continue;
+                    }
+                    (here, task.destination(), CitizenState::ToWork)
                 }
                 (CitizenState::AtHome, None, Some(job)) => {
                     let Some(building) = self.buildings.get(job as usize) else { continue };
@@ -1875,9 +2659,11 @@ impl World {
                 ),
                 _ => continue,
             };
+            // The same reach the work check uses, so a citizen is never routed to a tile they
+            // cannot work from and never refused a tile they were routed to.
             let route = self
                 .roads
-                .route_between_tiles(self.width, self.height, origin, to_tile, 3);
+                .route_between_tiles(self.width, self.height, origin, to_tile, WORK_REACH);
             planned += 1;
             match route {
                 Some(path) => {
@@ -2689,6 +3475,420 @@ mod tests {
             "the city is made of what it dug, which is what grow() could never say"
         );
         assert!(audit.loose_g() >= 0);
+    }
+
+    // -----------------------------------------------------------------
+    // The stone rung: gathering, carrying, and making (C9 phase 3, Q102/Q77/Q66)
+    // -----------------------------------------------------------------
+
+    /// A city with the works a first tool needs: the seed road, a road to a **timber patch** and
+    /// to a **stone seam**, a power plant and an occupied home.
+    ///
+    /// Building the roads is the point rather than pageantry. Q102's gathers are taken by hand and
+    /// Q84 settled that a person walks anywhere — but this sim walks its citizens along roads, so a
+    /// patch with no road within [`WORK_REACH`] is a patch nobody can gather. Laying the road is
+    /// the test saying that out loud instead of asserting a rung the world cannot reach.
+    fn rung_world() -> World {
+        let mut world = worked_city();
+
+        // The nearest tile of each kind the rung needs, searched in tile order so the fixture is
+        // the same world every run.
+        let timber = (0..world.tiles.len() as u32)
+            .find(|index| {
+                world
+                    .surface_at(*index)
+                    .is_some_and(|standing| standing.substance == "timber" && standing.mass_g >= 3000)
+            })
+            .expect("the world grows timber somewhere");
+        let seam = (0..world.tiles.len() as u32)
+            .find(|index| {
+                world.deposit_at(*index).is_some_and(|deposit| {
+                    material_geology::kind_substance(deposit.kind) == "stone" && deposit.mass_g >= 1000
+                })
+            })
+            .expect("the world holds stone somewhere");
+
+        // A road from the seed road down the left edge to each patch, in two straight legs so the
+        // tiles are orthogonally connected — a staircase is not a road, and the graph knows it.
+        for patch in [timber, seam] {
+            let (x, y) = world.coords(patch);
+            let approach = world.index(x.saturating_sub(1), y);
+            world.lay_road(world.index(0, 0), world.index(0, y));
+            world.lay_road(world.index(0, y), approach);
+        }
+        world.rebuild_derived();
+
+        // The works the rung is worked from: a plant (so the city can light itself) and a home
+        // whose residents are the hands. Both are **built** rather than placed, so the audit at
+        // the end is the whole city's.
+        let plant = world.index(1, 3);
+        world
+            .build_with_material(plant, BuildingKind::PowerPlant)
+            .unwrap_or_else(|short| panic!("a power plant must be payable: {}", short.describe()));
+        let plant_index = world.tiles[plant as usize].building.expect("the plant");
+        world.buildings[plant_index as usize].ready_tick = 0;
+        world.recompute_power();
+
+        let housing = world.index(1, 6);
+        world
+            .build_with_material(housing, BuildingKind::Home)
+            .unwrap_or_else(|short| panic!("a home must be payable: {}", short.describe()));
+        let home_index = world.tiles[housing as usize].building.expect("the home");
+        world.buildings[home_index as usize].ready_tick = 0;
+        for _ in 0..4 {
+            world.clock.tick += 1;
+            world.assign_jobs();
+        }
+        assert!(!world.citizens.is_empty(), "the home has residents to do the work");
+        world
+    }
+
+    /// Idle residents take the rung's work and do it, standing where each leg of their task is.
+    ///
+    /// Routing is exercised by the tick in its own test; what this drives is the **mass path**:
+    /// patch → carrier → site → process → holding, with the order enforced by what a task can
+    /// start on rather than by a schedule.
+    fn drive_the_rung(world: &mut World, rounds: usize) {
+        for _ in 0..rounds {
+            // A released worker is a resident at home again, as far as claiming is concerned.
+            for index in 0..world.citizens.len() {
+                if world.citizens[index].task.is_some() {
+                    continue;
+                }
+                let Some(home) = world.citizens[index].home else { continue };
+                let home_tile = world.buildings[home as usize].tile;
+                let citizen = &mut world.citizens[index];
+                citizen.state = CitizenState::AtHome;
+                citizen.path = vec![home_tile];
+                citizen.path_cursor = 0;
+                citizen.step_work = 0.0;
+                citizen.ready = true;
+            }
+            world.claim_tasks();
+            // Stand every worker on the tile their task is on **now** — a gather's patch first,
+            // then its site, which is the stage doing its job.
+            let placements: Vec<(usize, u32)> = world
+                .citizens
+                .iter()
+                .enumerate()
+                .filter_map(|(index, citizen)| {
+                    let id = citizen.task?;
+                    let task = world.tasks.iter().find(|task| task.id == id)?;
+                    Some((index, task.destination()))
+                })
+                .collect();
+            for (index, tile) in placements {
+                let citizen = &mut world.citizens[index];
+                citizen.state = CitizenState::AtWork;
+                citizen.path = vec![tile];
+                citizen.path_cursor = 0;
+            }
+            world.work_tasks();
+            if world.tasks.is_empty() {
+                return;
+            }
+        }
+    }
+
+    /// The rung, end to end: the world's timber patch, its stone seam and its fibre are taken by
+    /// hand, carried to the works, and turned into **one hatchet** — with every gram accounted
+    /// for on the way. The chain's own number is the assertion: 4.1 kg of the world.
+    #[test]
+    fn the_stone_rung_makes_a_hatchet_out_of_the_world() {
+        let mut world = rung_world();
+        let site = world.works_site().expect("a road-reachable tile to work at");
+        let posted = world
+            .post_rung_tasks(site)
+            .unwrap_or_else(|short| panic!("the rung must be payable: {}", short.describe()));
+        assert!(posted.len() >= 3, "the plan has leaves to gather before anything is made");
+
+        // Nothing is made before anything is gathered: a make is not even claimable until its site
+        // holds what its process takes in. This is Q77's rule, and it is what makes the plan's
+        // order emerge rather than having to be scheduled.
+        let assemble = world
+            .tasks
+            .iter()
+            .find(|task| task.process == "assemble the hatchet")
+            .expect("the chain's last step is posted")
+            .clone();
+        assert!(!world.task_can_start(&assemble), "nothing is at the site yet");
+        assert!(
+            world.tasks.iter().any(|task| task.verb == sim_task::Verb::Gather && world.task_can_start(task)),
+            "and the gathers are work from the first tick"
+        );
+
+        drive_the_rung(&mut world, 400);
+        assert!(world.tasks.is_empty(), "the rung finished: {:?}", world.tasks.iter().map(|t| t.describe()).collect::<Vec<_>>());
+
+        // The hatchet exists, at the works, and it is the good the chain names.
+        let held = world.held_g(RUNG_GOOD);
+        assert_eq!(held, 2900, "one hatchet is 2900 g of the world");
+
+        // Everything the rung drew is still somewhere: 3000 g timber + 1000 g stone + 100 g fibre
+        // is the chain's own 4.1 kg, and its by-products (offcuts, flakes, dust, trim) are
+        // holdings rather than losses.
+        let site_holding: i64 = world
+            .holdings
+            .entries()
+            .filter(|(account, _)| account.starts_with(&material_ledger::site_prefix(site)))
+            .map(|(_, grams)| grams)
+            .sum();
+        assert_eq!(site_holding, 4100, "the works is holding exactly what the world gave up");
+        assert_eq!(
+            world.held_g("timber_offcuts") + world.held_g("stone_flakes")
+                + world.held_g("fibre_dust") + world.held_g("trim_waste"),
+            1200,
+            "every declared loss is still mass, in a holding, rather than gone"
+        );
+
+        // And the campaign's claim, with a rung behind it: the city is made of what it dug.
+        let audit = world.mass_audit();
+        assert!(audit.conserves(), "the audit is the whole point: {:#?}", audit.findings());
+        assert_eq!(audit.held_g, site_holding, "the audit reads the holdings it accounts for");
+        assert_eq!(audit.held_g, 4100);
+
+        // The tree has been cut and the stone taken, and the ground says so.
+        let ground: i64 = audit
+            .holdings()
+            .iter()
+            .filter(|(account, _)| account.starts_with("ground:"))
+            .map(|(_, grams)| *grams)
+            .sum();
+        assert!(ground <= -4100, "the ground gave up at least the rung's own 4.1 kg: {ground} g");
+
+        // The city has a tool, so it does not post the rung again — the want is answered.
+        assert!(!world.post_works_tasks(), "a city with a hatchet has no first rung to work");
+    }
+
+    /// A patch nobody can stand beside is a patch nobody gathers: with no road at all, the rung is
+    /// refused **with the substance named**, and no work is posted.
+    #[test]
+    fn a_rung_the_road_cannot_reach_is_refused_with_its_substance_named() {
+        let mut world = World::new(256, 256, 7);
+        for tile in world.tiles.iter_mut() {
+            tile.terrain = Terrain::Ground;
+            tile.road = false;
+        }
+        world.rebuild_derived();
+
+        let site = world.index(10, 10);
+        // The world grows things, and none of them is reachable by hand: the roads are what
+        // carrying needs (Q84).
+        assert!(
+            (0..world.tiles.len() as u32).any(|tile| world.surface_at(tile).is_some()),
+            "the fixture should have patches, or it proves nothing about reach"
+        );
+        assert_eq!(world.plan_source(site, "timber"), None, "no road, no patch to stand by");
+
+        let refusal = world
+            .post_rung_tasks(site)
+            .expect_err("a rung with no reachable leaf is refused");
+        // The refusal names the **substance** the reduction asked for first, read from the
+        // reduction rather than hardcoded here — the plan decides the order, and a test that
+        // repeated it would be a second home for the chain.
+        let plan = material_chain::plan(RUNG_GOOD, 2900).expect("the rung plans");
+        let first = plan.leaves.first().expect("leaves to gather").substance;
+        assert_eq!(refusal.family, first, "the refusal names a substance, not a family");
+        assert!(refusal.note.contains("road"), "{}", refusal.note);
+        assert!(world.tasks.is_empty(), "and no work is posted for it");
+
+        // The world owns the road it seeds, so the material refusal above is what a **proposed
+        // site** gets (Q87's tender is the caller that would propose one). The city's own posting
+        // is the other refusal: with nothing to work on, it says so — and says it once.
+        assert_eq!(world.works_site(), None, "a roadless world has nowhere to work");
+        assert!(!world.post_works_tasks());
+        let starved = world.starved();
+        assert_eq!(starved.len(), 1, "one case, not one per tick: {starved:?}");
+        assert_eq!(starved[0].family, "a works site");
+        assert!(starved[0].note.contains("road"), "{}", starved[0].note);
+        assert_eq!(world.starved().len(), 1, "and re-posting folds into it");
+
+        // And the material refusal, which is the one a *site* would get.
+        world.record_starved(&refusal);
+        let starved = world.starved();
+        assert_eq!(starved.len(), 2, "a different refusal is a different case: {starved:?}");
+        assert_eq!(starved[1].substance, first);
+        assert_eq!(
+            starved[1].family,
+            material_schema::substance(first).expect("a declared substance").family,
+            "the family it presents as is still on the case"
+        );
+        assert!(starved[1].missing_g() > 0);
+        assert!(starved[1].objective().contains(first), "{}", starved[1].objective());
+    }
+
+    /// A make refuses to run on material that is not there — the rule that makes a process a
+    /// process rather than a formula. Q92's *refused until something changes*: the work waits with
+    /// a case naming what is missing, instead of finishing into a holding that cannot pay.
+    #[test]
+    fn a_make_will_not_run_without_its_inputs_at_the_site() {
+        let mut world = rung_world();
+        let site = world.works_site().expect("a works site");
+        world.post_rung_tasks(site).expect("the rung is payable");
+        let assemble = world
+            .tasks
+            .iter()
+            .find(|task| task.process == "assemble the hatchet")
+            .expect("the last step")
+            .clone();
+
+        // Nobody is at the site, and somebody who stood there for the whole of the work would
+        // still make nothing: the counter moves, and the mass does not, because the completion is
+        // a check rather than a declaration.
+        let worker = world.citizens[0].id;
+        {
+            let task = world.tasks.iter_mut().find(|task| task.id == assemble.id).expect("posted");
+            task.claimed_by = Some(worker);
+        }
+        let index = world.citizens.iter().position(|c| c.id == worker).expect("the worker");
+        world.citizens[index].state = CitizenState::AtWork;
+        world.citizens[index].task = Some(assemble.id);
+        world.citizens[index].path = vec![site];
+        world.citizens[index].path_cursor = 0;
+        for _ in 0..assemble.work_remaining {
+            world.work_tasks();
+        }
+
+        assert!(!world.holds(RUNG_GOOD), "a hatchet cannot be made from an empty site");
+        assert_eq!(world.held_g(RUNG_GOOD), 0);
+        // The work is still real and still open: the case names what was missing.
+        let task = world.tasks.iter().find(|task| task.id == assemble.id).expect("still open");
+        assert!(task.claimed_by.is_none(), "and it went back to the queue");
+        let starved = world.starved();
+        assert!(
+            starved.iter().any(|case| case.substance == "knapped_edge" || case.substance == "haft_blank" || case.substance == "cord"),
+            "a case naming the input: {starved:?}"
+        );
+    }
+
+    /// A gather is a **two-leg trip**: the worker takes the patch, and the load rides in the
+    /// carrier's arms until it is delivered. The mass is the city's the whole way, which is what
+    /// Q77's two accounts are for.
+    #[test]
+    fn a_gather_takes_the_patch_then_carries_it_to_the_site() {
+        let mut world = rung_world();
+        let site = world.works_site().expect("a works site");
+        world.post_rung_tasks(site).expect("the rung is payable");
+
+        let gather = world
+            .tasks
+            .iter()
+            .find(|task| task.verb == sim_task::Verb::Gather && task.substance == "timber")
+            .expect("a timber gather")
+            .clone();
+        let worker = world.citizens[0].id;
+        {
+            let task = world.tasks.iter_mut().find(|task| task.id == gather.id).expect("posted");
+            task.claimed_by = Some(worker);
+        }
+        let index = world.citizens.iter().position(|c| c.id == worker).expect("the worker");
+        world.citizens[index].task = Some(gather.id);
+        world.citizens[index].state = CitizenState::AtWork;
+        world.citizens[index].path = vec![gather.fetch_from.expect("a patch to take from")];
+        world.citizens[index].path_cursor = 0;
+
+        for _ in 0..gather.work_remaining {
+            world.work_tasks();
+        }
+
+        // Taken, and in the carrier's arms rather than the site's: the first leg is done and the
+        // second has not started.
+        let carried = world.holding_of(&material_ledger::carried_account(worker, "timber"));
+        assert_eq!(carried, 3000, "one armful, exactly as the gather declares");
+        assert_eq!(world.holding_of(&material_ledger::site_account(site, "timber")), 0);
+        let task = world.tasks.iter().find(|task| task.id == gather.id).expect("still open");
+        assert!(task.is_delivering(), "and it is carrying now, not fetching");
+        assert_eq!(task.destination(), site, "so the next leg is the site");
+
+        // The patch remembers the take: the ground gave up exactly what was carried.
+        let patch = gather.fetch_from.expect("a patch");
+        assert!(world.tiles[patch as usize].harvested_g >= 3000);
+        let audit = world.mass_audit();
+        assert!(audit.conserves(), "a load in somebody's arms is still mass: {:#?}", audit.findings());
+        assert_eq!(audit.held_g, 3000, "and the audit reads it as held");
+
+        // Delivered: it stands at the site now, and the task is done.
+        world.citizens[index].path = vec![site];
+        world.citizens[index].path_cursor = 0;
+        world.work_tasks();
+        assert_eq!(world.holding_of(&material_ledger::carried_account(worker, "timber")), 0);
+        assert_eq!(world.holding_of(&material_ledger::site_account(site, "timber")), 3000);
+        assert!(
+            !world.tasks.iter().any(|task| task.id == gather.id),
+            "the gather retired itself"
+        );
+        assert!(world.mass_audit().conserves());
+    }
+
+    /// Q108 in the world rather than on paper: a patch that was taken from comes back as sim-days
+    /// pass, so the ground's depletion is a function of elapsed **time** and the audit stays true.
+    #[test]
+    fn a_harvested_patch_grows_back_on_the_worlds_own_clock() {
+        let mut world = rung_world();
+        let patch = (0..world.tiles.len() as u32)
+            .find(|index| {
+                world
+                    .surface_at(*index)
+                    .is_some_and(|standing| standing.substance == "timber")
+            })
+            .expect("a stand");
+        let before = world.surface_at(patch).expect("a patch to start from").mass_g;
+        let taken = world.harvest(patch, 100_000);
+        assert!(taken > 0, "the stand gives up what it holds");
+        let after = world.surface_at(patch).expect("still standing").mass_g;
+        assert_eq!(after, before - taken, "a take is what leaves the patch, to the gram");
+
+        // A year of sim-days, and it has grown back — brush in weeks, stands in years, and both by
+        // the same declared mechanism.
+        world.clock.tick += TICKS_PER_DAY * 365;
+        let regrown = world.surface_at(patch).expect("still standing").mass_g;
+        assert!(regrown > after, "a patch that is not stripped grows back: {after} → {regrown}");
+        assert!(regrown <= before, "and never past what the tile holds: {regrown} vs {before}");
+
+        // Regrowth does not un-take the mass: the ground's account is the **take total**, so a
+        // city holding what it cut does not read as material nobody dug up.
+        let audit = world.mass_audit();
+        assert!(
+            audit.conserves(),
+            "regrowth is not a negative take: {:#?}",
+            audit.findings()
+        );
+        assert_eq!(
+            audit.held_g, 0,
+            "nothing is held here — the wood was never carried off, so it is not a holding"
+        );
+    }
+
+    /// The rung through the **real tick**: nobody teleports, the citizens walk the roads, and the
+    /// hatchet turns up because the world produced it rather than because a test moved mass.
+    ///
+    /// The driver test above proves the mass path; this one proves the machinery around it — the
+    /// claim pass, the two-leg routing, the delivery and the completion — which is the half a
+    /// teleport would hide.
+    #[test]
+    fn the_city_walks_out_and_makes_a_hatchet_on_its_own() {
+        let mut world = rung_world();
+        let mut ticks = 0;
+        // Measured rather than guessed: the rung lands between 1 000 and 2 000 ticks on this
+        // fixture — a day and a half of sim-time, most of it walking — and the bound is set with
+        // headroom so a change in the walking rate announces itself as a failure here. The ceiling
+        // is not a target and nothing is tuned to it.
+        while !world.holds(RUNG_GOOD) && ticks < 2_500 {
+            world.tick();
+            ticks += 1;
+        }
+        assert!(
+            world.holds(RUNG_GOOD),
+            "2 500 ticks and no hatchet: tasks {:?}, starved {:?}, holdings {:?}",
+            world.tasks.iter().map(|task| task.describe()).collect::<Vec<_>>(),
+            world.starved(),
+            world.holdings.holdings()
+        );
+        assert!(
+            world.mass_audit().conserves(),
+            "and the audit is true of it: {:#?}",
+            world.mass_audit().findings()
+        );
     }
 
     /// A refusal to build is a **case with a number**, not a silence: on a world with no ceramic

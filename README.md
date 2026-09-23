@@ -22,7 +22,7 @@ beside it and re-checks a season record without needing a window or a GPU.
 
 ```bash
 cargo run --release            # the game
-cargo test                     # 85 tests, headless
+cargo test                     # 197 tests, headless
 cargo clippy --all-targets     # expected clean
 cargo run --bin verify         # the oracle: re-check a season record, no GPU
 ```
@@ -115,11 +115,27 @@ There are no floats anywhere in it. A density, a unit mass, a rot rate and a qua
 counted goods) balances only if every conversion is exact, and a float is where that stops being
 true without saying so.
 
-The stone rung is worked end to end rather than promised: **one hatchet is 4.1 kg of the world**
-— 3000 g of timber, 1000 g of stone, 100 g of fibre — and the reduction from a wanted good to
-that material (`src/materials/chain.rs`) reports the work in dependency order, the surplus when
-a batch runs long, and every by-product the steps produce. A chain that loops, or that ends in
-something the world does not hold, is refused **with its path named**.
+The stone rung is worked end to end rather than promised. The reduction
+(`src/materials/chain.rs`) reports the work in dependency order, the surplus when a batch runs
+long, and every by-product the steps produce — **one hatchet is 4.1 kg of the world**: 3000 g of
+timber, 1000 g of stone, 100 g of fibre — and a chain that loops, or that ends in something the
+world does not hold, is refused **with its path named**.
+
+Those leaves come out of the world for real, by hand. `src/materials/surface.rs` derives the
+patches the ground **grows** — a stand of timber, a thicket of fibre — from the seed like the
+geology, and Q108's regrowth is a function of elapsed sim-days, so a patch is worked, comes back,
+and is stripped to the soil if it is taken past a tenth of what it held. The mass then travels
+the way the record says it does: a **gather** takes from the patch, carries it to the site, and
+the **holding** it lands in is an account — `site:<tile>` or `carried:<carrier>` — that the audit
+reads. A **make** runs a declared process on material the site is already holding, and produces
+its outputs into the same account, so a loss is a holding rather than a disappearance.
+
+The order is emergent rather than scheduled: a make is **not claimable until its site holds its
+inputs**, so `assemble the hatchet` becomes work exactly when the cord, the haft and the edge are
+standing there. The measured result on a game-sized world with a road out to a patch and a seam:
+the citizens walk out and **make one hatchet on their own** inside two thousand ticks — a day and
+a half of sim time, most of it walking — and the audit reads the world holding the chain's own
+4.1 kg, as 2900 g of tool and 1200 g of declared by-products.
 
 The gate is two-layered on purpose: `tools/materials/schema.py` refuses to *emit* a table that
 breaks the contract, and `src/materials/schema.rs` re-checks what it would *use* — because the
@@ -395,11 +411,14 @@ it lands, is synthesised rather than sampled.
   is unmeasured.
 * **Composite contrast on a rendered frame** — token pairs are measured; pixels are
   not.
-* **The material economy** — the tables, the gate and the reduction have landed
-  (`docs/GRILLING-C9.md`, *Built*). Open: the MAKE/MAINTAIN machinery that runs a
-  process as a citizen's task, the surface deposits the gathers draw on, and the ore
-  rung, which is blocked on `SOURCES.md`'s `[NS]` rows rather than on the schema — a
-  declared ore grade would make the ledger look sourced while being invented.
+* **The material economy** — the tables, the gate, the reduction, the surface patches and
+  the rung that runs them have landed (`docs/GRILLING-C9.md`, *Built*). Open:
+  `Maintain` and wear, so nothing ages yet; the process structures (a kiln is a row
+  nobody has declared); builds still draw their mass from the ground under their own
+  site while makes consume a holding, which is the remaining half of *drawn but not
+  hauled*; the tier gate, which needs phase 6's progression; and the ore rung, blocked
+  on `SOURCES.md`'s `[NS]` rows rather than on the schema — a declared ore grade would
+  make the ledger look sourced while being invented.
 * **The icon library** — ladder, registry-driven inventory, motion, and the material
   swatch check, above.
 * **The session console** — an inspectable pane beside the game (a live agent work

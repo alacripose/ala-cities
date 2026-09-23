@@ -33,6 +33,8 @@
 
 use std::collections::BTreeMap;
 
+use serde::{Deserialize, Serialize};
+
 /// A structure's mass at level 1, in grams, by the kind's declared name.
 ///
 /// **A recorded deviation, not a second home.** These numbers belong in
@@ -83,6 +85,37 @@ pub fn ruin_account(family: &str) -> String {
     format!("ruin:{family}")
 }
 
+/// An account holding loose mass **at a site**: what stands on a tile waiting to be worked or
+/// carried away (C9 round 13, Q77).
+///
+/// The substance is part of the key because a site holds more than one thing — a works holds
+/// timber, stone and fibre at once — and *"where is the iron"* has to be answerable (Q82).
+/// Q77 named the account `site:<tile>`; the substance is the reading of it, exactly as
+/// `ground:iron_ore` qualifies the ground.
+pub fn site_account(tile: u32, substance: &str) -> String {
+    format!("site:{tile}:{substance}")
+}
+
+/// An account holding mass **in a carrier**: a person's arms, or a vehicle's bed (Q77, Q82).
+///
+/// The carrier is named rather than counted, so *"the iron is in a wagon, on the road, south of
+/// the kiln"* is a sentence the ledger can support — and an abandoned carrier is a holding whose
+/// owner is missing rather than a number that went nowhere.
+pub fn carried_account(carrier: u32, substance: &str) -> String {
+    format!("carried:carrier-{carrier}:{substance}")
+}
+
+/// The prefix every site holding shares, so a reader can ask a tile what it is holding without
+/// knowing the substances in advance.
+pub fn site_prefix(tile: u32) -> String {
+    format!("site:{tile}:")
+}
+
+/// The prefix every carrier's holding shares.
+pub fn carried_prefix(carrier: u32) -> String {
+    format!("carried:carrier-{carrier}:")
+}
+
 /// The world's mass audit: where the mass is, and the one reconciliation a city can fail.
 ///
 /// # Why this is not a zero total
@@ -99,7 +132,7 @@ pub fn ruin_account(family: &str) -> String {
 /// [`MassAudit::loose_g`] going **negative** means the city stands on material nobody dug up.
 /// That is not a warning about a number; that is `grow()` — material from nothing — printed as a
 /// quantity.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MassAudit {
     /// Where the mass is: the ground's depletion as a negative, the standing and ruined material
     /// as positives. A reading, not a verdict.
@@ -108,6 +141,13 @@ pub struct MassAudit {
     pub extracted_g: i64,
     /// Total mass standing in the city — structures, and the remains of retired ones.
     pub standing_g: i64,
+    /// Total mass **held loose in the city's own hands**: at sites and in carriers (Q77).
+    ///
+    /// Separate from `standing_g` on purpose. A structure is material that has been *spent* on
+    /// something that stands; a holding is material that has been taken and not yet spent, and
+    /// the difference is exactly what a builder's yard is. Both are the city's, both came out of
+    /// the ground, and both therefore count against what the ground gave up.
+    pub held_g: i64,
     /// Structures that could not enter the audit at all, because their mass or their material
     /// family could not be derived.
     ///
@@ -119,13 +159,19 @@ pub struct MassAudit {
 }
 
 impl MassAudit {
-    /// Material the world has taken out of its ground and **not** put into a structure, in
-    /// grams. Real and legitimate: it is the loose material in stockpiles, in a builder's hands,
-    /// spent as waste, or simply never used yet.
+    /// Material the world has taken out of its ground and **not** put anywhere, in grams —
+    /// neither standing as a structure nor held at a site. Real and legitimate: it is material
+    /// spent as waste, or simply gone from the world's books the way spent mass is.
     ///
     /// Negative is the defect, and its size is the amount of material that was never dug up.
     pub fn loose_g(&self) -> i64 {
-        self.extracted_g - self.standing_g
+        self.extracted_g - self.standing_g - self.held_g
+    }
+
+    /// Whether every gram the city is holding came out of its own ground — the same question as
+    /// [`Self::conserves`], asked of the holdings rather than of the structures.
+    pub fn holdings_are_paid_for(&self) -> bool {
+        self.held_g <= self.extracted_g - self.standing_g
     }
 
     /// Whether every gram standing in this world came out of its own ground.
@@ -160,10 +206,12 @@ impl MassAudit {
         }
         findings.push(format!(
             "the city stands on {} g of material the ground never gave up: {} g has been taken \
-             out and {} g is standing, so something here was not built from anything",
+             out, {} g is standing and {} g is held, so something here was not built from \
+             anything",
             -self.loose_g(),
             self.extracted_g,
-            self.standing_g
+            self.standing_g,
+            self.held_g
         ));
         findings
     }
@@ -176,7 +224,7 @@ impl MassAudit {
 /// else. Account names are **qualified** — `ground:iron_ore` versus `stock:iron_ore` — because
 /// the two sides of a transfer must not be the same key, or the movement would cancel itself
 /// and the ledger would be checking nothing.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ledger {
     entries: BTreeMap<String, i64>,
 }
@@ -391,6 +439,31 @@ mod tests {
         assert!(ledger.convert("stock:steel", 400, "waste:steel", 400).is_none());
         assert!(ledger.balances(), "nothing was invented and nothing was lost");
         assert!(ledger.findings().is_empty());
+    }
+
+    /// A holding is a different account from the ground it came from, and neither name is a
+    /// prefix of the other in the wrong direction: two keys that could collide would cancel the
+    /// movement the ledger is checking.
+    #[test]
+    fn a_site_and_a_carrier_hold_under_their_own_names() {
+        assert_eq!(site_account(41, "timber"), "site:41:timber");
+        assert_eq!(carried_account(3, "timber"), "carried:carrier-3:timber");
+        assert_ne!(site_account(41, "timber"), site_account(41, "stone"));
+        assert_ne!(site_account(41, "timber"), carried_account(41, "timber"));
+        assert!(site_account(41, "timber").starts_with(&site_prefix(41)));
+        assert!(carried_account(3, "timber").starts_with(&carried_prefix(3)));
+        assert!(!site_prefix(4).starts_with(&site_prefix(41)));
+
+        // Mass held at a site is the city's, and it is not standing: the two totals move
+        // independently, which is what makes "taken but not yet spent" a readable state.
+        let audit = MassAudit { extracted_g: 3000, standing_g: 1000, held_g: 2000, ..Default::default() };
+        assert!(audit.conserves());
+        assert_eq!(audit.loose_g(), 0, "everything taken is standing or held");
+        assert!(audit.holdings_are_paid_for());
+
+        let unpaid = MassAudit { extracted_g: 3000, standing_g: 1000, held_g: 3000, ..Default::default() };
+        assert!(!unpaid.conserves(), "a holding larger than the take is the defect");
+        assert!(!unpaid.holdings_are_paid_for());
     }
 
     /// A one-sided movement is the bug this whole file exists to catch, and it must break the

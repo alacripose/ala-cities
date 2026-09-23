@@ -1635,3 +1635,100 @@ repair system — plus Q102's **surface deposits** (brush, timber, fibre) with Q
 regrowth, which is what the gathers have to draw on. `VOCABULARY["structure"]` is still empty,
 so the first process that needs a kiln must declare one; that emptiness is a declaration, and
 the gate refuses an entry no process requires.
+
+---
+
+## Built — the stone rung, in the world
+
+*Written after the second phase-3 slice, and it is the same kind of note: **implementation, not
+questions.** Where a reading was needed it is marked as a reading, and where something named
+here is not built it is named as open rather than left to read as done.*
+
+**What landed.** The gathers have ground to draw on and the processes have hands to run them:
+
+* **Surface patches** (`src/materials/surface.rs`) — Q102's brush and stands, seed-derived like
+the geology, taken **by hand, without a mine**, and measured in tonnes rather than in hundreds
+of tonnes: a stand is 6 t of timber on a tile, brush 1.2 t of fibre. Regrowth is Q108's, and it
+is a function of **elapsed sim-days** rather than of ticks (round 9's Q61), derived from the
+tile's own richness rather than declared twice.
+* **A patch stripped to the soil stops growing** — a take that leaves under a tenth of the base
+strips the tile, and bringing one back is Q108's planting, which is **not built**. Stripping is
+therefore a real decision rather than a thing a player does forever without noticing.
+* **Holdings** (round 13's Q77 as built): `site:<tile>:<substance>` for loose mass standing at a
+site and `carried:carrier-<id>:<substance>` for mass in somebody's arms. The audit reads them,
+so a city holding three tonnes of timber is a city that **dug** three tonnes (Q82's *"where is
+the iron"* is answerable, and `verify.exe` prints the holdings account by account).
+* **Two new verbs** (Q43's closed list, grown by decision): `Gather`, which takes a leaf out of
+the world and carries it to the site, and `Make`, which runs a declared process on material
+**already held at the site**. `Verb::ALL` is now three, and a verb still arrives with a
+mechanism behind it.
+* **The rung posted by the city itself** (Q36's owner of last resort, Q99's *needs post the
+first work*): while the city has no hatchet and no work open, the city posts the reduction's
+gathers and makes. Q5's *"dropped in for the first time"* is what this stands for — the first
+material is taken by hand, not endowed.
+
+**The measured result, not the intention.** A game-sized world (256², seed 7) with the seed
+road, a road out to a timber patch and a stone seam, a power plant and one occupied home makes
+**one hatchet with no help from the test**: nobody teleports, the citizens walk, and the rung
+lands between **1 000 and 2 000 ticks** — a day and a half of sim time, most of it walking. The
+world is holding **4 100 g** at the end: the hatchet's 2 900 g plus every by-product the chain
+declares (600 g offcuts, 200 g flakes, 5 g dust, 395 g trim) — which is `chain`'s own number,
+now a quantity in a ledger rather than a claim in a document. The mass audit reads it as
+conserved, and the ground's account is at least the 4.1 kg the rung took.
+
+**Readings, stated rather than assumed — each overridable like any other.**
+
+* **Reach is one declared number.** `WORK_REACH = 3`: the router walks a citizen to the end of
+the road and their hands reach three tiles past it. This repairs a latent stall rather than
+introducing one — `has_road_access` accepted a site two tiles from a road, the router routed to
+the nearest road node, and the work check demanded adjacency, so a site could be **postable and
+unworkable** with nothing on the record to say why. One number now answers both halves.
+* **A make is not claimable until its site holds its inputs.** Q74's rule (*a refusal files a
+case*) applied one step earlier, at *starting* rather than at *posting*. The consequence is the
+one worth keeping: **the plan's order is emergent.** Nobody schedules the rung; `assemble the
+hatchet` becomes claimable exactly when the cord, the haft and the edge are standing there.
+* **A gather is a two-leg trip.** The worker takes the patch, and the load rides in the
+carrier's arms until it is delivered to the site. That is Q77's two accounts used as designed,
+and it is the bottom rung of Q76's transport ladder — a person's arms — with the wagon still to
+come.
+* **Regrowth does not un-take mass.** A patch's `harvested_g` is its **take total** and only
+ever rises; standing mass is *derived* from it and the elapsed days. The alternative reads
+better for one paragraph and then makes the audit report a city's own stock as material the
+ground never gave up — the exact class of false finding `verify.exe` was corrected for.
+* **A loss is a holding.** Offcuts, flakes, dust and trim are mass at the site, not mass gone:
+the chain declares losses as outputs, and a holding is where an output that nothing consumes
+stands until something does.
+* **Work is a declared multiple of a declared duration.** `WORK_TICKS_PER_LABOUR_HOUR = 8` turns
+the tables' `labour_hours` into work-ticks, rounded up, so a quarter-hour gather is two ticks of
+work and no process is free.
+
+**What this slice deliberately leaves open, named here rather than implied.**
+
+* **`Maintain` is not built.** The record's cleanest decision (Q54: repair is the same system as
+building) still has no implementation, and nothing wears yet.
+* **A build still draws from the ground under its own site** while a make consumes a holding.
+That asymmetry is the *"material is drawn but not hauled"* gap the previous slice named, now
+narrower: the rung hauled its leaves by hand, a structure's own mass still appears at the site
+without a carrier. Making builds haul is the next honest step and it is not this slice.
+* **The works site is a placeholder.** `works_site()` is the first road-reachable free ground
+tile in index order, chosen because *where the works is* has to be a function of the world. Q87
+and Q98's proposal store is the real answer, and this is marked as the placeholder it is.
+* **Nothing gates a tier.** `VOCABULARY["structure"]` is still empty and phase 6's progression
+does not exist, so any declared process can be run by anyone standing at a site with the
+material. The rung needed no gate — its processes are the two lowest ages — but a process that
+needed a kiln would find this out immediately, which is where the gate belongs.
+* **The cases are the sim's readings, not yet the governor's cases.** Q74's refusals are
+recorded, aggregated by district, family and now **substance** (a leaf's shortage says `timber`,
+not `organic`), and they print in the report. Filing them as governor tickets — with the case
+prefixes Q49 closed and the case queue Q36 layered over ownership — is the wiring between two
+systems that both already exist.
+* **A roadless world has nowhere to work.** The founding party arrives on a map whose edge is
+already a road (`World::new` seeds it), so the first rung has a road within reach by
+construction; a city that paves nothing can gather nothing. That is Q84's answer showing its
+teeth, and whether the founding epoch deserves an off-road walk is a question this slice opens
+rather than settles.
+* **The interface shows none of it** — no tender, no ledger, no queue, no tree. The record
+settled that the design doctrine governs the interface and that these surfaces need the schema
+in front of them; the schema is now in front of them.
+
+[read_files: showing lines 1600-1639 of 1639.]
