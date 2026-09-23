@@ -514,3 +514,10 @@ artifacts, producers, recipes, manifests, provenance, compatibility decisions,
 and representative outputs. Generated derivatives inherit their producer's
 disposition and are checked through manifests and digests rather than one manual
 row per file.
+
+**Generated visual projection (draft):**
+`docs/design/diagrams/capability-system.excalidraw` and its rendered PNG show
+the approved twelve-family taxonomy, the foundational evidence projection, the
+measured source baseline, and the world-truth/replay frontier. The diagram is a
+review projection, not the canonical capability graph; dependency edges and
+sub-capabilities still require human approval through #18 and #16.
