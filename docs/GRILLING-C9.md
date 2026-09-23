@@ -667,3 +667,88 @@ units as display — and it can still be adopted at the schema stage, where it c
 * Any number that only a playtest can set — balance, extraction rates, the founding party's size,
   the first child's timing. Those are declared, then measured, then re-tuned by recorded correction,
   which is the pattern §8.24 already followed.
+
+---
+
+## Round 12 — `grow()` deleted, and the task system that replaces it
+
+Round 11 ended on six implementation blockers. Four of them turned out to be the same question wearing
+four hats, and the fourth answer changed the *shape* of the plan rather than its order.
+
+### Q72 — what `grow()` becomes, now. Answered: **deleted now**, and the task system is what builds.
+
+Not an interim `grow()` that pays for what it makes. The answer was that this is a game, so the task
+system has to exist and be the thing that builds — which made the blocker the phase, not a detour
+around one. `grow()` is **deleted from the source**, with a note where it stood naming why, so the next
+person to grep for it finds the decision rather than a hole.
+
+What stands in its place is three functions with three jobs, and the split is the point:
+
+* `post_demand_tasks` opens **work** where the city is powered, connected and wants a building;
+* `claim_tasks` lets an idle resident take the nearest piece of it — the government as *owner of last
+  resort* for work nobody owns (Q36);
+* `work_tasks` turns a counter that moves **only while somebody is standing on the site** (Q19's
+  atomic, verifiable work).
+
+Nothing raises a structure except finishing that work, and completion draws the plan the task was
+opened with — so a structure's provenance is what the plan promised, not a second search that could
+disagree with the hole it came from.
+
+### Q73 — where the material comes from. Answered: **nearest matching family.**
+
+Tiles are searched outward from the site for a deposit whose declared family is the structure's own
+claimed family: a ceramic home takes stone, sand or clay and never iron ore. Ties break by tile index,
+because two equidistant tiles chosen differently on two runs is the quietest way to lose a replay. The
+search does not consult the surface — *where a mine may be sited* is the task system's business and not
+this function's — and that is written down rather than implied.
+
+### Q74 — what a refusal does. Answered: **files a case.**
+
+A build the world cannot supply is **not posted at all**, and the shortage is recorded aggregated by
+district and family: four hundred blocked builds in one district read as **one** case with a count,
+the same dedupe the queue already applies. A case carries what was wanted, what was found and how much
+is missing, because a refusal a reader cannot size is a refusal nobody can act on. Work posted is not a
+building — that assertion is in the test, because it is the whole difference from `grow()`.
+
+### Q75 — does a structure stay tied to its tiles. Answered: **yes, tile lineage.**
+
+`Building.material_from` records the tile, substance and grams of every draw. Empty means a placement
+that made no material claim — the raw `place_building` primitive, which the audit makes *visible*
+(production zero lineage against a non-zero derived mass) rather than reporting as a defect, because the
+audit has one job and it is mass. Lineage **present and disagreeing** with the derived mass is a defect.
+
+### What kind of city this made, and the test that says so
+
+A test used to pin `grow()`'s violation as a measured number: a grown home plus its power plant was
+**1,300 tonnes** of material the ground never gave up. The same scenario now runs through the task
+system and the audit reports the city **made of what it dug**. Writing it caught a real distinction worth
+keeping: the plant and home that test placed directly were themselves unpaid material, and the audit
+correctly refused to conserve until they were built through the same path as everything else.
+
+### Two readings that arrived while writing this, recorded rather than smoothed over
+
+* **A 32×32 world holds exactly one substance.** A geology cell is 32 tiles and the field is constant
+  within a cell's kind, so a 32×32 world is one patch — seed 7's is iron everywhere and holds no
+  ceramic at all, which is why a *ceramic* home cannot be built on it. That is the family rule working,
+  and the world is now the test *for* that rule rather than a general fixture. At the game's own
+  256×256 the same seed holds ceramic in 4,676 tiles, metal in 1,326 and soil in 3,834, and a test
+  asserts every structure's own family can be supplied at game size. **Tuning question it opens,** not a
+  decision: whether 128-tile patches over a 256² world give a city enough distinct materials, or whether
+  `GEOLOGY_CELL` wants to be smaller than a patch.
+* **Material is drawn but not hauled.** The plan names the tiles and the mass leaves them, and nothing
+  walks to the deposit: a citizen carries the structure's material to the site in one transaction. Q75's
+  lineage is exactly what makes hauling addable later without rewriting the claim — but *today the
+  transport step does not exist*, and saying so here is cheaper than letting a reader assume it does.
+
+### Still open, and named
+
+* **The player's own build still pays in credits, not material.** `place_building` is the raw primitive
+  the world state uses; routing the player's build through `build_with_material` is a small change with
+  one real question attached — what a player does when the city cannot supply the material, which is the
+  same case Q74 answers for the sim.
+* **Claiming is nearest-first, not utility-scored.** Q53 answered that citizens choose by declared
+  weights (skill fit × distance × priority × ownership); that needs the citizen model (Q46) before there
+  are skills to score. The placeholder is marked as one in the source rather than left to look like the
+  answer.
+* **Extraction is instantaneous once planned.** Effort currently enters as *work on the structure*, not
+  as time spent getting the material out of the ground.
