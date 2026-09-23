@@ -709,6 +709,178 @@ Still to wire from the decisions above: **7.10's per-material hue reading** (fou
 `vocab-settings` notes remain, all still measured on the composite), and the plate
 body and the hollowed md1 marks (7.6, 7.8, 7.9).
 
+# 8. The shape builder: geometry that interpolates (Q179–Q186)
+
+The directive, in the words it was given: *"there are still other geometry artifacts
+in the icons, the shape builder is really bad. when I said interpolate, I mean like
+the geometry itself interpolates. So gears can have variable teeth, spacing, etc,
+roads can have different line types and lanes."*
+
+## 8.1 What the builder is, measured
+
+Before the round, the builder was measured rather than described:
+
+* **The reviewed icons are not built from parametric geometry at all.**
+  `add_pilot(...)` is a *retirement* record — "Retired: registers into
+  RETIRED_PILOTS, contributes no inventory entry… its silhouette is discarded and
+  its recipes are kept only as history" — so `gear_parts`, `road_parts`,
+  `lens_parts`, `pylon_parts` and the `gear_mesh` that already takes `teeth`,
+  `tooth` and `radius` are history. `six()` is dead code (defined, never called;
+  all icons go through `add_composition` → `six_compositions`). What renders is a
+  traced MD1 bitmap plus primitives bolted to it.
+* **The gear's spacing is baked as fractions, not declared**: `root =
+  radius * 0.76`, `tip = radius + tooth * 0.20`, tooth land at ±0.46/±0.28 of the
+  pitch. The three authored gear variants are three hand-picked points
+  (8/0.20, 10/0.16, 12/0.12), not a curve.
+* **The ladder already claims to interpolate and does not**: it moves four scalars
+  (`depth`, `bevel`, `inset`, `finish`) and `construction` is two discrete modes.
+* **No geometric validity machinery exists of any kind** — no watertight,
+  intersection, manifold or sliver check — and topography is *explicitly*
+  recorded, not judged, "because an icon is a mark plus an accent piece, so its
+  piece count is the mark's plus the composition's and cannot equal a bare
+  glyph's".
+* **The measured artifacts**, pieces/holes at 96 px:
+
+  | icon | a-md1-plate | b-md1-stack | c-touchwiz-plate | d-touchwiz-stack | e-ios6-plate | f-ios6-stack |
+  |---|---|---|---|---|---|---|
+  | `tool-power` | 1/0 | 2/0 | 1/1 | 2/1 | **1/10** | 1/1 |
+  | `vocab-settings` | 1/0 | 1/1 | **1/9** | **1/8** | 1/0 | 1/1 |
+  | `tool-inspect` | 1/1 | 1/1 | 1/4 | 1/5 | 1/4 | 1/3 |
+
+  plus the standing directive on `tool-power`, in the person's own words:
+  *"remove the extra floating geomaetry that has nothing to do twih the icon"*.
+* **And the ladder's complexity anchors point the other way**: md1 is 2.0 pieces /
+  1.0 hole, touchwiz and ios6 are 1.0 / 0.0. Ten holes is not a near miss.
+* The builder can already do what the repair needs: `from_pydata` polygon meshes, a
+  **BOOLEAN DIFFERENCE** path (used today to cut the mark's own holes), bevel and
+  weighted normals.
+
+## 8.2 The decisions
+
+* **a179 — the geometry is an authored parametric family, and the MD1 mark is its
+  reference.** The mark stops being the geometry and becomes the object the
+  parameters are measured against. This **supersedes C3's retirement** of the
+  authored recipes (whose reason was "the pilot form had no reference object behind
+  it") — the reference object now exists and is measured, and the old retirement
+  record stays readable rather than being deleted.
+* **a180 — the ladder drives everything**: geometry, surface and construction, so
+  md1→touchwiz→ios6 is one claim about the object rather than a label on a
+  variant.
+* **a181 — free topology morph.** Every point on the continuum is a legitimate
+  object, and the topology is a consequence of the parameters rather than a switch
+  between named stages. (This overrides the declared-stage recommendation.)
+* **a182 — all six families approved**: gear, road, lens, pylon, plaque/ticket, each
+  parameter declared with its type and its endpoints on λ.
+* **a183 — all three defects gate**: an undeclared floating component, an enclosed
+  sliver below a measured threshold, and interpenetration each refuse promotion.
+* **a184 — boolean cut with clearance, built as one profile**, "similar to how app
+  icons are actually made in ios": the object reads as a single profile, and the
+  cuts are what make that true.
+* **a185 — pieces and holes are judged**, against the anchor at the candidate's λ.
+* **a186 — this round is recorded in C8**, which already owns repairing the icon
+  builder.
+
+## 8.3 Mechanisms specified rather than asked (each overridable by a word)
+
+* **A part is present because its own parameters are not degenerate.** With a free
+  morph (a181) nothing may switch on at a threshold, so every part is always
+  declared and its presence is a *consequence*: a plate whose spread reaches zero,
+  a ring whose thickness reaches zero, a layer whose depth reaches zero is absent
+  at that point on the continuum and grows out of it continuously. Nothing in the
+  builder asks "which stage is this".
+* **One profile, cut not stacked.** Each object is a single body; the declared
+  regions are boolean-cut into it at a declared clearance, and the cutters are
+  transient geometry that never renders. This is how *interpenetration gates*
+  (a183) and *boolean cut* (a184) coexist without contradiction: the gate judges
+  the built shells, and the cut is the mechanism that leaves none to judge.
+* **The sliver threshold is measured, not chosen** — from the reference archives'
+  own enclosed regions, the way the ladder was sampled, so "sliver" is a corpus
+  fact rather than a taste.
+
+## 8.4 Round 2: what the free morph implies (Q187–Q192)
+
+* **a187 — an integer count changes by a feature growing from zero width.** A tooth,
+  lane, ring, rule or perforation whose width reaches zero is *absent*, so the count
+  is continuous in geometry and the declared integer is the number of
+  non-degenerate features. This is a181's degeneracy rule applied to counts, and it
+  removes the need for a snap and for a recorded discontinuity.
+* **a188 — every λ endpoint is authored**, and the reference archive is recorded
+  beside it rather than pinning it. (This overrides the round's recommendation to
+  measure the md1 end from the corpus.)
+* **a189 — md1's end is declared and checked, not fitted.** The mark is recorded
+  beside the authored point and containment stays a **gate**, not a fit target.
+  (This too overrides the round's recommendation.)
+  *Consequence, stated rather than discovered later:* with the endpoints authored
+  and no fitting, each icon's parameters have to be tuned by hand until the
+  containment gate passes — which a184's own wording allows ("overlap and iterate"),
+  and which is work rather than a decision.
+* **a190 — the body is one profile and the accent is the second piece**, so the
+  judged complexity is 2 pieces at md1 and 1 at touchwiz/ios6, matching the anchors
+  with no exception carved out.
+* **a191 — the `plate` | `stack` axis is dropped**, and layering is a consequence of
+  λ, because the anchors already measure it that way (md1 1.0 hole / 2.0 pieces;
+  touchwiz and ios6 0 holes / 1 piece). The reviewed slots therefore fall from six
+  to **three** per icon — the sample points are round 3's question, not assumed here.
+* **a192 — the bin's vocabulary is derived from the corpus before it is declared.**
+  This is a measurement owed, not a decision taken: `action/delete` is a bin, so its
+  own marks are the evidence the family's parameters are read off.
+
+## 8.5 Round 3, and the measurement that challenges one answer
+
+* **a193 — the sliver threshold is an authored number**, recorded as authored, not a
+  figure read off the archives. (§8.3 had specified it as measured.)
+* **a194 — five reviewed samples per icon**: λ = 0, 0.25, 0.5, 0.75, 1, so the
+  interpolations between the three named languages are reviewed as objects. Thirty
+  renders; the intermediate anchors come from `_ladder_at`, which already computes
+  fill, gloss, pieces and holes at any point on the ladder.
+* **a195 — one parametric accent, with the six names as declared parameter windows**
+  (C6 a129's tab / seal / ribbon / notch / band / corner become *regions* of one
+  continuum: a tab that widens becomes a band, a seal that stretches becomes a
+  ribbon). The six names and their windows are kept; the six discrete forms are
+  superseded, and this too is a supersession rather than a deletion.
+
+**And the measurement that a193 cannot be implemented as stated.** Void areas in the
+committed renders, as a share of the object's covered area at 96 px:
+
+| class | measured examples |
+|---|---|
+| real openings | `tool-power.c-touchwiz` 69.5%, `tool-road.c-touchwiz` 60.8%, `tool-inspect.b-md1-stack` 39.1%, `vocab-settings.f-ios6-stack` 8.7% |
+| defects | `tool-inspect.c-touchwiz` 0.04% (two 1-px voids), `tool-power.e-ios6` 0.16–0.28% (16 voids), `vocab-settings.c-touchwiz` 0.10–0.59% (12 voids) |
+| **declared features inside the defect range** | `ticket` perforations 0.67%, 1.14%, 1.36%, 1.43% |
+
+The two classes are bimodal *and overlapping*, and the overlap is exactly where a
+perforation sits. So **an area threshold alone cannot separate a declared hole from
+a sliver**: set low it passes 16 real defects, set at 3–4% it condemns the ticket's
+own perforations. The number has to be a second condition on top of a declaration,
+not a substitute for one — put back to the person in round 4.
+
+## 8.6 Round 4 — the frontier closes
+
+* **a196 — the rule is the threshold alone, with no declaration condition**, authored
+  in the asked-for band at **3.5% of the object's covered area at the decision
+  size**: every enclosed void below it is a sliver, declared or not. The
+  consequences are accepted and recorded, not softened:
+  * `vocab-settings.c-touchwiz` (3.06%) and `tool-demolish`'s touchwiz slots
+    (2.68 / 1.92 / 1.87%) become slivers, so those candidates have to be repaired;
+  * **`ticket`'s perforations (0.67–1.43%) are condemned, so they are redesigned
+    above the floor** — a visible change to that icon, which is what choosing the
+    threshold-only rule buys;
+  * the number is authored, lives in one place, and is overridable in a word.
+* **a197 — geometry, then re-render and re-decide, then the validator.** This is
+  knowingly two concept-set bumps and two decisions for one geometry change, taken
+  so that promotion is possible early rather than only after `validate.py` exists.
+
+**A consequence flagged for measurement, not assumed.** Enlarging a hole *removes
+ink the mark has*, and containment is measured over the mark's declared cells, so a
+larger perforation can lower containment on the very candidate the sliver rule just
+cleared. The containment floor and the sliver threshold therefore have to be
+reconciled on the same candidate at implementation time, with numbers, rather than
+believed to be independent.
+
+The frontier is empty: every branch of this tree has been visited and recorded, and
+nothing is left silently assumed. Implementation starts with the measurement owed
+(a192's bin vocabulary, read off `action/delete`'s own marks).
+
 ---
 
 ## Still open, and deliberately so
