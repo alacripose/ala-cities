@@ -246,6 +246,17 @@ WORLD_SURFACES = {
     "power.stack":       ("ceramic", "natural", "edge", "a fired stack, not a painted one"),
     "power.insulator":   ("ceramic", "amber", "body", "the insulator is the part that must not conduct"),
     "power.core":        ("enamel", "amber", "body", "painted caution face"),
+    # Q102's first-tier kinds, arriving with round 28: a shelter is **not** a small
+    # home — thatch on sticks has no joinery — so it is a body of `organic` with a
+    # fibre roof rather than a ceramic box with windows; and a kiln's body is the
+    # clay that has to hold the heat, which is why it presents as ceramic at `deep`
+    # (fired, and read darker than a wall).
+    "shelter.posts":     ("organic", "natural", "body", "timber in the ground: the body of a shelter"),
+    "shelter.thatch":    ("organic", "amber", "edge", "the roof reads one step lighter, because thatch is"),
+    "shelter.screen":    ("soil", "natural", "deep", "the windbreak: woven brush read dark"),
+    "kiln.body":         ("ceramic", "natural", "body", "clay: the part that has to hold heat"),
+    "kiln.mouth":        ("soil", "natural", "deep", "the dark opening a fire is fed through"),
+    "kiln.stack":        ("ceramic", "natural", "edge", "the chimney, fired harder than the body"),
     "road.surface":      ("road", "natural", "body", "aggregate"),
     "road.edge":         ("soil", "natural", "body", "the shoulder: mineral, not asphalt"),
     "terrain.ground":    ("organic", "natural", "body", "the grass is a living surface, not a mineral one"),
@@ -296,6 +307,8 @@ PART_PRICE = {
     "shop.walls": 70, "shop.frontage": 90, "shop.window": 80,
     "factory.frame": 180, "factory.cladding": 120, "factory.vent": 60,
     "power.frame": 700, "power.stack": 400, "power.insulator": 250, "power.core": 700,
+    "shelter.posts": 12, "shelter.thatch": 8, "shelter.screen": 5,
+    "kiln.body": 45, "kiln.mouth": 10, "kiln.stack": 25,
     "road.surface": 3, "road.edge": 1,
     "powerline.conductor": 12, "powerline.pylon": 30,
     "scaffold.frame": 8, "scaffold.deck": 4,

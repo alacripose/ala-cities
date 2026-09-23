@@ -4,7 +4,7 @@
 //! the world's sim all read these values, and `tests` in `mod.rs` refuses a build
 //! whose generated source no longer matches the declaration it came from.
 
-pub const SOURCE_DIGEST: u64 = 0x16FEC77C6830BEA6;
+pub const SOURCE_DIGEST: u64 = 0xCD88D35FF052C0B1;
 pub const GENERATED_BY: &str = "tools/materials/emit.py";
 
 /// One declared material family: its own lightness, the chroma a hue variation
@@ -392,6 +392,12 @@ pub const WORLD_SURFACES: &[(&str, &str, &str, &str, &str)] = &[
     ("power.stack", "ceramic", "natural", "edge", "a fired stack, not a painted one"),
     ("power.insulator", "ceramic", "amber", "body", "the insulator is the part that must not conduct"),
     ("power.core", "enamel", "amber", "body", "painted caution face"),
+    ("shelter.posts", "organic", "natural", "body", "timber in the ground: the body of a shelter"),
+    ("shelter.thatch", "organic", "amber", "edge", "the roof reads one step lighter, because thatch is"),
+    ("shelter.screen", "soil", "natural", "deep", "the windbreak: woven brush read dark"),
+    ("kiln.body", "ceramic", "natural", "body", "clay: the part that has to hold heat"),
+    ("kiln.mouth", "soil", "natural", "deep", "the dark opening a fire is fed through"),
+    ("kiln.stack", "ceramic", "natural", "edge", "the chimney, fired harder than the body"),
     ("road.surface", "road", "natural", "body", "aggregate"),
     ("road.edge", "soil", "natural", "body", "the shoulder: mineral, not asphalt"),
     ("terrain.ground", "organic", "natural", "body", "the grass is a living surface, not a mineral one"),
@@ -425,6 +431,12 @@ pub const PART_PRICE: &[(&str, f32)] = &[
     ("power.stack", 400.0),
     ("power.insulator", 250.0),
     ("power.core", 700.0),
+    ("shelter.posts", 12.0),
+    ("shelter.thatch", 8.0),
+    ("shelter.screen", 5.0),
+    ("kiln.body", 45.0),
+    ("kiln.mouth", 10.0),
+    ("kiln.stack", 25.0),
     ("road.surface", 3.0),
     ("road.edge", 1.0),
     ("powerline.conductor", 12.0),
