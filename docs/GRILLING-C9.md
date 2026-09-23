@@ -1402,3 +1402,51 @@ above the ground it is supposed to represent.
 
 The first gold therefore has a shape worth playing: a **prospect**, a **claim**, a **mine**, a **mint**, and then
 a treasury that can finally pay what it owes (Q86).
+
+---
+
+## Round 25 — the mint, the market, and the index
+
+All six answered (a).
+
+### Q148 — what a mint is
+
+**A process *and* an office.** The work is melting and stamping — a structure with a declared mechanism and
+numbers — and the authority is the office that makes a stamp mean something, so coining is authority plus labour
+like everything else (Q112/Q137). The crime it creates is the one the market needs: **a counterfeit is a claim
+naming metal that is not there** — the same defect the mass audit finds in grams, one layer up.
+
+### Q149 — claims against metal nobody has mined yet
+
+**Yes, and the divergence is recorded rather than hidden.** A claim may be written against expected production
+(a forward arrangement: Q110's contract with Q134's contingent predicate), it is always a **claim** and never
+material (Q17), and the ledger can therefore state the honest sentence: *"the city's claims exceed its metal by
+X"*. This is a17's market becoming real — the interesting object is exactly a set of claims that can diverge
+from the mass ledger, and it stops being a lie because the divergence is a number the audit prints.
+
+### Q150 — sealing
+
+**A property of any store, and a made thing**: a door, a lock, a hasp, with declared inputs and its own decay.
+Sealing trades **access time for safety**, so the trade-off is real — a smith seals a valuable stock, a hauling
+yard doesn't — and theft stays possible wherever nobody built a door (Q142).
+
+### Q151 — erasing an offence
+
+**Nothing is erased.** The record is append-only (the rule the repo already applies to tickets and buildings:
+a retired thing is *superseded*, never removed), and a later act supersedes it with a finding, a pardon (Q135),
+or an **amnesty** — a statute clearing a class of offences at once, which is a political choice citizens can
+campaign for through Q21's layers.
+
+### Q152 — what the index reads
+
+**A derived view: the reserve ratio, expressed.** Circulating claims against held metal, indexed to 100 at the
+founding declaration, computed from the ledger rather than stored (C09's rule). So the index rising means
+debasement — *"the claims in circulation are no longer covered by the metal in the vault"* — rather than "prices
+went up".
+
+### Q153 — how land is claimed with no government
+
+**Occupancy plus a record.** Working unclaimed land creates a claim with a **boundary the claimant declares**;
+**granting** land that is not yours remains an office act (Q137); overlaps are disputes (Q122) and trespass
+needs neither claim nor permission (Q126). So the founding party's arrival *is* a set of claims on the map —
+which is the first thing in this world that is true without anyone's permission.
