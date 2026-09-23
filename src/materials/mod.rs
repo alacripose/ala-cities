@@ -23,6 +23,7 @@
 //! frame timing with the new shade term, whether the sim effects are balanced, and
 //! composite contrast on a rendered frame.
 
+pub mod chain;
 pub mod effects;
 pub mod generated;
 pub mod geology;

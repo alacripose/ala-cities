@@ -1606,8 +1606,32 @@ numbers, the ore-to-blade rung as blocked on `SOURCES`' `[NS]` rows rather than 
 and the four substances that are mined and consumed by nothing yet, each naming the process it
 is waiting for.
 
-**Next, and it is the rest of phase 3:** the MAKE/MAINTAIN machinery — a process run as a
-citizen's task at a declared structure, with `Maintain` walking the same path rather than a
-second repair system — and the process structures themselves. `VOCABULARY["structure"]` is
-empty today, so the first process that needs a kiln must declare one; that emptiness is a
-declaration, and the gate refuses an entry no process requires.
+**And the second thing that landed with it: the reduction.** `src/materials/chain.rs` answers
+the question a city actually asks — *to get one hatchet, what has to come out of the ground,
+and in what order does the work happen?* It is pure (no world, no clock, no citizen), so its
+answer is a function of the declaration alone and is checked against `SCHEMA.md`'s worked chain
+line by line: **one hatchet is 4.1 kg of the world** (3000 g timber, 1000 g stone, 100 g
+fibre), the seven steps come back **dependencies first** — asserted by walking the plan rather
+than by pinning an order — and every declared loss appears as a by-product (600 g offcuts,
+200 g flakes, 5 g dust, 395 g trim waste). Three rules it fixes in place:
+
+* **A leaf is the world**: a gather (a process with no inputs) or an extraction (a substance the
+ground holds). A substance with no route to either is refused **by name, with its source
+quoted** — a plan that cannot reach the ground is a plan that would have to invent mass.
+* **Rounding is declared, never hidden.** A process runs a whole number of times, so one gram
+past a whole hatchet is a second run and the 2899 g that stays is reported as **surplus**. The
+city keeps the rest; nothing evaporates, and nothing appears.
+* **A cycle is refused with its path named**, and the gate now refuses to emit a table where a
+`made` good cannot be planned from the world at all — the campaign's rule applied at the level
+of a plan rather than a row.
+
+The one policy gap it names rather than decides: **which recipe, when a substance has more than
+one producer.** Today the first declared producer wins; that is a placeholder for phase 6, and
+it is written down so the first second producer arrives as a question.
+
+**Next, and it is the rest of phase 3:** the MAKE/MAINTAIN machinery in the sim — a plan's step
+run as a citizen's task at a site, with `Maintain` walking the same path rather than a second
+repair system — plus Q102's **surface deposits** (brush, timber, fibre) with Q108's declared
+regrowth, which is what the gathers have to draw on. `VOCABULARY["structure"]` is still empty,
+so the first process that needs a kiln must declare one; that emptiness is a declaration, and
+the gate refuses an entry no process requires.

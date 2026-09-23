@@ -331,6 +331,26 @@ pub fn verify(report: &mut Report) {
         }
     }
 
+    // Every **made** good must be reachable from the world. This is the campaign's rule at
+    // the level of a plan rather than a row: a good whose chain loops, or whose chain ends
+    // in something the world does not hold, is a good nobody can produce — and the failure
+    // is a cycle or a dead end in the table rather than a bad number in a row.
+    for entry in generated::SUBSTANCES {
+        if entry.source != "made" {
+            continue;
+        }
+        if let Err(refusal) = crate::materials::chain::plan(entry.name, 1) {
+            defect(
+                report,
+                format!(
+                    "`{}` is made and cannot be planned from the world: {}",
+                    entry.name,
+                    refusal.describe()
+                ),
+            );
+        }
+    }
+
     // A substance nothing consumes must say why, and the reason is a finding worth
     // reading rather than a defect: it names the rung that is unfinished.
     for entry in generated::SUBSTANCES {

@@ -91,6 +91,43 @@ downstream could be re-checked.
 
 ---
 
+## The material economy
+
+What the city stands on is **conserved, not asserted**. Every structure, deposit and pile of
+goods carries mass in exact grams, and the audit has one reconciliation: *everything the world
+holds equals everything it has taken out of its own ground*. Its failure mode has a name —
+mass the ground never gave up, which is what the old `grow()` did — and it is printed as a
+quantity rather than a warning.
+
+Two data tables (`tools/materials/declare.py`) carry it, both **emitted** into the game the way
+the colour table is:
+
+* **16 substances**, each with a unit and a route into the world: `stone` and `iron_ore` mined,
+  `timber` and plant fibre gathered, `cord` and a knapped edge made, offcuts and dust declared
+  as **outputs** so a loss cannot go missing.
+* **7 processes** across two ages — `hands & stone` and `bound & composite` — each a declared
+  mechanism with a number, and each **balancing to the gram**. `in 3000 g, out 3000 g` is the
+  rule: gathering is the one place mass enters the world, and a process that takes nothing in
+  may only produce what the world already holds.
+
+There are no floats anywhere in it. A density, a unit mass, a rot rate and a quantity are all
+**rationals** — numerator over denominator — because a ledger in mixed units (litres, kg,
+counted goods) balances only if every conversion is exact, and a float is where that stops being
+true without saying so.
+
+The stone rung is worked end to end rather than promised: **one hatchet is 4.1 kg of the world**
+— 3000 g of timber, 1000 g of stone, 100 g of fibre — and the reduction from a wanted good to
+that material (`src/materials/chain.rs`) reports the work in dependency order, the surplus when
+a batch runs long, and every by-product the steps produce. A chain that loops, or that ends in
+something the world does not hold, is refused **with its path named**.
+
+The gate is two-layered on purpose: `tools/materials/schema.py` refuses to *emit* a table that
+breaks the contract, and `src/materials/schema.rs` re-checks what it would *use* — because the
+emitting gate cannot see a hand-edited artifact or a call site that invents a quantity. What
+neither can check is printed as open, every run, beside what the tables do not decide.
+
+---
+
 ## The evidence record
 
 Everything the game does to the world leaves a record:
@@ -312,6 +349,13 @@ every withdrawn claim recorded.
 * `docs/GRILLING-C6.md` — rounds 28–29 (Q124–Q131): the implementation plan for the
   icon inventory, the picker, the game and the debugger, and the shared coverage
   atlas that is the real cause of the interface being unreadable.
+* `docs/GRILLING-C9.md` — rounds 1–27 (Q1–Q165) and its build notes: the material
+  economy — mass conservation, substances and processes, the ages and their gating,
+  tools as equipment with a lineage, the citizen model that replaces the state
+  machine, the founding of a government by citizens, the obligation ledger, gold and
+  the claim market, offices, courts and law. `tools/materials/SCHEMA.md` is its
+  contract and `tools/materials/SOURCES.md` is the table of which numbers are cited
+  and which are declared.
 * `UNIFIED_DESIGN.md` — the system doctrine: the six sources of design conventions
   at equal standing, aspect ownership versus role ownership (§1.0), the
   colour-mechanism rule (§3.2.1), and the binding rules for tool surfaces (§5.7).
@@ -351,6 +395,11 @@ it lands, is synthesised rather than sampled.
   is unmeasured.
 * **Composite contrast on a rendered frame** — token pairs are measured; pixels are
   not.
+* **The material economy** — the tables, the gate and the reduction have landed
+  (`docs/GRILLING-C9.md`, *Built*). Open: the MAKE/MAINTAIN machinery that runs a
+  process as a citizen's task, the surface deposits the gathers draw on, and the ore
+  rung, which is blocked on `SOURCES.md`'s `[NS]` rows rather than on the schema — a
+  declared ore grade would make the ledger look sourced while being invented.
 * **The icon library** — ladder, registry-driven inventory, motion, and the material
   swatch check, above.
 * **The session console** — an inspectable pane beside the game (a live agent work
