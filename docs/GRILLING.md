@@ -151,6 +151,17 @@ useful part of this document:
 | Recommendation Q20: builds + aggregates only | Sample behaviour into tickets | The user wants the ticket population to come from the population |
 | §14.3 absence claim | Withdrawn | No read-only mode exists to scope against |
 | Predicted gnu-toolchain failure | It linked | The check was wrong, not the toolchain |
+| Q18: *"build asynchronously and work on their own goals away from the agents"* | **Modified by C9**: the player **proposes** (a tender); the world still has to build it | C9 Q35/Q5 — an all-powerful god proposes *through the system* |
+| Q19: *"256×256, ~5k agents … a small city built to scale"* | **Kept and reinterpreted**: the area and the agent budget stand; *small* now means **deep** | C9 Q27/Q56 — a tile gains layers, mass and a surface |
+| *"C3's industry supply chains, external connections, and weather/seasons"* | **Arriving early as C9** — and the external-connection half is **refused outright** | C9 Q1 — the world is the only source; no outside help |
+| `a_missing_governor_is_a_refusal_not_a_default` | **Corrected by record, not deleted**: fail-closed narrows to *the layer that governs the op* | C9 Q21 — authority is a stack (§4.4), and the highest controlling authority is identified per transaction |
+| §8.24's two deferred effects (conduction, surface speed) | **Consumers supplied**: a power line becomes a structure; a tile gains a surface family | C9 Q27/Q37 — the layer the tables were waiting for |
+| `World::grow()` | **Deleted**: demand becomes a readout of unmet need, and growth is citizens building | C9 Q45 — it created buildings out of nothing, the plan's largest violation |
+| `CitizenState` (five states) | **Replaced**, not extended: needs, skills, illness, wealth, home, job, life stage | C9 Q46 — being at home or at work is a consequence, not an assignment |
+
+**The full record is [`GRILLING-C9.md`](GRILLING-C9.md)** — the material economy: 65
+questions over ten rounds, confirmed by the user, with every overridden answer marked
+as overridden and the plan's implementation order in eight phases at the end.
 
 ---
 
