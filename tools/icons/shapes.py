@@ -1918,7 +1918,14 @@ def road_body(bpy, name, material, vector, span=None, depth=0.30):
 
     # Junction arms: whole arms plus one partial, whose length is the fraction, so
     # an arm grows out of the ribbon rather than appearing at a threshold.
-    arm_length = vector["arm_length"] * span
+    # The arms are read against the **margin the budget leaves** (a200), not against the
+    # ribbon's span: a four-lane carriageway has almost no verge, and an arm measured
+    # against the span reached 1.33 of a body budget that ends at 0.72, which pushed
+    # the car's accent slot off the frame. Bounded by the budget, nothing overflows and
+    # the accent keeps its room by construction.
+    budget_half = families.COMPOSITION["body_span"] * 0.5
+    margin = max(0.0, budget_half - half - curb)
+    arm_length = vector["arm_length"] * margin
     if arm_length > 1e-6:
         whole, fraction = families.features(vector["junction_arms"])
         arms = [(1.0, index) for index in range(whole)]
@@ -1935,6 +1942,15 @@ def road_body(bpy, name, material, vector, span=None, depth=0.30):
                                 depth=depth * 0.82))
 
     _weld(bpy, body, features)
+
+    # The pose (a203): the carriageway is laid out flat and then turned in its own
+    # plane by `heading` and revealed by `pitch`, which is how a road reads as a
+    # *tile* rather than a rectangle — the idiom the person pointed at. It is a
+    # parameter rather than a fixed pose because the ladder is the axis: flat at the
+    # md1 end, where the reference idiom is a flat mark, posed at the iOS 6 end. The
+    # turn happens **after** the weld so one body turns, not a pile of parts.
+    body.rotation_euler = (0.0, math.radians(vector["heading"]),
+                           math.radians(vector["pitch"]))
     _smooth(body)
     return body
 

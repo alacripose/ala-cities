@@ -77,7 +77,11 @@ def main():
             # at (68, 76), in the corner where the two touched — the same defect class
             # the committed review set carries (16 voids in one candidate), now with
             # a cause on the record and a rule that removes it.
-            corners = [tuple(corner) for corner in obj.bound_box]
+            # World bounds, not local ones: a posed body (a203) is turned after it is
+            # welded, and a slot derived from its unposed box would sit inside it.
+            import mathutils
+            corners = [obj.matrix_world @ mathutils.Vector(corner)
+                       for corner in obj.bound_box]
             bounds = (min(c[0] for c in corners), min(c[2] for c in corners),
                       max(c[0] for c in corners), max(c[2] for c in corners))
             slot_x, slot_z = families.accent_slot(bounds)

@@ -111,8 +111,12 @@ FAMILIES = {
              "unit": "whole lanes",
              "source": "authored: the reference does not separate its lanes, so "
                        "there is nothing to measure"},
-            {"name": "lane_width", "type": "continuous", "md1": 0.30, "ios6": 0.20,
-             "unit": "fraction of the ribbon span", "source": "authored"},
+            {"name": "lane_width", "type": "continuous", "md1": 0.14, "ios6": 0.20,
+             "unit": "fraction of the ribbon span",
+             "source": "measured: the reference's carriageway is ~21 px of its 76 px "
+                       "box, so two lanes are 0.28 of the span between them. The "
+                       "declared 0.30 a lane was wrong in the direction the "
+                       "envelope caught -- it made the object 0.60 of its span"},
             {"name": "centre_dash_duty", "type": "continuous", "md1": 0.55, "ios6": 0.0,
              "unit": "fraction of the dash cycle",
              "source": "authored: 0 is a solid centre line, so the *line type* is a "
@@ -121,16 +125,33 @@ FAMILIES = {
              "unit": "of the ribbon depth",
              "source": "authored: raised rather than cut, because a cut dash is an "
                        "enclosed void and would be a sliver (a196)"},
-            {"name": "curb_width", "type": "continuous", "md1": 0.10, "ios6": 0.0,
-             "unit": "fraction of the ribbon span", "source": "authored: 0 is none"},
+            {"name": "curb_width", "type": "continuous", "md1": 0.06, "ios6": 0.0,
+             "unit": "fraction of the ribbon span",
+             "source": "authored: 0 is none. Kept small because a wide verge makes the "
+                       "object's own box a property of its edges rather than of the "
+                       "carriageway, which is what the envelope measures"},
             {"name": "junction_arms", "type": "count", "md1": 0, "ios6": 4,
              "unit": "whole arms", "source": "authored"},
-            {"name": "arm_length", "type": "continuous", "md1": 0.0, "ios6": 0.52,
-             "unit": "fraction of the ribbon span",
+            {"name": "arm_length", "type": "continuous", "md1": 0.0, "ios6": 0.72,
+             "unit": "fraction of the room the budget leaves",
              "source": "authored: an arm whose length is 0 is absent, which is how "
-                       "the junction count moves (a187)"},
+                       "the junction count moves (a187). Read against the *margin* "
+                       "the composition budget leaves rather than the ribbon's span, "
+                       "because a wide four-lane carriageway has almost no verge "
+                       "and an arm measured against the span overflowed the frame"},
             {"name": "corner_rounding", "type": "continuous", "md1": 0.0, "ios6": 0.14,
              "unit": "fraction of the ribbon span", "source": "authored"},
+            {"name": "heading", "type": "continuous", "md1": 45.0, "ios6": 24.0,
+             "unit": "degrees in the icon's own plane",
+             "source": "measured in effect: the reference mark is diagonal (its box is "
+                       "76x76 while its ink is 17.7 % of it, so it cannot be an "
+                       "axis-aligned ribbon), which is also why its fill is 0.28"},
+            {"name": "pitch", "type": "continuous", "md1": 0.0, "ios6": 38.0,
+             "unit": "degrees about the carriageway's length",
+             "source": "authored (a203): the fake-isometric pose the person asked "
+                       "for, which is what reveals the carriageway's top face and "
+                       "its side — flat at the md1 end, where the reference idiom is "
+                       "a flat mark, and posed at the iOS 6 end"},
         ),
     },
     "bolt": {

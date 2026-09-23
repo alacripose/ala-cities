@@ -1074,6 +1074,46 @@ gaps cut into the carriageway** — which connect to the background, so they are
    the reference objects themselves carry 1, 2, **6** and 3 pieces, so the anchor's
    piece counts are a population reading in exactly the way the fill band was.
 
+## 8.12 a202, a203, and what the envelope cannot do
+
+* **a202 — the check judges the body alone.** The body must be one piece (a184's
+  rule asserted directly rather than inferred from a total), and the accent is
+  checked separately as a declared second piece sitting clear of the body by the
+  declared clearance. The corpus's piece counts stay recorded.
+* **a203 — the object is posed the way the person asked for**: *"think like the fake
+  isometric perspective road icons that cities skylines uses in its ui"*. It is
+  geometry, not a texture, so it is two declared parameters on the road family —
+  `heading` (in-plane diagonal, 45° → 24°, which the reference's own shape implies:
+  its box is 76×76 while its ink is 17.7 %) and `pitch` (0° → 38° about the
+  carriageway's length, which is what reveals the top face and the side). Flat at the
+  md1 end, where the reference idiom is a flat mark; posed at the iOS 6 end.
+
+**What the wiring then measured.** The road at λ = 0 now measures fill **0.364**, in
+its own envelope (0.18–0.38), with 2 pieces and no voids — and it only got there
+because the envelope refused the first three attempts and each refusal named a real
+inconsistency: a slab fills its own box whatever its width, so the carriageway had
+to be **diagonal**; the lane width was declared at 0.30 of the span when the
+reference measures **0.14** (two lanes 0.28 between them); and the junction arms,
+measured against the ribbon's span, reached 1.33 of a body budget that ends at 0.72
+and pushed the accent's slot off the frame — so they now read against the **margin
+the budget leaves**.
+
+**Two things the envelope cannot do, both put to the person (round 8):**
+
+1. **The fill reading includes the accent, and the reference's does not.** `fill` is
+   measured over the *whole render's* own box, so a separate accent piece widens the
+   box and lowers the reading — that is why the gear measures 0.327 against a
+   reference of 0.5665. The reference fill is a **bare mark's** number. The fix is a
+   mechanism rather than a decision, and it will be implemented: the accent's pixels
+   are known from its declared slot and radius, so the fill reading excludes them and
+   the two numbers describe the same object.
+2. **One envelope per family cannot judge every λ.** The family's envelope is a λ = 0
+   reading, because its reference is an md1 object, while the corpus says fill *rises*
+   along the ladder (md1 0.490 → touchwiz 0.937 → ios6 1.000) — and our objects'
+   responses differ per family: the **gear's fill falls** (0.327 → 0.404 as its bore
+   shrinks from 23.6 % to 6.5 %) while the **road's rises** (0.364 → 0.519 as its
+   lanes widen). So the gate needs a *response* along λ, not a constant.
+
 ---
 
 ## Still open, and deliberately so
