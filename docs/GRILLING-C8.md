@@ -922,6 +922,31 @@ a power button *is* the reading that icon's own declaration forbids: its
 symbol whose whole meaning is "switched on" reads as exactly the second one. So the
 mark cannot simply be pointed at as the reference for that icon's shape.
 
+## 8.8 Round 5 — the reference conflicts, resolved
+
+* **a198 — `tool-power`'s object is the bolt, and its declared silhouette is
+  re-pointed** from `action/power_settings_new` to **`content/bolt`** (measured:
+  40×72 px, aspect 0.56, 1 piece, 0 voids). The family becomes a **bolt**. Two
+  reasons, both recorded on the icon: the power button *is* the switched-on reading
+  that icon's own `forbidden_readings` name ("a live supply reading"), and the pylon
+  the game means had no reference object behind it — which is C3's own stated reason
+  for retiring the authored recipes, so choosing it would have re-opened the fault
+  the rework exists to close. From the next render the containment check for that
+  icon compares against the bolt; the old mark's measurements stay readable in
+  `_measure_marks.py`'s output rather than being overwritten.
+* **a199 — the 3.5 % rule keeps no exemption, and the ticket's notches are enlarged
+  above the floor.** The reference's own notches (64 px, 1.37 % of its ink) are
+  condemned by the rule, so the geometry draws them **≥ 150 px at 96 px** (≈ 2.3×
+  MD1's own) — a visible departure from the reference object, accepted as such — and
+  the **containment divergence that follows is recorded, not fixed**: enlarging a
+  notch removes ink the mark has, so the ticket's candidates carry a named
+  divergence the way `Token::Road`'s and `Ink`'s do, with the number beside it.
+* The vocabulary corrections in 8.7 stand as measured: the gear's teeth range must
+  contain the object it is read from (MD1 draws **6**, so the range opens there
+  rather than at 8), the lens gains the **bore ratio** (≈ 0.51 R) that defines it,
+  and the bin gains the **lid gap** the reference actually has (ridge count 0 at the
+  md1 end, since MD1's mark draws none).
+
 ---
 
 ## Still open, and deliberately so
