@@ -1807,6 +1807,71 @@ before they can ship. That is the roadmap Q206 asked for, printed by the gate it
 
 ---
 
+## 8.24 The declared effects become computed, and two of them had nothing to act on
+
+§7.4 declares four sim effects. Reading them against what the sim actually computes
+found the gap is wider than "not wired yet": **every generated table was read by exactly
+one place — a test.** `PART_PRICE` was asserted to sum a home to 140 credits and nothing
+charged it; `condition` sat on every structure with nothing in the codebase decaying it;
+and two of the six performance quantities had **no consumer at all**:
+
+* **`SURFACE_SPEED` cannot move a single number.** `RoadGraph::rebuild` inserts only
+tiles where `road` is true, so every graph node is already the table's own `road: 1.0` —
+and the sim has no notion of a tile's surface family (`terrain.vegetation` is deferred
+precisely because "the world draws one green ground").
+* **`CONDUCTION`'s consumers do not exist.** Its families are the power lines, and
+`powerline.conductor` / `powerline.pylon` are declared parts with prices — but
+`BuildingKind` is `Home | Shop | Factory | PowerPlant`. There is no power line, so the
+family the table was written for has no structure to conduct through.
+
+Rather than invent a grain for those, both are now **recorded as deferred with the
+consumer each is waiting for** (`materials::effects::DEFERRED`), printed by the gate. An
+absence that is written down is auditable; an absence nobody noticed is the thing this
+campaign keeps finding.
+
+**The five quantities that do have consumers are now computed** — `materials::effects`,
+where a declared rate and a charged rate go through the same lookup, so they cannot
+drift. Its `table_defects()` is a gate over the tables themselves: a part priced but not
+declared, a family missing any of its four rates, a kind that resolves to no parts.
+
+**The one reading this needed, decided rather than assumed:** a structure carries one
+`condition` and its parts are of several families, so it decays at its **weakest part's**
+rate — the first part to fail is what forces the repair. A home is ceramic 0.0004,
+polymer 0.0012 and glass 0.0005, so it decays at 0.0012 and names the polymer as what
+will fail first; the test asserts the reading *differs* from the mean (0.0007), so an
+edit that quietly averages it fails rather than quietly halving every decay rate.
+
+And the effect is reached through the **clock**, not called directly:
+
+```
+a_structure_decays_a_day_at_a_time_and_owes_one_repair ... ok
+```
+
+One sim-day wears a structure by exactly its declared rate; the floor crossing owes
+**one** repair rather than one per day; the repair settles it by the condition it wrote
+back; and the as-built claim does not move while the condition does (a155). Testing it
+through `tick` is deliberate — the defect was a field nothing touched, and a test calling
+`weather_structures` itself would have passed with the call missing from `tick`.
+
+**What is not wired, and why it is not a loose end:** the world reports, it does not file.
+`repairs_due()` hands the governor the index, tile, condition and price, and `repair()`
+closes one by returning the condition it set — but the ticket side (a `BLD-*` repair filed
+where a placement is filed, closed by reading the condition back) belongs with the
+governor's other filings, not in a second ticket-writing path in the sim.
+
+The other answer that came back was architectural, and it changes what `SURFACE_SPEED`
+and `CONDUCTION` are waiting for: **per-tile surface families, with layers under the
+tiles** — so surfaces, extensive buildings, networks and complicated road tiles share one
+substrate, with material-accurate houses as the destination. That is the next piece of
+world work, and `DEFERRED` names it as the consumer for both tables rather than leaving
+two dead lookups to be rediscovered.
+
+**Four sim effects: five of their six quantities computed and checked; conduction deferred
+with its missing consumer named; surface speed deferred to the layer that gives it
+something to read.**
+
+---
+
 ## Still open, and deliberately so
 
 * **`tool-zone`** — the locator half, unchanged by this campaign (a166).
@@ -1815,8 +1880,17 @@ before they can ship. That is the roadmap Q206 asked for, printed by the gate it
   it as open every run (a172).
 * **Frame timing with the new shading** — the material shade term is a change to a
   26 k-quad pass, and it is unmeasured until a playtest measures it.
-* **Whether the four sim effects are balanced** — declared, computed, and only a
-  playtest can say whether the city is fair.
+* **Whether the four sim effects are balanced** — five of their six quantities are now
+  computed (§8.24) and only a playtest can say whether the city is fair.
+* **The tile layer** — per-tile surface families with layers under the tiles, so
+  surfaces, extensive buildings, networks and complicated road tiles share one substrate.
+  It is the consumer `SURFACE_SPEED` and `CONDUCTION` are recorded as waiting for, and
+  the groundwork for houses that simulate material accuracy.
+* **Cost, upkeep, desirability and nuisance are computed but not charged** — `effects`
+  returns each number the world will use, and the economy, `recompute_demand` and the read
+  points that would consume them are untouched yet (§8.24).
+* **The repair ticket** — `repairs_due()` and `repair()` are the interface; filing it
+  where a placement is filed belongs with the governor's other filings.
 * **The picker does not clear its own awaiting list** — `review.json` lagged the
   decision ledger; whether the picker should rewrite it or the pipeline should
   regenerate before opening is not settled here, because the concept-set bump makes

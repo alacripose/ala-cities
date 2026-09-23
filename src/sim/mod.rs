@@ -13,6 +13,8 @@ pub mod terrain;
 use serde::{Deserialize, Serialize};
 
 use crate::gov::RetirementReason;
+use crate::materials::effects as material_effects;
+use crate::materials::generated::REPAIR_CEILING;
 use crate::materials::world::{self as material_world, Level};
 use citizen::{Citizen, CitizenState};
 use rng::Pcg32;
@@ -271,6 +273,11 @@ pub struct Building {
     /// Present condition, 1.0 being as-built. What decays; never the claim above.
     #[serde(default = "condition_as_built")]
     pub condition: f32,
+    /// Whether this structure is known to owe a repair, so a crossed floor files
+    /// **one** ticket rather than one per tick. Cleared by the repair that raises
+    /// the condition back over the floor, not by the ticket being opened.
+    #[serde(default)]
+    pub repair_filed: bool,
 }
 
 impl Building {
@@ -659,6 +666,7 @@ impl World {
             retired_tick: None,
             powered: false,
             occupants: 0,
+            repair_filed: false,
             // Every structure carries its claim, whoever placed it: the world state is
             // what `verify.exe` re-reads, and a structure without a claim would be
             // unverifiable rather than merely unrecorded. The `MAT-*` *ticket* is filed
@@ -705,8 +713,75 @@ impl World {
         if self.clock.closes_month() {
             self.post_month();
         }
+        if self.clock.tick.is_multiple_of(TICKS_PER_DAY) {
+            self.weather_structures();
+        }
 
         self.step_citizens();
+    }
+
+    /// One sim-day of wear on every standing structure: its **weakest** part's
+    /// declared rate off its condition, and the repair flag set when it crosses the
+    /// declared floor.
+    ///
+    /// This is §7.4's deterioration effect, which was declared, given a field on
+    /// every structure, and computed by nothing until here. Condition is what moves:
+    /// the as-built claim never does (a155), so a decayed structure still says what it
+    /// was built from and only its condition says what it is now.
+    ///
+    /// The rate comes from `materials::effects`, which is the same lookup the test
+    /// asserting a home's rate goes through — so a declared rate and a charged rate
+    /// cannot drift apart.
+    pub fn weather_structures(&mut self) {
+        for building in self.buildings.iter_mut() {
+            if building.retired.is_some() {
+                continue;
+            }
+            let rate = material_effects::decay_per_day(building.kind.part_prefix());
+            if rate <= 0.0 {
+                continue;
+            }
+            building.condition = (building.condition - rate).max(0.0);
+            if material_effects::repair_is_due(building.condition) {
+                building.repair_filed = true;
+            }
+        }
+    }
+
+    /// The structures that owe a repair, each with the numbers its ticket is filed
+    /// with: the structure's index, its tile, its condition, and what the repair of
+    /// *this* structure costs.
+    ///
+    /// The world reports; it does not file. Filing is the governor's act (a175), and
+    /// the sim has no governor — so a due repair is a reading here and a ticket there,
+    /// rather than a second ticket-writing path nobody asked for.
+    pub fn repairs_due(&self) -> Vec<(u32, u32, f32, f32)> {
+        self.buildings
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| b.retired.is_none() && b.repair_filed)
+            .map(|(index, b)| {
+                (
+                    index as u32,
+                    b.tile,
+                    b.condition,
+                    material_effects::repair_cost(b.kind.part_prefix()),
+                )
+            })
+            .collect()
+    }
+
+    /// Close a repair: the structure is restored to the declared ceiling and stops
+    /// being due. Returns the condition that closed it, which is exactly what the
+    /// ticket is closed by reading back.
+    pub fn repair(&mut self, index: usize) -> Option<f32> {
+        let building = self.buildings.get_mut(index)?;
+        if building.retired.is_some() {
+            return None;
+        }
+        building.condition = REPAIR_CEILING;
+        building.repair_filed = false;
+        Some(building.condition)
     }
 
     fn recompute_power(&mut self) {
@@ -1299,6 +1374,76 @@ mod tests {
         let free = world.index(4, 20);
         assert!(world.set_zone(free, Zone::Residential));
         assert_eq!(world.tiles[free as usize].zone, Zone::Residential);
+    }
+
+    /// §7.4's deterioration effect, reached through the clock rather than called
+    /// directly: a declared rate off the condition every sim-day, the floor crossing
+    /// that owes **one** repair, and the repair that settles it by the condition it
+    /// wrote back.
+    ///
+    /// Through the tick on purpose. The defect this fixes was a field nothing
+    /// touched, and a test that calls `weather_structures` itself would pass just as
+    /// happily with the call missing from `tick`.
+    #[test]
+    fn a_structure_decays_a_day_at_a_time_and_owes_one_repair() {
+        use crate::materials::generated::REPAIR_FLOOR;
+
+        let mut world = small_city();
+        let tile = world.index(4, 4);
+        world.place_building(tile, BuildingKind::Home).expect("placed");
+        let rate = material_effects::decay_per_day(BuildingKind::Home.part_prefix());
+        let claim = world.buildings[0].material_as_built.clone();
+        assert_eq!(world.buildings[0].condition, 1.0, "as-built");
+        assert!(world.repairs_due().is_empty(), "nothing is owed on day one");
+
+        // The tick before a day closes does nothing; the one that closes it wears the
+        // structure by exactly one declared day.
+        world.clock.tick = TICKS_PER_DAY - 2;
+        world.tick();
+        assert_eq!(world.buildings[0].condition, 1.0, "a day has not passed");
+        world.clock.tick = TICKS_PER_DAY - 1;
+        world.tick();
+        assert!(
+            (world.buildings[0].condition - (1.0 - rate)).abs() < 1e-6,
+            "one sim-day of wear at the declared rate, got {}",
+            world.buildings[0].condition
+        );
+
+        // Drive it to just above the floor and let a day cross it.
+        world.buildings[0].condition = REPAIR_FLOOR + rate / 2.0;
+        world.clock.tick = TICKS_PER_DAY * 2 - 1;
+        world.tick();
+        assert!(world.buildings[0].condition < REPAIR_FLOOR);
+        let due = world.repairs_due();
+        assert_eq!(due.len(), 1, "the structure owes a repair: {due:?}");
+        assert_eq!(due[0].1, tile);
+        assert!(
+            (due[0].3 - material_effects::repair_cost("home")).abs() < 1e-6,
+            "a repair is priced against the thing repaired"
+        );
+
+        // Still one, a day later: a crossed floor is a repair owed, not a repair per
+        // day, which is what the flag on the structure is for.
+        world.clock.tick = TICKS_PER_DAY * 3 - 1;
+        world.tick();
+        assert_eq!(world.repairs_due().len(), 1);
+
+        // The repair settles it, and the condition is what closed it.
+        let closed = world.repair(0).expect("a standing structure can be repaired");
+        assert_eq!(closed, REPAIR_CEILING);
+        assert!(world.repairs_due().is_empty());
+        assert!(!world.buildings[0].repair_filed);
+        assert_eq!(
+            world.buildings[0].material_as_built, claim,
+            "the condition moves and the as-built claim never does (a155)"
+        );
+
+        // A retired structure owes nothing: it is history, not a liability.
+        world.demolish(tile, RetirementReason::Superseded);
+        world.buildings[0].condition = 0.1;
+        world.buildings[0].repair_filed = true;
+        assert!(world.repairs_due().is_empty(), "a ruin is not repairable");
+        assert!(world.repair(0).is_none());
     }
 
     #[test]
