@@ -606,6 +606,58 @@ it changes and where that decision lives:
   campaign exists to enforce.
 * **`CitizenState`** — **replaced**, not extended (Q46).
 
+## Round 11 — the implementation blockers
+
+These were asked after the frontier closed, because the first document could not be written
+without them. They are **implementation blockers, not design branches** — the tree was already
+empty, and these are the cost of turning it into a document.
+
+| # | Question | ➡️ recommendation | ✔ answer |
+|---|---|---|---|
+| Q66 | The first slice | the shortest chain that makes the tool which multiplies work | **overridden: "the whole thing"** |
+| Q67 | The ledger's unit | one canonical unit, integers, density for display only | **overridden: (b)** — per-substance natural units with declared conversions |
+| Q68 | Is a tile 8 m | 8 m, and worth confirming rather than inheriting | ✔ **(a)** |
+| Q69 | The progression's tiers | five, named by what the economy can make | **overridden: as many ages as possible, stone age to a modern future** |
+| Q70 | How far the source table goes | a named short list with rows; declare the rest | ✔ **(a)** |
+| Q71 | Reserving the ruins slot | `ruin` declared as a *source* | ✔ **(a), and (c)** — the salvage rules are designed now, not deferred |
+
+### What the two overrides change
+
+1. **The content is unbounded; the schema is not.** "The whole thing" and "as many ages as
+   possible" mean the substance and process tables have no fixed end state — which the schema was
+   *already* designed for (round 4's Q28 made full chemistry the goal). **The schema is written once
+   and generically; the content is rows.** What this does change is the order's *character*: phases
+   1–3 stop being a slice you finish and become the **first working rung** — the schema, the stone
+   age, and the first tool — with content added continuously from then on. You cannot test steel
+   before you can test a hatchet, so the rungs are still ordered; there is simply no last one.
+2. **Salvage comes into scope.** Q71's (c) means the recovery campaign's first half — the rules for
+   what a ruin yields, at what cost, from whom — is designed now rather than later. That moves one
+   of Q64's deferred pieces forward, and it means the `ruin` source is not a placeholder but a
+   working part of the source vocabulary.
+
+### The one reconciliation, flagged rather than assumed
+
+**Per-substance natural units (Q67's (b)) are accepted, and they put the campaign's core claim at
+risk — so here is the mitigation, stated as a reading that is overridable like any other.**
+
+The claim this whole campaign exists to make checkable is *nothing from nothing*. A ledger in
+litres and tonnes and m³ can only balance if every conversion is exact, and float conversions are
+where a balance silently stops balancing. So:
+
+* **every conversion is a declared rational factor** — integer numerator over integer denominator —
+  never a float constant;
+* **every process declares its unit per input and per output**, and the completeness gate checks
+  *dimensional consistency*: a process that mixes litres into kilograms without a declared density
+  is a printed defect, not a rounding error;
+* **the ledger balances per substance in that substance's own unit**, which is what makes (b) worth
+  choosing: a water ledger in litres and a timber ledger in m³ are each readable, and neither is
+  pretending to be a mass.
+
+If that is the wrong reading, the honest alternative is (a) — one canonical integer unit with natural
+units as display — and it can still be adopted at the schema stage, where it costs nothing.
+
+---
+
 ### What this record deliberately does not decide
 
 * The UI surfaces the economy needs (the tender, the ledger, the queue, the index, the tree) — the
