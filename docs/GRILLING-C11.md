@@ -209,3 +209,90 @@ evidence must not silently compete.
 - Run artifacts and records own evidence.
 - `PLAN.md`, if reintroduced, is a generated projection and never a separately
   edited source of truth.
+
+---
+
+## Round 3 — the whole-system design sweep (Q223–Q228)
+
+### Q223 — what makes replayed worlds semantically equivalent
+
+Semantic determinism does not say which differences matter. Should equivalence
+compare the complete domain projection, selected observable outcomes, conservation
+properties, or a declared property set?
+
+➡️ **A canonical authoritative domain projection.** Compare every authoritative
+fact and all future-affecting state; tolerate only deliberately approximate
+quantities under explicit rules.
+
+✔ **A confirmed.** Two runs are equivalent when their canonical domain projections
+agree. Integer and rational authoritative facts are exact; deliberately
+approximate domain quantities may use explicit tolerances. Camera pose, frame
+statistics, wall time, caches, and serialization order are presentation or
+implementation observations and do not decide equivalence. The concrete projection
+and tolerance declarations remain to be designed.
+
+### Q224 — what census defines the whole-game scope
+
+Is “the whole game” the player runtime, the source modules, the inherited eight
+phases, or every system through which the project is built and operated?
+
+➡️ **A whole-system census.** Nothing capable of changing the product, its truth,
+its evidence, or its delivery is silently outside scope.
+
+✔ **A confirmed.** The census covers gameplay, simulation, content declarations,
+presentation, persistence, evidence/governance, developer tools, verifier, asset
+pipeline, release path, playtests, and records. Every discovered capability gets
+an explicit `keep` / `rework` / `retire` disposition and a reason.
+
+### Q225 — what “whole game first” requires before Stage 1
+
+Q218 said the whole game and tools are reworked before Stage 1. The follow-up
+asked whether “documents complete” narrows that promise to finishing the design
+sweep before implementation and product work.
+
+➡️ **A design sweep first.** Finish the census, target designs, interfaces,
+invariants, dispositions, migration decisions, and executable gate
+specifications; then plan implementation and Stage 1.
+
+✔ **A confirmed.** Q218 is narrowed, not reversed. The **whole-game design
+sweep** must be document-complete before implementation planning or Stage 1
+product work. Production code is not required to be wholly reworked before
+Stage 1; that implementation follows the completed design.
+
+### Q226 — how parallel work coexists with rework in place
+
+Does “parallel replacement” mean a second production runtime, or may a parallel
+executable model be used only to make the target design concrete?
+
+➡️ **Parallel design only.** The current runtime is evidence and a behavioral
+reference, not a second production implementation; production code is reworked
+in place.
+
+✔ **A confirmed.** A parallel executable specification, model, or probe may be
+built when it makes a design decision testable. It is a design artifact with an
+explicit retirement or promotion decision. The current game remains evidence
+and may be run for comparison, but the target production architecture is not a
+second whole-game runtime built beside the old one.
+
+### Q227 — in what order the inherited questions return
+
+Should the sweep follow the old numeric sequence, the file tree, user-selected
+batches, or the dependency frontier of the redesigned capabilities?
+
+➡️ **Breadth-first by capability with complete old-question traceability.**
+
+✔ **A confirmed.** Capabilities are re-grilled breadth-first along the frontier
+their settled dependencies expose. A coverage ledger proves that every old
+Q1–Q210 question receives exactly one disposition, while question numbers remain
+stable and satellites stay attached to their parent question.
+
+### Q228 — what compatibility burden inherited artifacts carry
+
+Must the redesign preserve every save and record, reset inherited data, or make
+compatibility an explicit decision for each artifact?
+
+➡️ **Artifact by artifact.** No blanket promise and no blanket destruction.
+
+✔ **A confirmed.** Every inherited save, season record, schema, manifest, review
+record, evidence artifact, and compatibility fixture receives an explicit
+`keep` / `migrate` / `retire` decision, with its reason and expected evidence.

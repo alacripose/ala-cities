@@ -12,9 +12,9 @@ moment it is made.
 
 - A deterministic city builder in Rust: **nothing is made from nothing**. Mass is
   drawn, held, carried, made and audited to the gram.
-- `(seed, tick, input)` reproduces the same logical world. The guarantee is
-  semantic determinism, not byte-identical serialization or floating-point
-  results; the equivalence relation remains to be defined.
+- `(seed, tick, input)` reproduces the same logical world. Equivalence is decided
+  by a canonical authoritative domain projection, not byte-identical serialization
+  or raw floating-point results; its concrete fields and tolerances remain open.
 - Buildings **retire**; nothing is deleted. A claim about the world is read back
   out of the world, never trusted from the act that made it.
 - The codebase is **reworked in place** (Q211): a full sweep of the program and
@@ -24,8 +24,8 @@ moment it is made.
 
 | Stage | What it is | State |
 |---|---|---|
-| **Whole-game redesign** | every gameplay system and tool reworked behind the target domain-first seams; no Stage 1 product gate is accepted until this redesign is complete | in specification; the route and completion gate remain open |
-| **Stage 1 — the founding day** | the playable slice: a party lands, gathers, makes, survives. A person can play it | blocked by the whole-game redesign gate |
+| **Whole-game design sweep** | a whole-system census plus target designs, interfaces, invariants, dispositions, migration decisions, and gate specifications for every gameplay system and tool | in specification; implementation planning and Stage 1 product work wait for its completion |
+| **Stage 1 — the founding day** | the playable slice: a party lands, gathers, makes, survives. A person can play it | blocked by the whole-game design-sweep gate |
 | **Later stages** | grilled against the playable slice when stage 1 plays — the route answers to the game, not to old prose | fog |
 
 Every stage has a **gate**: named commands with expected **readings**, the
@@ -56,12 +56,18 @@ Every stage has a **gate**: named commands with expected **readings**, the
 | Q215 | where the design lives | ✔ this file, plus per-stage records in `docs/GRILLING-C*.md` |
 | Q216 | the GitHub map | ✔ re-chotted: children #2–#11 retired as superseded, the route returns when the design settles |
 | Q217 | what the redesign protects | ✔ invariants protected; mechanisms revisable — tests, schemas, migrations, governance formats, structure, UI, and tools may be reworked |
-| Q218 | order of redesign and play | ⚠ **whole game and tools first**; Stage 1 is not permitted as playable product work until the whole-game redesign gate passes |
+| Q218 | order of redesign and play | ⚠ **whole-game sweep first**, narrowed by Q225: the design sweep completes before implementation planning or Stage 1 product work |
 | Q219 | module and crate shape | ✔ domain-first modules with internal layers; promote to workspace crates only when the seam earns one |
 | Q220 | dependency rule | ✔ determinism is a tested property; pinned/wrapped dependencies are allowed when they pass replay, save, and conservation gates |
-| Q221 | gate and replay envelope | ✔ layered automated gate, then human acceptance; failed automated gates cannot be overridden; replay guarantee is semantic determinism, with its equivalence relation still open |
+| Q221 | gate and replay envelope | ✔ layered automated gate, then human acceptance; failed automated gates cannot be overridden; replay is semantic determinism, with Q223 choosing the domain-projection method |
 | Q222 | authority of artifacts | ✔ one canonical home per fact; `PLAN.md`, if used, is generated rather than independently edited |
+| Q223 | semantic replay equivalence | ✔ canonical authoritative domain projection; exact integer/rational facts, explicit tolerance only for declared approximations, presentation/cache/serialization order excluded |
+| Q224 | whole-game census | ✔ gameplay through delivery: simulation, content, presentation, persistence, evidence, tools, verifier, assets, release, playtests, and records all receive keep/rework/retire dispositions |
+| Q225 | meaning of “whole game first” | ✔ **design sweep first**; census and target design artifacts complete before implementation planning or Stage 1 product work — production code need not be wholly reworked first |
+| Q226 | parallel replacement | ✔ parallel executable models may serve as design artifacts; production code is still reworked in place and the old runtime is evidence, not a second target runtime |
+| Q227 | re-grill order | ✔ breadth-first by redesigned capability and dependency frontier, with complete Q1–Q210 traceability |
+| Q228 | inherited artifact compatibility | ✔ artifact-by-artifact keep/migrate/retire decisions; no blanket compatibility or destruction |
 
-*Round 2 (Q217–Q222) is answered in `docs/GRILLING-C11.md`. The next round defines
-the semantic-equivalence relation and the completion gate for the whole-game
-redesign.*
+*Rounds 2–3 (Q217–Q228) are answered in `docs/GRILLING-C11.md`. The next
+frontier builds the concrete whole-system capability census and dependency
+order.*
