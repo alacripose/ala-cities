@@ -104,6 +104,108 @@ superseded — not as refused.
 
 ## Round 2 — the root layer (Q217–Q222)
 
-*Asked this session, in one frontier: what rework preserves, what the stages are,
-how the god files split, what the wheels rule becomes, what a gate is, and where
-"what lands next" lives. Answers recorded below when given.*
+The earlier session named this frontier but did not preserve the questions. They
+are restored here so the round is resumable and every answer has an explicit
+question, recommendation, and disposition.
+
+### Q217 — which principles are immutable
+
+Does the redesign protect only the product identity and claim, or must the current
+mechanisms survive too? The protected set considered here was deterministic
+replay, conservation, retirement/history, and evidence-backed completion. The
+current tests, schemas, tables, save migrations, governance formats, module
+shape, and tools were all revisable mechanisms rather than inherited answers.
+
+➡️ **A — protect invariants, revisit mechanisms.** Preserve properties and truths,
+not the accidental structure that currently implements them.
+
+✔ **A confirmed.** Deterministic replay, conservation, retirement rather than
+silent deletion, and evidence-backed completion remain protected. Tests,
+schemas, tables, migrations, governance formats, module structure, rendering,
+interface, tools, and simulation mechanisms may be reworked when a stronger design
+earns it.
+
+### Q218 — what must be redesigned before playable product work
+
+The choices were: A, groundwork first and then playable vertical slices; B,
+horizontal subsystem phases; C, continuous vertical slices from the first product
+change; or D, the whole game redesigned before any playable product work.
+
+➡️ **A — groundwork first, then every product stage leaves something playable.**
+
+✔ ⚠ **D overridden — the whole game redesign comes first.** Every gameplay system
+and tool is to be reworked before Stage 1 is permitted as playable product work.
+The existing build may remain runnable during the rework, but no slice is allowed
+to satisfy the Stage 1 product gate until the whole-game redesign gate passes.
+
+### Q219 — how domain, technical layers, and crates relate
+
+The original answer combined deep domain modules, technical layers, and a
+workspace crate per major system. Those choices can conflict, so the dedicated
+Ask UI asked which organization wins when behavior crosses a layer.
+
+➡️ **Domain-first modules, with crates promoted only when a seam earns one.**
+
+✔ **Domain-first, internal layers confirmed.** A domain owns its behavior and
+invariants. Serialization, presentation, storage, and adapters sit behind that
+module's interface. A module becomes a workspace crate when independent
+compilation, testing, reuse, or ownership pressure earns the seam; a crate per
+system is not created merely to make the directory tree look architectural.
+
+### Q220 — what replaces the hand-rolled-wheels rule
+
+May the redesign use established crates for replay-affecting algorithms, and what
+condition lets one enter the deterministic path?
+
+➡️ **Determinism is a tested property, not an origin.** Pin and wrap the
+dependency, preserve the versioned behavior, and prove it through replay,
+save, and conservation gates; refuse one that cannot carry the guarantee.
+
+✔ **A confirmed.** The standard library and established crates are free to be used.
+Anything affecting replay must be version-bounded, hidden behind a project-owned
+module where practical, locked, and proven by the declared gates. Convenience
+alone never earns a dependency, and dependency origin is not itself a reason to
+refuse one.
+
+### Q221 — what makes a stage pass
+
+The first answer combined the layered evidence gate with human approval. The
+dedicated Ask UI then asked whether a person may override a failed machine gate
+and what envelope the replay guarantee covers.
+
+➡️ **A layered evidence gate; a person accepts only after it is green.** A failed
+machine check is not silently waived.
+
+✔ **A+C confirmed, with two explicit answers.**
+
+- Build, tests, and lint; replay/equivalence; conservation and record
+  verification; save/record compatibility where applicable; human playtest for a
+  playable stage; and decision/document coverage all form the gate.
+- The person gives final acceptance only after the automated gate is green. A
+  failed automated gate cannot be overridden by human approval.
+- The replay guarantee is **semantic determinism**: the same declared inputs
+  produce equivalent simulation outcomes. Identical floating-point results and
+  byte-identical serialized state are not promised.
+
+⚠ The equivalence relation itself is not yet defined. The next round must say what
+may differ, what a replay observer compares, and which differences are defects
+before this gate is executable.
+
+### Q222 — where each kind of truth is stored
+
+The present design accumulated hand-maintained answers across `README.md`,
+`DESIGN.md`, the proposed `PLAN.md`, grilling records, GitHub issues, and source
+comments. Which artifact owns which kind of truth?
+
+➡️ **One canonical home per fact.** Design, reasoning, route, implementation, and
+evidence must not silently compete.
+
+✔ **A confirmed.**
+
+- `DESIGN.md` owns the current product constitution and concise settled decisions.
+- C11 and later stage records own reasoning, alternatives, overrides, and history.
+- The GitHub Wayfinder map owns open decisions, dependencies, and the route.
+- Code and tests own implemented behavior.
+- Run artifacts and records own evidence.
+- `PLAN.md`, if reintroduced, is a generated projection and never a separately
+  edited source of truth.

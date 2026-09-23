@@ -1,17 +1,20 @@
 # ala-cities — the design
 
-The redesign's whole design document, kept short on purpose. The reasoning lives
-in `docs/GRILLING-C*.md`, the authority in `AGENTS.md` / `GOD_AGENTS.md` /
-`UNIFIED_DESIGN.md`, and the route on GitHub issue #1. **This file and the records
-are the only prose the project grows.** Every decision gets one line in the table
-below the moment it is made.
+The redesign's whole product design, kept short on purpose. `AGENTS.md` remains
+the operating authority; this file and `docs/GRILLING-C*.md` hold the product
+constitution and its reasoning; GitHub issue #1 holds the route.
+`GOD_AGENTS.md` and `UNIFIED_DESIGN.md` remain inherited references until their
+questions are re-grilled. **This file and the records are the only product-design
+prose the project grows.** Every decision gets one line in the table below the
+moment it is made.
 
 ## The claim — what the game is
 
 - A deterministic city builder in Rust: **nothing is made from nothing**. Mass is
   drawn, held, carried, made and audited to the gram.
-- `(seed, tick, input)` reproduces the same world. That property — not a
-  dependency's origin — is what a dependency has to satisfy.
+- `(seed, tick, input)` reproduces the same logical world. The guarantee is
+  semantic determinism, not byte-identical serialization or floating-point
+  results; the equivalence relation remains to be defined.
 - Buildings **retire**; nothing is deleted. A claim about the world is read back
   out of the world, never trusted from the act that made it.
 - The codebase is **reworked in place** (Q211): a full sweep of the program and
@@ -21,8 +24,8 @@ below the moment it is made.
 
 | Stage | What it is | State |
 |---|---|---|
-| **Groundwork** | the seams, the declared tables, the crate policy, the module skeleton — nothing playable | being specified (Q217–Q222) |
-| **Stage 1 — the founding day** | the playable slice: a party lands, gathers, makes, survives. A person can play it | open |
+| **Whole-game redesign** | every gameplay system and tool reworked behind the target domain-first seams; no Stage 1 product gate is accepted until this redesign is complete | in specification; the route and completion gate remain open |
+| **Stage 1 — the founding day** | the playable slice: a party lands, gathers, makes, survives. A person can play it | blocked by the whole-game redesign gate |
 | **Later stages** | grilled against the playable slice when stage 1 plays — the route answers to the game, not to old prose | fog |
 
 Every stage has a **gate**: named commands with expected **readings**, the
@@ -52,6 +55,13 @@ Every stage has a **gate**: named commands with expected **readings**, the
 | Q214 | the finish line | ✔ playable founding-day slice first; the route is grilled against it afterwards |
 | Q215 | where the design lives | ✔ this file, plus per-stage records in `docs/GRILLING-C*.md` |
 | Q216 | the GitHub map | ✔ re-chotted: children #2–#11 retired as superseded, the route returns when the design settles |
+| Q217 | what the redesign protects | ✔ invariants protected; mechanisms revisable — tests, schemas, migrations, governance formats, structure, UI, and tools may be reworked |
+| Q218 | order of redesign and play | ⚠ **whole game and tools first**; Stage 1 is not permitted as playable product work until the whole-game redesign gate passes |
+| Q219 | module and crate shape | ✔ domain-first modules with internal layers; promote to workspace crates only when the seam earns one |
+| Q220 | dependency rule | ✔ determinism is a tested property; pinned/wrapped dependencies are allowed when they pass replay, save, and conservation gates |
+| Q221 | gate and replay envelope | ✔ layered automated gate, then human acceptance; failed automated gates cannot be overridden; replay guarantee is semantic determinism, with its equivalence relation still open |
+| Q222 | authority of artifacts | ✔ one canonical home per fact; `PLAN.md`, if used, is generated rather than independently edited |
 
-*Round 2 (Q217–Q222) is asked; its answers land here and in
-`docs/GRILLING-C11.md`.*
+*Round 2 (Q217–Q222) is answered in `docs/GRILLING-C11.md`. The next round defines
+the semantic-equivalence relation and the completion gate for the whole-game
+redesign.*
