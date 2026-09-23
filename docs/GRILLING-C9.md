@@ -752,3 +752,278 @@ correctly refused to conserve until they were built through the same path as eve
   answer.
 * **Extraction is instantaneous once planned.** Effort currently enters as *work on the structure*, not
   as time spent getting the material out of the ground.
+
+---
+
+## Round 13 — the five gaps the implementation exposed
+
+Round 12's build work surfaced five things the 65 decisions never answered, plus one that turned out to
+be the same violation as `grow()` one layer up. All six were put to the user and answered.
+
+### Q76 — does material move by a carrier. Answered: **yes, and the carrier is a tool.**
+
+Hauling is real, and the answer carried machinery the plan did not have: **vehicles and transport are
+similarly tools, with their own decay and upkeep, their own needs, and their own production costs.** The
+stated ladder is a wagon, then a full engine, then a rocket — so transport is a *tiered capability*, not a
+constant.
+
+The consequence to keep in view: hauling capacity is therefore a function of what the city can build, its
+vehicles wear out, and upkeep is a drain that exists because work exists. That is the first place where a
+*tool* gates a *process* rather than merely speeding it up.
+
+### Q77 — where loose mass lives. Answered: **(a) with (c) — and materials are not people.**
+
+Two accounts, `carried:<carrier>` and `site:<tile>`, plus the (c) rule that mass a carrier loses is
+**dropped where it stood** rather than following them. The stated reason is the design principle under
+it: *materials are not people* — they get no needs, no claims and no continuity, so a lost carrier leaves
+mass on the ground and the world picks it up from there.
+
+### Q78 — the unit of work. Answered: **(a), and the worker has to be able to judge the deal.**
+
+Labour is the primitive and money is derived from it, with one addition that changes what the primitive is
+*for*: **citizens must be able to determine whether the work is worth their time for what they get out of
+it.** So a work-unit is not only a magnitude, it is a **price** — which is what makes the obligation of Q79
+comparable against a citizen's own preferences, and what makes a reservation ("not worth it") a real state
+the city can be in.
+
+### Q79 — does the city pay for public work. Answered: **(c) — an obligation.**
+
+Work is recorded as a debt the city owes the citizen, settled when there is money. This is Q58's pre-money
+ledger applied to labour, and it means the founding epoch needs no special case: nobody is paid because
+there is nothing to pay with, and nobody is unpaid in the sense of valueless — the debt is written down.
+
+### Q80 — bill of materials now, or the bridge declared. Answered: **(b), with the collision recorded.**
+
+The standing accounts stay family-keyed, and **the bridge is declared** — one row per substance naming the
+family it presents as, which `SCHEMA.md` already specifies. Substance-level bills of materials land when a
+house is genuinely made of brick, which is when phase 3 declares the kiln; crediting `structure:clay`
+today would state that a ceramic house is unfired mud.
+
+**Recorded rather than left to read as an oversight:** `ground:clay` and `structure:ceramic` are the same
+mass under two names, and the reconciliation between them is in grams until the bridge and the processed
+substances both exist.
+
+### Q81 — the 25,000 credits that came from nothing. Answered: **(c) now, (b) as the transition, (a) as the destination.**
+
+The founding epoch has **no money at all**: the city runs on the obligation ledger, and the player's build
+stops being a purchase and becomes **material-gated like everyone else's** — the player cannot raise a
+power plant the city cannot supply. While unbacked credits still exist they are reported as a finding
+rather than quietly spent, and credits are re-based on a declared mass of mined gold when gold is a mined
+substance.
+
+This is the `grow()` violation at the money layer, and the codebase had already labelled it: `Economy`
+carries the comment *"City funds. **Fiction** — labelled as fiction everywhere it is shown."*
+
+---
+
+## Round 14 — the carrier, the vehicle, and the price of work
+
+### Q82 — what `carried:` names. Answered: **(a) the carrier itself.**
+
+`carried:citizen-14` when a person hauls by hand, `carried:wagon-3` when a wagon does. "Where is the
+iron" is answerable when the answer is *in a wagon, on the road, south of the kiln* — and an abandoned
+wagon becomes a holding with an owner-shaped hole, which is what the drop rule of Q77 implies.
+
+### Q83 — what a vehicle is. Answered: **(a) a tool item**, parked on a tile when idle.
+
+Built out of declared inputs, wearing only while it runs (Q54), tradeable like any made thing. **The parked
+tile is stated rather than implied**, because it is what keeps the audit whole: a parked vehicle holds mass
+as `site:<tile>`, and an abandoned one is visible on the map instead of inside a building's inventory.
+
+### Q84 — does hauling need a road. Answered: **vehicles gated by road, hand-hauling merely expensive.**
+
+A person walks anywhere; a wagon needs a road. This is where the road network stops being a power line and
+nothing else: hauling is the first thing that makes roads *pay*, and roads have no owner — Q36's
+owner-of-last-resort case, now with work behind it. A city with no roads is slow, not dead.
+
+### Q85 — the value of a work-unit, and refusal. Answered: **one declared value per unit, a declared reservation, and refusal is visible.**
+
+Value is one number now; per-verb rates arrive with skills (Q22/phase 6), because inventing them today
+would be doing the skill model's job early. The load-bearing part is that **a refusal files the same kind
+of case a material shortfall does**: *"nobody will do this work at this rate"* is the second failure the
+queue exists to show, and without it Q78's judgement would be decorative.
+
+### Q86 — what an obligation settles into. Answered: **(a) money, oldest-first, with (b) the pre-money form.**
+
+Obligations convert to a claim on the treasury at a **declared rate beside the gold declaration**, paid
+**oldest-debt-first** — so the age of a debt means something and a permanent deficit is legible as a
+number. In kind before money exists, which is what Q58 already said. (c) was refused as turning a debt
+into a caste: priority nobody can ever spend, inherited.
+
+### Q87 — the player's proposal. Answered: **(a) an ordinary task.**
+
+The player names a site and a kind; the task joins the queue; a citizen hauls the material and builds it.
+Not a privileged action — that would leave the player as the one actor needing neither material nor
+labour, which is the exact state Q81 demolished. **Paid priority is a named later feature** (it needs
+wages to exist first), not part of this.
+
+### What round 14 leaves in motion
+
+Vehicles are *made things with declared inputs*, so the substance and process tables (Q37/phase 3) now have
+their first consumer that is not a building. Hauling is agent work, so the road graph becomes load-bearing
+for material flow and not just for power. And "a citizen can decline" turns the obligation ledger into the
+labour market's first real pressure — which is the thing round 15 has to finish deciding.
+
+---
+
+## Round 15 — crews, organisations, and the price of declining
+
+### Q88 — one worker or a crew. Answered: **(a) crews — and citizens work in crews *and organisations*.**
+
+The amendment to Q43: a task carries **contributions**, the counter drops by the sum of the rates present,
+and each contributor's obligation accrues for what they actually did rather than for having been present.
+
+The instruction attached to the answer is the larger part of it: **citizens work in crews and
+organisations**, and the reading for how that goes down is `GOD_AGENTS.md` — the civilian pillar (§30) and
+the contract/scope machinery (§5), read for its *shape* rather than conformed to (a16's standing
+instruction). What that opens is round 16.
+
+### Q89 — who sets the value of a work-unit. Answered: **(b) a Layer 1 policy.**
+
+Citizens can amend it by record, with the declared constant as its initial value, which gives the obligation
+ledger its feedback loop: raise the rate, more work is taken, the debt grows, oldest-first payment bites.
+
+### Q90 — what moves a citizen's reservation. Answered: **(b), with (a)'s spread.**
+
+Needs push it down; a mountain of unpaid obligations pushes it up. This is what makes collapse reachable
+through *labour* rather than by script: a city that pays in promises until the promises stop working then
+cannot get anything built. 
+
+### Q91 — agent or flow. Answered: **(a) the carrier is an agent with a route**, and **wheels are tools**.
+
+The load's account stays true only if the thing holding the mass is a thing that moves; offscreen carriers
+advance by the LOD rule citizens already use. The rider matters as much as the answer: a wheel is not free
+transport, it is a *made thing* — so the transport ladder begins below the wagon, and every rung of it is
+built out of declared inputs like everything else in the world.
+
+### Q92 — permanent refusal or delay. Answered: **(b) refused until something changes.**
+
+The task stalls, the case stays open naming the rate nobody accepts, and it closes by the same rule every
+other case uses: *the world changed and the gate passed*.
+
+### Q93 — is an obligation transferable. Answered: **(a) as a recorded claim.**
+
+Never as material it does not represent — Q17's rule one layer down, and the reason the pre-money era has an
+instrument at all instead of the bank and the index having to be invented from nothing later.
+
+---
+
+## What `GOD_AGENTS.md` says that bears on this, read for shape
+
+The file is 51k lines and its authority is its own; these are the parts the crew/organisation answer lands
+on, with what they *are* rather than what they should become.
+
+* **§0.4's hierarchy** is Governor Base → Season → Campaign → Contract → Ticket → Action/Evidence/Validation,
+  and the repo already implements the middle of it: `gov` has tickets, evidence, retirements and seasons.
+* **C02 — who sets job scopes** is *open*, and carries its own constraint: *"a job scope is a NARROWING of
+  the supervisor's scope, never a widening"* (§5.3's subcontract rule).
+* **C07 — can a civilian be a supervisor** is *open*, with the structural rule already fixed: *"a supervisor is
+  a principal and must be distinct from the worker it supervises"* (rule 62).
+* **C05 is answered**: there is **no promotion cadence**; a promotion happens when evidence supports it and a
+  *distinct actor* authorizes it — *"a timer would be a quota, and a quota is a scalar"*.
+* **C09 is answered**: a balance is a **derived view** over the income ledger; *"a stored balance is a second
+  source of truth"*. That is this record's Q59 rule and phase 2's audit, arrived at independently.
+* **C12 / rule 56**: certification *"permits consideration, never authority"* — the same boundary Q21 drew
+  between a document and the authority it implements.
+* **§30.2's fog** lists *"multi-civilian jobs — two civilians on one job: whose income, whose evidence, whose
+  grade"* as **not yet decided**. Q88's answer is an answer to it: income per contribution, evidence is the
+  completion check, and the grade is whatever round 16 settles skill to be.
+* **§30.3's out-of-scope list** is closed and never graduates: *a payroll system, a tax system, a benefits
+  system, a guild system, a reputation score, a civilian marketplace.* C9 has decided a tax (a2), a market
+  (a17), income via obligations (Q79/Q86) and per-citizen skills (Q22). **That tension is round 16's, and it
+  is a real one**: the file refuses these for its own store, and the game needs them.
+
+---
+
+## Round 16 — the organisation, the skill, and where the other file stops
+
+### Q94 — what an organisation is. Answered: **(a) premises + roster + scope**, with (b)'s legal person arriving when money does.
+
+An organisation is a structure with members, an owner-account, the tools it holds, and work it posts — so a
+workshop that takes a contract *is* an organisation rather than representing one. The legal person (able to
+owe and be owed with no premises) arrives with money, which is when being owed starts to mean something.
+
+### Q95 — where `GOD_AGENTS.md` binds the game. Answered: **(a) it does not bind.**
+
+The game is a different system, and that file's refusals are about its own store. Tax (a2), the claim market
+(a17), income through obligations (Q79/Q86) and per-citizen skill all stand as decisions rather than as
+drift.
+
+**One nuance recorded so a later reader does not over-read this.** Two answers in the same round happened
+to coincide with that file, and they stand on their **own** reasons rather than on its authority:
+Q96's computed skill is Q59's derived-versus-stored rule applied to skill, and Q97's unified work shape is
+the repo's own case-dedupe rule (*four hundred hungry citizens are one case reading 400*) applied to tasks.
+Neither cites the file, and neither would change if the file were deleted.
+
+### Q96 — skill: computed claim or stored scalar. Answered: **(a) a view over the citizen's own record.**
+
+Skill in a process is *read* from the work that citizen has actually completed — never stored — so a citizen
+who has smelted forty times is shown to be a smelter, one who has never smelted cannot claim to be, and
+decay is free because an unexercised record ages by itself.
+
+### Q97 — is a task the game-side form of a ticket. Answered: **(a) yes, with closures aggregated.**
+
+A task carries a scope, closes against a check (the lineage and the structure standing), and produces
+evidence. Routine work accrues into its organisation's record as **counts**, and a **declared trigger set**
+promotes work to a full record. This is the case engine's own dedupe rule: five thousand citizens doing ten
+tasks a day must not write fifty thousand records.
+
+### Q98 — the player's proposals. Answered: **(a) a non-authoritative plan store.**
+
+Proposed, not posted — a record kind of its own, visible, revisable, promoted through the same gate
+everything else passes. Q35's tender needs a home, and *"who proposed this, and when"* has to be answerable,
+otherwise a proposal that stalls (Q92) has no owner to revise.
+
+### Q99 — what posts the first work. Answered: **(a) needs post it**, with the founding compact as a **written record** rather than a pre-existing institution.
+
+At t=0 the founding party's own needs (shelter, food, warmth) generate the first tasks, taken by whoever is
+worst off, and the queue grows an institution around it. The first hour of the game is survival, not a menu;
+and *"the citizens found the government"* (a3) becomes true because the first institutional act in the world
+is something they wrote.
+
+---
+
+## Round 17 — the first rung, and who owns what
+
+### Q100 — how an organisation comes into being. Answered: **(a) a citizen founds it**, staking premises and declaring a scope.
+
+Licensing and charters arrive later as a **policy citizens can pass** (Q21's layers), not as a precondition. At
+t=0 there is no government to charter anything, so (a) is what keeps a3's *"citizens establish the
+government"* true rather than declared. The player proposes work, never persons (Q87/Q98).
+
+### Q101 — employment: roster or slot. Answered: **(a) membership**, with public work **always also available**.
+
+An organisation takes a scope and posts narrower work inside it — the shape C02 describes — and its premises
+bound how many it employs, so one firm can later work across more than one building, which a slot model
+cannot express. Public work never disappears, because Q36 made the government the owner of last resort and
+the first rung of the bootstrap is needs-posted work (Q99).
+
+### Q102 — the first rung. Answered: **(a) new first-tier kinds and surface deposits.**
+
+`Shelter`, `Kiln`/`Fire` and `Store` join the kinds, and **a shelter is not a small home** — thatch on sticks
+has no joinery, no kiln and no cut stone, so `level 0` would be the same building in disguise. Geology gains
+a **biological** family (brush, timber, fibre), taken **by hand without a mine** and measured in tonnes rather
+than hundreds of tonnes, which is where Q28's organic substances and Q15's farms and animals eventually draw
+from.
+
+The audit is satisfied without exception: a surface deposit is still ground mass, so taking brush debits the
+ground like anything else.
+
+### Q103 — crew accrual. Answered: **(a) contributions accumulate**, across workers and across days.
+
+A worker may leave and return, completion is the sum reaching `work_remaining`, each contribution is recorded
+against the citizen who made it, and **a contributor who dies keeps what they earned** — the obligation
+survives them while the work they did stays on the task.
+
+### Q104 — ownership. Answered: **(a) a claim list over spatial mass** — *so that organisations, citizens and the government can actually trade with each other where relevant.*
+
+Mass stays where it is (`ground:`, `carried:`, `site:`) and ownership is a **record naming who claims it**,
+with the audit checking claims against the mass that exists. That is the only shape where the two can legally
+diverge — a wagon standing on your land is not yours, an org's goods in another org's store are a claim on
+someone else's tile — and that divergence is what the claim market trades in.
+
+### Q105 — what promotes work to a full record. Answered: **(a) a declared trigger set.**
+
+First-of-kind acts, anything the government posted, and anything carrying a case; everything else accrues as
+counts per organisation per day. The axis is **novelty and accountability**, not size, so a hundred citizens
+hauling gravel is a count while one citizen raising the city's first kiln is a record.
