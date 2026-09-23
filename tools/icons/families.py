@@ -60,12 +60,22 @@ POPULATION_RELATIVE_SPREAD = 0.347
 #: than discovered in a render, because a fixed accent position collided with the
 #: road at three lanes and up and welded the two into one piece.
 #:
-#: `body_span` is deliberately smaller than the 1.72 the traced marks occupied: with
-#: 1.44 the margin is 0.405 a side, which leaves room for an accent of radius 0.15
-#: plus its clearance at every family and every point on the ladder.
+#: `body_span` is stated in the **posed** frame, which the first version was not. It
+#: was 1.44 — the margin 0.405 a side looked like room for an accent of radius 0.15
+#: plus its clearance — and the smoke test's frame check then refused it for almost
+#: every family at most points on the ladder: a rotated body's *axis-aligned* bounds
+#: grow by up to **1.30x** (measured: the road reaching 0.90 and the lens 0.93 against
+#: a frame half of 1.12), so the accent's derived slot fell outside the frame and
+#: the accent was being clipped — visible in the run as `excl 30 of ~129`, an accent
+#: a quarter of which was off the edge of the icon.
+#:
+#: The arithmetic is therefore done in the frame the render is placed in:
+#: `body_half x 1.30 + clearance + 2 x accent_radius <= frame_half`, i.e.
+#: `0.58 x 1.30 + 0.06 + 0.30 = 1.114 <= 1.125`. 1.16 is that, rounded to a number
+#: someone can read, and every family is sized from it.
 COMPOSITION = {
     "frame_span": 2.25,
-    "body_span": 1.44,
+    "body_span": 1.16,
     "accent_radius": 0.15,
     "clearance": 0.06,
     "note": (
@@ -82,6 +92,11 @@ FAMILIES = {
     "gear": {
         "icon": "vocab-settings",
         "object": "a toothed control disc",
+        "declared_parts": {
+            "count": 1,
+            "source": "measured: action/settings' ink is one connected run (a183's rule "
+                      "is about *undeclared* components, and this family declares one)",
+        },
         "reference": {
             "glyph": "action/settings",
             "measured": {"teeth": 6, "bore_ratio": 0.39, "pieces": 1, "voids": 1,
@@ -122,6 +137,15 @@ FAMILIES = {
     "road": {
         "icon": "tool-road",
         "object": "a ribbon of carriageway",
+        "declared_parts": {
+            "count": 1,
+            "source": "declared, and a recorded divergence: the reference arrives in "
+                      "**6 components** (17.7 % ink over a 76x76 box) because an MD1 "
+                      "map symbol draws its strokes apart. a206 kept the object a "
+                      "single solid ribbon and ramped its pose instead, so this "
+                      "family declares 1 and the reference's 6 stay recorded beside "
+                      "it as the idiom it does not share",
+        },
         "reference": {
             "glyph": "maps/add_road",
             "measured": {"box": [76, 76], "pieces": 6, "voids": 0, "fill": 0.2825},
@@ -209,6 +233,10 @@ FAMILIES = {
     "bolt": {
         "icon": "tool-power",
         "object": "a bolt of energy",
+        "declared_parts": {
+            "count": 1,
+            "source": "measured: content/bolt is one connected run with no voids",
+        },
         "reference": {
             "glyph": "content/bolt",
             "measured": {"box": [40, 72], "aspect": 0.56, "pieces": 1, "voids": 0,
@@ -220,9 +248,10 @@ FAMILIES = {
         "fill_response": {
             "md1": 0.3767,
             "md1_source": "measured: content/bolt's own ink over its own box",
-            "ios6": 0.72,
-            "ios6_source": "authored provisionally; replaced by this family's own "
-                           "λ = 1 render under the exclusion reading",
+            "ios6": 0.447,
+            "ios6_source": "measured: this family's own λ = 1 smoke render (0.4470). The "
+                           "authored 0.72 that stood here was 0.27 out, and the check "
+                           "said so before the render was looked at",
         },
         "parameters": (
             {"name": "width_over_height", "type": "continuous", "md1": 0.56,
@@ -243,6 +272,10 @@ FAMILIES = {
     "lens": {
         "icon": "tool-inspect",
         "object": "a lens with a handle",
+        "declared_parts": {
+            "count": 1,
+            "source": "measured: action/search is one connected run around its bore",
+        },
         "reference": {
             "glyph": "action/search",
             "measured": {"box": [69, 70], "bore_ratio": 0.51, "pieces": 1, "voids": 1,
@@ -252,24 +285,45 @@ FAMILIES = {
         "fill_response": {
             "md1": 0.2812,
             "md1_source": "measured: action/search's own ink over its own box",
-            "ios6": 0.45,
-            "ios6_source": "authored provisionally; replaced by this family's own "
-                           "λ = 1 render under the exclusion reading",
+            "ios6": 0.756,
+            "ios6_source": "measured: this family's own λ = 1 smoke render (0.7560). The "
+                           "swing from the md1 end is large and real -- the bore closes "
+                           "from 69.8 % of the object to 5.3 % and two rims are added, "
+                           "so the object is 2.1x its own md1 density at the iOS 6 end, "
+                           "in the direction the corpus measures",
         },
         "parameters": (
             {"name": "rings", "type": "count", "md1": 1, "ios6": 3,
              "unit": "whole rings", "source": "authored"},
             {"name": "bore_ratio", "type": "continuous", "md1": 0.51, "ios6": 0.30,
-             "unit": "fraction of the outer radius",
-             "source": "measured: the reference's 1018 px void ≈ 0.51 R"},
+             "unit": "fraction of the object's own half-span",
+             "source": "measured: the reference's 1018 px enclosing void ≈ 0.51 of its "
+                       "34.5 px box half, which is the frame the reading lives in. "
+                       "Sizing it against the ring's outer radius instead built a "
+                       "thick washer where the reference has a rim"},
+            {"name": "ring_ratio", "type": "continuous", "md1": 0.74, "ios6": 0.86,
+             "unit": "fraction of the object's own half-span",
+             "source": "measured: the reference's ring ink (1374 px) is far less than "
+                       "the annulus its 0.51 bore would leave, so its outer radius is "
+                       "only ≈ 25.5 px of a 34.5 px box half — 0.74 — and the wall is "
+                       "the difference between the two ratios"},
             {"name": "ring_thickness", "type": "continuous", "md1": 0.06, "ios6": 0.13,
              "unit": "fraction of the outer radius", "source": "authored"},
             {"name": "glass_depth", "type": "continuous", "md1": 0.10, "ios6": 0.28,
              "unit": "of the housing depth", "source": "authored"},
             {"name": "handle_angle", "type": "continuous", "md1": 45.0, "ios6": 34.0,
              "unit": "degrees", "source": "authored"},
-            {"name": "handle_length", "type": "continuous", "md1": 0.75, "ios6": 0.55,
-             "unit": "fraction of the outer radius", "source": "authored"},
+            {"name": "handle_length", "type": "continuous", "md1": 1.48, "ios6": 1.10,
+             "unit": "fraction of the ring's outer radius, past where it starts",
+             "source": "measured, and read off the reference's **box** rather than its "
+                       "ring: its ink (1374 px) with a 1018 px void puts the ring's "
+                       "outer radius at ≈ 26 px, and the handle reaches the 69x70 "
+                       "box's corner at 48.8 px along the diagonal — **1.88x** the "
+                       "ring. That corner is what sets the object's own box, which "
+                       "is why the reference's fill is 0.2812: its ink is spread "
+                       "over 1.35x the area its ring covers. Two earlier versions "
+                       "had the handle stop inside the ring's bounds (1.35x, then "
+                       "1.35x of the wrong radius), and both measured ≈ 0.43"},
             {"name": "collar_width", "type": "continuous", "md1": 0.0, "ios6": 0.16,
              "unit": "fraction of the outer radius",
              "source": "authored: 0 is none, which is how the collar appears"},
@@ -278,6 +332,16 @@ FAMILIES = {
     "bin": {
         "icon": "tool-demolish",
         "object": "a container with a lid",
+        "declared_parts": {
+            "count": 2,
+            "source": "measured: action/delete's lid is a **separate component** (540 px "
+                      "of 3204) with a gap to the body, and that gap is the lid_gap "
+                      "parameter — so a faithful object cannot be one piece, and the "
+                      "family declares two. a183's rule is no *undeclared* component; "
+                      "a184's one profile therefore reads as one profile per declared "
+                      "part, which is what this declaration asserts and what the "
+                      "check judges",
+        },
         "reference": {
             "glyph": "action/delete",
             "measured": {"box": [56, 72], "taper": 0.68, "pieces": 2, "voids": 0,
@@ -288,9 +352,8 @@ FAMILIES = {
         "fill_response": {
             "md1": 0.7946,
             "md1_source": "measured: action/delete's own ink over its own box",
-            "ios6": 0.78,
-            "ios6_source": "authored provisionally; replaced by this family's own "
-                           "λ = 1 render under the exclusion reading",
+            "ios6": 0.812,
+            "ios6_source": "measured: this family's own λ = 1 smoke render (0.8120)",
         },
         "parameters": (
             {"name": "taper", "type": "continuous", "md1": 0.68, "ios6": 0.86,
@@ -315,6 +378,13 @@ FAMILIES = {
     "plaque": {
         "icon": "ticket",
         "object": "a punched card",
+        "declared_parts": {
+            "count": 1,
+            "source": "authored provisionally: a card is one connected mark and its "
+                      "notches are enclosed voids rather than parts. The reference's "
+                      "own component count is not yet recorded here, and the next "
+                      "measurement run fills it in rather than this file guessing",
+        },
         "reference": {
             "glyph": "notification/confirmation_number",
             "measured": {"box": [80, 64], "notches": 3, "notch_px": 64,
@@ -327,9 +397,8 @@ FAMILIES = {
             "md1": 0.9125,
             "md1_source": "measured: notification/confirmation_number's own ink over "
                           "its own box",
-            "ios6": 0.86,
-            "ios6_source": "authored provisionally; replaced by this family's own "
-                           "λ = 1 render under the exclusion reading",
+            "ios6": 0.822,
+            "ios6_source": "measured: this family's own λ = 1 smoke render (0.8220)",
         },
         "parameters": (
             {"name": "aspect", "type": "fixed", "md1": 1.25, "ios6": 1.25,
@@ -338,12 +407,17 @@ FAMILIES = {
             {"name": "notches", "type": "fixed", "md1": 3, "ios6": 3,
              "unit": "whole notches",
              "source": "measured: three voids of 64 px in the reference"},
-            {"name": "notch_diameter", "type": "continuous", "md1": 0.46, "ios6": 0.36,
+            {"name": "notch_diameter", "type": "continuous", "md1": 0.24, "ios6": 0.28,
              "unit": "fraction of the card height",
-             "source": "authored **above the 3.5 % floor**: the reference's own "
-                       "1.37 % is condemned by a196, so the notch is drawn larger "
-                       "and the containment divergence is recorded rather than "
-                       "the rule softened"},
+             "source": "derived from the 3.5 % floor rather than chosen: with "
+                       "`aspect` 1.25 a card's area is 1.25 h², three notches take "
+                       "3a of what is left, so a notch clears the floor when "
+                       "a >= 0.035 (1.25 h² - 3a), i.e. when its diameter is at "
+                       "least 0.223 h. 0.24 is just above that and measures 4.1 % "
+                       "of the card's covered area. The reference's own notches are "
+                       "1.37 %, so this is a **deliberate departure from the "
+                       "reference** (a199) and the containment divergence it costs "
+                       "is recorded rather than the rule softened"},
             {"name": "rules", "type": "count", "md1": 3, "ios6": 1,
              "unit": "whole rules drawn on the card", "source": "authored"},
             {"name": "stub_width", "type": "continuous", "md1": 0.30, "ios6": 0.44,
@@ -494,6 +568,16 @@ def check() -> dict:
             problems.append(f"`{name}` declares no reference mark")
         if not item.get("reference", {}).get("measured"):
             problems.append(f"`{name}` records no measurement of its reference")
+        parts = item.get("declared_parts") or {}
+        if parts.get("count") is None:
+            problems.append(f"`{name}` declares no part count, so nothing says whether "
+                            f"its object is one piece (a184/a202)")
+        elif not parts.get("source"):
+            problems.append(f"`{name}`'s declared part count has no source, so nobody "
+                            f"can tell whether it was measured or chosen")
+        elif parts["count"] != int(parts["count"]) or parts["count"] < 1:
+            problems.append(f"`{name}` declares {parts['count']} parts, and an object "
+                            f"cannot arrive in a fraction of a part or in none")
         fill = item.get("reference", {}).get("measured", {}).get("fill")
         if fill is None:
             problems.append(f"`{name}` records no measured fill, so a201 has nothing "
@@ -572,6 +656,8 @@ def check() -> dict:
             name: {str(lam): fill_envelope(name, lam) for lam in (0.0, 0.5, 1.0)}
             for name in sorted(FAMILIES)
         },
+        "declared_parts": {name: item["declared_parts"]["count"]
+                           for name, item in sorted(FAMILIES.items())},
         "composition": dict(COMPOSITION),
         "problems": problems,
     }

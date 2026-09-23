@@ -1254,6 +1254,59 @@ curve doing its job — the endpoint is a *reading of this family's own object*,
 moves when the object moves. An authored endpoint cannot do that, which is the
 argument a204 made for measuring it as soon as the geometry exists.
 
+## 8.15 All six families, built and measured
+
+The remaining four families exist as geometry (`bolt_body`, `lens_body`, `bin_body`,
+`plaque_body`), and **30 of 30 samples** — six families at five λ points — measure
+inside their own response envelopes:
+
+| family | λ = 0 | λ = 0.5 | λ = 1 | parts | voids |
+|---|---|---|---|---|---|
+| gear | 0.479 | 0.521 | 0.618 | 1 | 1 (its bore) |
+| road | 0.349 | 0.569 | 0.699 | 1 | 0 |
+| bolt | 0.343 | 0.472 | 0.447 | 1 | 0 |
+| lens | 0.358 | 0.646 | 0.756 | 1 | 1 (its bore) |
+| bin | 0.719 | 0.757 | 0.812 | **2, as declared** | 0 |
+| plaque | 0.901 | 0.852 | 0.822 | 1 | 3 (3.66–4.75 %) |
+
+Every part count equals its family's declaration, no sample violates the frame, every
+accent lands fully inside it (`excl 153–159` against the accent's own `≈129`), and the
+plaque's notches measure **3.66–4.75 %** against the 3.5 % floor — a199's rule holding
+by measurement rather than by construction. The last two authored anchors (bin, plaque)
+are now measurements too, so **every fill endpoint in the table is a reading of the
+object it describes**, which is what a204 asked for.
+
+**Three defects the runs caught, each of which a render would have hidden:**
+
+1. **The composition budget was stated in an unposed frame.** `body_span` 1.44 looked
+   like it left room for an accent of radius 0.15 plus its clearance, but a *rotated*
+   body's axis-aligned bounds grow by up to **1.30x** (measured: the road reaching
+   0.90, the lens 0.93 against a frame half of 1.12) — so the accent's derived slot
+   fell outside the frame and the accent was **being clipped**, visible in the run as
+   `excl 30 of ~129`: a quarter of the accent off the edge of the icon. The budget is
+   now stated where it has to hold (`0.58 x 1.30 + 0.06 + 0.30 = 1.114 <= 1.125`) and
+   the smoke test checks the frame on every sample rather than trusting the constant.
+2. **The lens's handle detached** (a 95 px piece at (63, 26), the floating-component
+   class a183 refuses), because it started exactly at the ring's edge — and then, once
+   welded, it was sized wrong **twice**: first inside the ring's own bounds, then at
+   1.35x the wrong radius. The measurement that settles it is read off the reference's
+   **box**: its ink and void put the ring's outer radius at ≈ 26 px while its handle
+   reaches the 69x70 box's corner at 48.8 px — **1.88x** the ring — and that corner is
+   what makes the reference's fill 0.2812. With the handle there, the same object
+   measures 0.358.
+3. **`rings` was double-counting the ring.** The first version built a housing that
+   *was* the ring and then welded a torus on top of it, so a count of 1 drew two; the
+   family now counts concentric rims with the lens ring itself as the first, and a
+   partial rim's **wall is its extent** — a187's rule applied to a rim.
+
+**One amendment, flagged rather than buried.** The bin's own reference measures its
+lid as a **separate component** with a gap, and that gap is a parameter (`lid_gap`),
+so a faithful object cannot be one piece. The families therefore declare a **part
+count** (1 everywhere, 2 for the bin, each with its source) and the check judges that
+declaration — a184's "one profile" read as *one profile per declared part*. This is a
+reading of a184/a202 rather than a new decision, and it is overridable if the bin
+should instead weld its lid and lose the gap the reference draws.
+
 ---
 
 ## Still open, and deliberately so

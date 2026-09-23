@@ -26,11 +26,39 @@ import shapes  # noqa: E402
 #: The five sampled points (a194), kept in step with the review sampler.
 SAMPLES = (0.0, 0.25, 0.5, 0.75, 1.0)
 
-#: The two families asked for first: a gear and a road (the person's own examples).
+#: Every family, so the smoke covers the whole table rather than the two that were
+#: built first. The icon beside each name is the icon the family belongs to.
 SMOKE = (
     ("gear", "vocab-settings"),
     ("road", "tool-road"),
+    ("bolt", "tool-power"),
+    ("lens", "tool-inspect"),
+    ("bin", "tool-demolish"),
+    ("plaque", "ticket"),
 )
+
+
+def family_objects(bpy, family, vector, material, name):
+    """The objects one family's body is made of, at one point on the ladder.
+
+    Most families are a single object; the bin's own reference measures its lid as a
+    separate component with a gap, so that family declares **two** parts and returns
+    both. Nothing downstream reads a part count out of this list as a *claim*: the
+    count that gets judged is the one the family declares.
+    """
+    if family == "gear":
+        return [shapes.gear_body(bpy, name, material, vector)]
+    if family == "road":
+        return [shapes.road_body(bpy, name, material, vector)]
+    if family == "bolt":
+        return [shapes.bolt_body(bpy, name, material, vector)]
+    if family == "lens":
+        return [shapes.lens_body(bpy, name, material, vector)]
+    if family == "bin":
+        return list(shapes.bin_body(bpy, name, material, vector))
+    if family == "plaque":
+        return [shapes.plaque_body(bpy, name, material, vector)]
+    raise ValueError(f"`{family}` has no geometry entry point")
 
 
 def material(bpy, family, hue, finish=None):
@@ -68,15 +96,17 @@ def main():
     accent = material(bpy, "glass", "natural")
 
     print(f"\n{'family':8} {'lambda':>6}  {'cover':>6} {'fill':>6} judged          "
-          f"{'envelope':14} {'pieces':>6} {'voids':>5}  "
+          f"{'envelope':14} {'parts':>5} {'voids':>5}  "
           f"{'void shares of the object':32} count")
     for family, icon in SMOKE:
+        declaration = families.declaration(family)
+        declared = declaration["declared_parts"]["count"]
+        counters = [parameter for parameter in declaration["parameters"]
+                    if parameter["type"] == "count"]
         for lam in SAMPLES:
             vector = families.vector(family, lam)
-            if family == "gear":
-                obj = shapes.gear_body(bpy, f"smoke gear {lam}", body, vector)
-            else:
-                obj = shapes.road_body(bpy, f"smoke road {lam}", body, vector)
+            built = family_objects(bpy, family, vector, body, f"smoke {family} {lam}")
+            obj = built[0]
             # The accent's slot is **derived from the body's own bounds** (a200) and
             # sits clear by the declared clearance. Overlapping it into the body is
             # what produced the only sliver this smoke test found — a one-pixel void
@@ -88,11 +118,22 @@ def main():
             # (The same is true of the exclusion disc below, which is why the slot is
             # read back in world space rather than from the body's local origin.)
             import mathutils
-            corners = [obj.matrix_world @ mathutils.Vector(corner)
-                       for corner in obj.bound_box]
+            corners = [part.matrix_world @ mathutils.Vector(corner)
+                       for part in built for corner in part.bound_box]
             bounds = (min(c[0] for c in corners), min(c[2] for c in corners),
                       max(c[0] for c in corners), max(c[2] for c in corners))
+            # The span budget (a200) is a claim about the **frame**, not a hope: an
+            # object plus its accent piece has to fit the square the camera sees, and
+            # a posed family can grow without any single parameter looking wrong. The
+            # run says so rather than leaving it to be noticed in a render.
+            frame_half = families.COMPOSITION["frame_span"] * 0.5
+            reach = max(abs(bounds[0]), abs(bounds[2]), abs(bounds[1]), abs(bounds[3]))
             slot_x, slot_z = families.accent_slot(bounds)
+            accent_edge = max(abs(slot_x), abs(slot_z)) + \
+                families.COMPOSITION["accent_radius"]
+            if reach > frame_half or accent_edge > frame_half:
+                print(f"    ! frame half {frame_half:.2f}: body reaches {reach:.2f}, "
+                      f"accent edge {accent_edge:.2f}")
             accent_obj = shapes.cylinder(
                 bpy, f"smoke accent {lam}", accent, slot_x, slot_z,
                 families.COMPOSITION["accent_radius"], depth=0.44, y=0.30)
@@ -113,13 +154,15 @@ def main():
             if slivers:
                 print(f"    slivers at {slivers[:4]} px, top-down, of "
                       f"{topo['covered_px']} covered px")
-            if topo["pieces"] > 1:
-                # The body has to be **one** piece (a184/a202). Naming where the
-                # extra ones are is the difference between a number and a fix.
-                print(f"    body arrives in {topo['pieces']} pieces: "
+            if topo["pieces"] != declared:
+                # The object has to arrive in the number of parts its family declares
+                # (a183/a184/a202), and naming where the extra ones are is the
+                # difference between a number and a fix.
+                print(f"    ! declared {declared} part(s), measured {topo['pieces']}: "
                       f"{topo['piece_sites'][:6]} px at (x, y) top-down")
-            counts = families.features(vector["teeth"] if family == "gear"
-                                       else vector["lanes"])
+            counter = counters[0]["name"] if counters else declaration["parameters"][0]["name"]
+            counts = (families.features(vector[counter])
+                      if counters else round(vector[counter], 2))
             shares = topo.get("hole_shares") or []
             printed = " ".join(f"{share * 100:5.2f}%" for share in shares[:4]) or "none"
             low, high = families.fill_envelope(family, lam)
@@ -128,12 +171,10 @@ def main():
             # of the reading, so these are the *body's* pieces and holes.
             print(f"{family:8} {lam:6.2f}  {found['coverage']:6.3f} "
                   f"{found['fill']:6.3f} {judged:>3} ({low:.2f}-{high:.2f}) "
-                  f"{topo.get('pieces'):6} {topo.get('holes'):5}  {printed:32} "
+                  f"{topo.get('pieces'):5} {topo.get('holes'):5}  {printed:32} "
                   f"excl {found['excluded_px']:5} of ~{3.14159 * (radius * scale) ** 2:6.0f}  "
-                  f"{families.declaration(family)['parameters'][0]['name']}="
-                  f"{vector[families.declaration(family)['parameters'][0]['name']]:.2f} "
-                  f"-> {counts}")
-            for item in (obj, accent_obj):
+                  f"{counter}={vector[counter]:.2f} -> {counts}")
+            for item in built + [accent_obj]:
                 bpy.data.objects.remove(item, do_unlink=True)
     print("\nThe rendered frame is measured with the pipeline's own functions, so a\n"
           "number here means the same thing it will mean in the review set.")

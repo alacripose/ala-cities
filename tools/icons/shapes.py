@@ -1955,6 +1955,306 @@ def road_body(bpy, name, material, vector, span=None, depth=0.30):
     return body
 
 
+def _profile(bpy, name, material, points, depth, bevel=0.02):
+    """One extruded polygon: the body of a family whose shape is not a box or a disc.
+
+    `points` is the outline in the icon's own x/z plane, and the bevel is a fraction
+    of the smallest edge, so a thin stroke and a wide slab round the same way rather
+    than one of them losing its edge entirely.
+    """
+    half = depth * 0.5
+    vertices = [(x, -half, z) for x, z in points] + [(x, half, z) for x, z in points]
+    side = len(points)
+    faces = [tuple(range(side - 1, -1, -1)), tuple(range(side, side * 2))]
+    for index in range(side):
+        nxt = (index + 1) % side
+        faces.append((index, nxt, side + nxt, side + index))
+    mesh = bpy.data.meshes.new(f"{name} profile")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    body = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(body)
+    _recalculate_normals(bpy, body)
+    body.data.materials.append(material)
+    if bevel > 1e-6:
+        edge = body.modifiers.new(name="authored edge bevel", type="BEVEL")
+        edge.width = bevel
+        edge.segments = 4
+        edge.limit_method = "ANGLE"
+    _smooth(body)
+    return body
+
+
+def _stroke_outline(centre, miter_limit=2.0):
+    """The outline of a **stroked polyline**, given `(x, z, half_width)` along it.
+
+    A bolt is a stroke rather than a shape: it is a zigzag with a thickness, and both
+    of those are parameters. Offsetting a polyline by its own half-width is what makes
+    the thickness and the zigzag independent — the alternative (a stack of welded
+    boxes) makes the thickness a property of the box and the corners a property of how
+    the boxes happen to overlap.
+
+    The joint reach is clamped, because a sharp zigzag's true miter fires a spike far
+    outside the stroke, and a spike pinches off exactly the kind of sliver a196 refuses.
+    """
+    left, right = [], []
+    count = len(centre)
+    for index, (x, z, half_width) in enumerate(centre):
+        normals = []
+        if index > 0:
+            dx, dz = x - centre[index - 1][0], z - centre[index - 1][1]
+            length = math.hypot(dx, dz) or 1.0
+            normals.append((dz / length, -dx / length))
+        if index < count - 1:
+            dx, dz = centre[index + 1][0] - x, centre[index + 1][1] - z
+            length = math.hypot(dx, dz) or 1.0
+            normals.append((dz / length, -dx / length))
+        sx = sum(normal[0] for normal in normals)
+        sz = sum(normal[1] for normal in normals)
+        reach = math.hypot(sx, sz)
+        if reach < 1e-9:
+            sx, sz, reach = normals[0][0], normals[0][1], 1.0
+        scale = min(miter_limit, 2.0 / reach)
+        ox, oz = sx / reach * half_width * scale, sz / reach * half_width * scale
+        left.append((x + ox, z + oz))
+        right.append((x - ox, z - oz))
+    return left + list(reversed(right))
+
+
+def bolt_body(bpy, name, material, vector, height=None, depth=0.28):
+    """One bolt of energy, from a family vector.
+
+    The reference (`content/bolt`, 40x72, one piece, no voids) is a bolt drawn as a
+    single solid mark, and it is re-pointed there from the power button a198 retired.
+    Its three readings move independently: `stroke` is the stroke's thickness,
+    `waist` the zigzag's amplitude as a fraction of the object's width, `tip_taper`
+    narrows the ends so the object reads as a strike rather than a bar, and `steps`
+    adds interior vertices — each new one arriving at **zero amplitude** (a187), so
+    a flank that has not grown yet is a flank that is not there.
+    """
+    height = families.COMPOSITION["body_span"] if height is None else height
+    width = vector["width_over_height"] * height
+    stroke = vector["stroke"] * width
+    whole, fraction = families.features(vector["steps"])
+    joints = 2 + whole + (1 if fraction > 0.0 else 0)
+    centre = []
+    for index in range(joints + 1):
+        along = index / joints
+        z = height * 0.5 - height * along
+        side = 1.0 if index % 2 == 0 else -1.0
+        if index in (0, joints):
+            # The tips sit on the opposite corners of the object's own box, which is
+            # what gives the bolt its diagonal sweep at 40x72's proportion.
+            half_width = stroke * 0.5 * vector["tip_taper"]
+            x = side * (width * 0.5 - half_width)
+        else:
+            half_width = stroke * 0.5
+            amplitude = vector["waist"] * width * 0.5
+            if index == joints - 1 and fraction > 0.0:
+                amplitude *= fraction
+            x = side * amplitude
+        centre.append((x, z, half_width))
+    body = _profile(bpy, name, material, _stroke_outline(centre),
+                    depth, bevel=min(stroke, depth) * 0.16)
+    # `strike_angle` is the object leaning into its own direction of travel, the way
+    # the reference's bolt leans rather than standing perfectly upright (a179).
+    body.rotation_euler = (0.0, math.radians(vector["strike_angle"]), 0.0)
+    _smooth(body)
+    return body
+
+
+def lens_body(bpy, name, material, vector, radius=None, depth=0.34):
+    """One lens with a handle, from a family vector.
+
+    Both of this family's defining ratios are read off the reference rather than
+    chosen, and the ring is **thin because the measurements say it is**:
+    `action/search`'s enclosing void is 1018 px against a 34.5 px box half (0.51)
+    while its ink, 1374 px, is far less than the annulus that ratio would leave —
+    so the ring's own outer radius is only 0.74 of the box half and its wall is the
+    difference between the two. Sizing the bore against the *housing* instead was
+    the first attempt, and it built a thick washer where the reference has a rim,
+    which the fill reading then refused (0.479-0.721 against 0.18-0.38).
+    """
+    half_span = families.COMPOSITION["body_span"] * 0.5
+    outer = half_span * vector["ring_ratio"] if radius is None else radius
+    bore = vector["bore_ratio"] * half_span
+    wall = max(1e-3, outer - bore)
+    housing = cylinder(bpy, name, material, 0.0, 0.0, outer, depth=depth, vertices=64)
+    rim_wall = max(1e-3, vector["ring_thickness"] * outer)
+    features = []
+    # `rings` counts the object's **concentric rims, the lens ring itself being the
+    # first**: a count of 1 is one thin ring rather than a ring plus a decoration,
+    # which is what the reference measures and what the first attempt got wrong by
+    # welding a torus *on top of* a housing that was already the ring.
+    cursor = outer
+    whole, fraction = families.features(vector["rings"])
+    rims = [(1.0, index) for index in range(1, whole)]
+    if fraction > 0.0:
+        rims.append((fraction, whole))
+    for extent, index in rims:
+        # Each rim overlaps the last (`major - minor` sits inside it) so the weld has
+        # something to weld, and the partial rim's **wall is its extent** -- a rim that
+        # has not grown yet has no wall, which is a187's rule applied to a rim.
+        minor = rim_wall * extent
+        major = cursor + minor * 0.5
+        features.append(ring(bpy, f"{name} rim {index}", material, 0.0, 0.0,
+                             major, minor, y=0.0))
+        cursor = major + minor
+    collar = vector["collar_width"] * outer
+    if collar > 1e-6:
+        # A collar is a rim too, and it has to be one: a *cylinder* welded around the
+        # housing would fill the bore it is supposed to leave open.
+        minor = collar * 0.5
+        major = cursor + minor * 0.5
+        features.append(ring(bpy, f"{name} collar", material, 0.0, 0.0, major, minor,
+                             y=0.0))
+        cursor = major + minor
+    # The handle starts **inside** the ring rather than at its edge: a handle left
+    # touching the rim is the floating-component class a183 refuses, and the first run
+    # measured exactly that -- the body arriving in two pieces, 95 px of handle
+    # detached at (63, 26). Its inner part is then removed by the bore cut, which is
+    # what makes the bore a declared cutter rather than a hole the geometry implies.
+    # The reach is read off the **ring**, not off the outermost rim: tying it to
+    # `cursor` made the handle grow every time a ring was added, which grew the
+    # object's bounds and took the accent's slot out of the frame at the iOS 6 end.
+    angle = math.radians(vector["handle_angle"])
+    reach = outer * vector["handle_length"]
+    inset = outer * 0.4
+    features.append(box(bpy, f"{name} handle", material,
+                        math.cos(angle) * (inset + reach * 0.5),
+                        math.sin(angle) * (inset + reach * 0.5),
+                        reach, outer * 0.22, depth=depth * 0.62,
+                        angle=vector["handle_angle"]))
+    _weld(bpy, housing, features)
+    # The bore is measured against the **object's half-span**, which is the frame the
+    # reference's own 0.51 was read in, not against the ring's outer radius.
+    bore_cutter = cylinder(bpy, f"{name} bore cutter", material, 0.0, 0.0, bore,
+                           depth=depth * 3.0, vertices=64)
+    _cut(bpy, housing, [bore_cutter])
+    _smooth(housing)
+    return housing
+
+
+def bin_body(bpy, name, material, vector, height=None, depth=0.30):
+    """One container with a lid, from a family vector.
+
+    The reference (`action/delete`) measures its **lid as a separate component** with
+    a gap between it and the body, so `lid_gap` is a measured parameter and not a
+    styling choice — and the object therefore arrives in two declared parts, which is
+    what the family declares rather than something the check has to guess. The mouth
+    is a dip drawn into the container's top edge so it reads at a flat pose; a mouth
+    cut into the top *face* would be invisible from straight on, which is a parameter
+    that renders as nothing.
+    """
+    height = families.COMPOSITION["body_span"] * 0.74 if height is None else height
+    top = families.COMPOSITION["body_span"] * 0.44
+    bottom = top * vector["taper"]
+    gap = vector["lid_gap"] * height
+    lid_height = max(1e-3, vector["rim_thickness"] * height * 2.0)
+    body_height = height - gap - lid_height
+    mouth = vector["mouth_depth"] * body_height * 0.5
+    shoulder = max(1e-4, top * 0.42)
+    points = [
+        (-bottom, -height * 0.5),
+        (bottom, -height * 0.5),
+        (top, -height * 0.5 + body_height),
+        (shoulder, -height * 0.5 + body_height),
+        (0.0, -height * 0.5 + body_height - mouth),
+        (-shoulder, -height * 0.5 + body_height),
+        (-top, -height * 0.5 + body_height),
+    ]
+    container = _profile(bpy, name, material, points, depth, bevel=0.012)
+
+    whole, fraction = families.features(vector["ridges"])
+    ridges = [(1.0, index) for index in range(whole)]
+    if fraction > 0.0:
+        ridges.append((fraction, whole))
+    features = []
+    for extent, index in ridges:
+        # Ridges are **vertical ribs** on the container's face, spaced across its
+        # width. The count is fractional in the same way every other count is: the
+        # partial rib is narrower and arrives as it grows (a187), so a bin with no
+        # ridges draws none rather than one at a threshold.
+        across = (index + 0.5) / max(1.0, float(whole + (1 if fraction else 0)))
+        x = (bottom + (top - bottom) * 0.5) * (across * 2.0 - 1.0)
+        features.append(box(bpy, f"{name} ridge {index}", material,
+                            x, -height * 0.5 + body_height * 0.5,
+                            top * 0.09 * extent, body_height * 0.68 * extent,
+                            depth=depth * 1.06))
+    _weld(bpy, container, features)
+
+    lip = top * (1.0 + vector["lid_lip"])
+    lid = _profile(bpy, name + " lid", material, [
+        (-lip, -height * 0.5 + body_height + gap),
+        (lip, -height * 0.5 + body_height + gap),
+        (lip * 0.96, -height * 0.5 + body_height + gap + lid_height),
+        (-lip * 0.96, -height * 0.5 + body_height + gap + lid_height),
+    ], depth * 1.08, bevel=0.012)
+    handle = box(bpy, f"{name} handle", material, 0.0,
+                 -height * 0.5 + body_height + gap + lid_height * 0.55,
+                 lip * vector["handle_width"], lid_height * 0.9,
+                 depth=depth * 0.55)
+    _weld(bpy, lid, [handle])
+    _smooth(container)
+    # The lid is a declared second part (the family says so); it is welded to its own
+    # handle and left gap-separated from the container, exactly as the reference draws
+    # it, so the object's piece count is a reading of the declaration rather than of
+    # how the parts happen to have been stacked. Both are already linked by the
+    # builder that made them, which is why nothing re-links them here.
+    return container, lid
+
+
+def plaque_body(bpy, name, material, vector, width=None, depth=0.20):
+    """One punched card, from a family vector.
+
+    The notches are **declared voids** cut through the card, and their size is not a
+    taste: a199 settled that the ticket's notches are drawn *above the 3.5 % floor*
+    the sliver rule gates, even though the reference's own notches measure 1.37 % —
+    so `notch_diameter` starts just above the smallest diameter that clears the floor
+    for a card of this aspect, and the divergence from the reference is recorded
+    rather than the rule softened.
+    """
+    width = families.COMPOSITION["body_span"] if width is None else width
+    height = width / vector["aspect"]
+    card = _profile(bpy, name, material, [
+        (-width * 0.5, -height * 0.5), (width * 0.5, -height * 0.5),
+        (width * 0.5, height * 0.5), (-width * 0.5, height * 0.5),
+    ], depth, bevel=vector["corner_rounding"] * height * 0.25)
+    features = []
+    whole, fraction = families.features(vector["rules"])
+    rules = [(1.0, index) for index in range(whole)]
+    if fraction > 0.0:
+        rules.append((fraction, whole))
+    stub = width * vector["stub_width"]
+    for extent, index in rules:
+        x = -width * 0.5 + stub * (index + 1.0) / max(1.0, float(whole + 1))
+        features.append(box(bpy, f"{name} rule {index}", material,
+                            x, 0.0, height * 0.045, height * 0.82 * extent,
+                            depth=depth * 1.04))
+    tab = width * vector["tab_width"]
+    if tab > 1e-6:
+        features.append(box(bpy, f"{name} tab", material, width * 0.5 + tab * 0.35,
+                            0.0, tab, height * 0.5, depth=depth * 0.9))
+    _weld(bpy, card, [feature for feature in features if feature is not None])
+
+    whole, fraction = families.features(vector["notches"])
+    cutters = []
+    slots = [(1.0, index) for index in range(whole)]
+    if fraction > 0.0:
+        slots.append((fraction, whole))
+    for extent, index in slots:
+        across = width * (-0.30 + 0.30 * index)
+        edge = height * 0.30 if index % 2 == 0 else -height * 0.30
+        cutters.append(cylinder(bpy, f"{name} notch cutter {index}", material,
+                                across, edge,
+                                vector["notch_diameter"] * height * 0.5 * extent,
+                                depth=depth * 3.0, vertices=32))
+    if cutters:
+        _cut(bpy, card, cutters)
+    _smooth(card)
+    return card
+
+
 def build(bpy, entry, materials):
     objects = []
     for index, part in enumerate(entry["parts"]):
