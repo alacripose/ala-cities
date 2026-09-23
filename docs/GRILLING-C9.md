@@ -1499,6 +1499,60 @@ drifters: **immigration is a statute, not a spawn.**
 ### Q159 — conversion, and the run
 
 **On the holder's request, oldest-first, against the issuer's holdings.** A queue forms and **a run is possible**,
-and the queue's length is a number citizens can read **before** deciding whether work is worth their time — which
-is where Q90's reservation finally touches something real. Round 8 chose a 20 % reserve *because* a run should
-be calculable rather than vibes; (b) and (c) would have removed the calculation.
+and the queue's length is a number citizens can read **before** deciding whether work is worth their time —which is where Q90's reservation finally touches something real. Round 8 chose a 20 % reserve *because* a run should be calculable rather than vibes; (b) and (c) would have removed the calculation.
+
+---
+
+## Round 27 — proposal kinds, queue positions, and incarnation
+
+All six answered (a), with one addition on Q160 that is a **mode** rather than an institution.
+
+### Q160 — the player may propose statutes, and may be **born into the world**
+
+**The plan store holds proposals of declared kinds** — work (tasks) and instruments (bills) — **with a gate per
+kind**: a task is taken by a worker, a bill is voted on by an office. One store, several kinds, one gate each.
+The addition: **the god may enter the world as a citizen and work the system in first person.**
+
+Recorded, because it changes nothing about the rules and everything about the interface:
+
+* **An incarnate is a citizen record like any other.** Needs (Q51), tasks (Q43), obligations (Q86), residence,
+decay (Q114) and death all apply, unmodified. The incarnation is not a privilege — it is the **loss** of the one
+privilege (freedom from material) that being outside the world had.
+* **The god's proposal ability survives, and the incarnate holds no office by virtue of being one.** Authority
+comes from the record (Q112) and from founding or election (Q100/Q117), exactly as for anyone else — so an
+incarnate is initially a citizen with hands and no powers.
+* **The act vocabulary is the interface's too** (Q43's closed verb list): what a person may *do* in first person
+is that list, because it is the same list everyone else acts through.
+* **Death is death** — the corpse is mass (Q114), the estate settles (Q129), and the god returns to the outside
+view. The run continues (Q60: the run is never ended for the player; only the body is).
+
+This is the honest completion of a5: *"the first initial person dropped into the new world for the first time"* —
+the player may be that person rather than merely looking at them.
+
+### Q161 — a queue position is an asset
+
+Transferable like any claim. The market's first instrument is **time**, and its dark version is stated rather
+than hidden: **a citizen can sell their future to eat now.**
+
+### Q162 — the queue is per issuer
+
+Branches are that issuer's internal policy: a **declared sub-account** that **may not reorder** the issuer's
+obligations. A fast queue for friends would be visible in a record, which is worse than refused.
+
+### Q163 — conviction, bond and death against an office
+
+**Death vacates** (with a per-office declared vacancy rule), and a **conviction or bond of a declared class
+suspends** — a suspended office **cannot act**, engine-refused per Q137. So convicting an officer **removes their
+authority**, which is the courts' teeth beyond a fine.
+
+### Q164 — an organisation's skill is a view over its members' records
+
+Derived, never stored, one level up from Q96. A firm that loses its only smith **loses the ability** — so death,
+bonds and emigration bite on institutions, and the government's capability is derived the same way.
+
+### Q165 — spending the treasury requires an appropriation
+
+An appropriation names an amount and a purpose; drawing beyond it is **refused by the engine** (authority plus
+custody, Q137); an emergency overrun is a **recorded act the next budget must ratify**. This is
+`authorized ≠ funded` made mechanical, and it is what makes Q159's queue load-bearing: a city that cannot fund
+its obligations has a queue everyone can read.
