@@ -1,0 +1,8 @@
+{
+  "id": "EVD-000095",
+  "ticket": "CSE-000028",
+  "grade": "B",
+  "kind": "world_read_back",
+  "detail": "read back: the sampled condition now reports zero",
+  "tick": 40
+}

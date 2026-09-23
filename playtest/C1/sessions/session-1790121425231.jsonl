@@ -1,0 +1,4 @@
+{"build":"0.1.0-dev","kind":"session.header","opened_wall_ms":1790121445651,"recording":true,"session":"session-1790121425231","stage":"C1"}
+{"tick":10,"wall_ms":1790121428443,"kind":"build_road","tool":"Road","screen":[425.0,541.0],"tile":[83,114],"ticket":"BLD-000079","detail":"1 tiles, filed as BLD-000079"}
+{"tick":42,"wall_ms":1790121435966,"kind":"build_road","tool":"Road","screen":[612.0,436.0],"tile":[150,124],"ticket":"BLD-000080","detail":"52 tiles, filed as BLD-000080"}
+{"tick":65,"wall_ms":1790121440173,"kind":"build_road","tool":"Road","screen":[1465.0,524.0],"tile":[105,131],"ticket":"BLD-000081","detail":"52 tiles, filed as BLD-000081"}

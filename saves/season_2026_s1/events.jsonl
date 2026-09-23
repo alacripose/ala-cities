@@ -536,3 +536,12 @@
 {"detail":"CSE-000026 — district 28: 86 residents have no job within reach","kind":"case.updated","sim_seconds":100.0,"tick":2000}
 {"detail":"CSE-000027 — district 35: 152 residents have no job within reach","kind":"case.updated","sim_seconds":100.0,"tick":2000}
 {"detail":"CSE-000028 — district 36: 176 residents have no job within reach","kind":"case.updated","sim_seconds":100.0,"tick":2000}
+{"detail":"BLD-000079 — lay 1 tiles of road","kind":"ticket.filed","sim_seconds":0.5,"tick":10}
+{"detail":"BLD-000079 — completed_and_validated","kind":"ticket.retired","sim_seconds":0.6,"tick":12}
+{"detail":"CSE-000026 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.0,"tick":40}
+{"detail":"CSE-000027 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.0,"tick":40}
+{"detail":"CSE-000028 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.0,"tick":40}
+{"detail":"BLD-000080 — lay 52 tiles of road","kind":"ticket.filed","sim_seconds":2.1,"tick":42}
+{"detail":"BLD-000080 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.2,"tick":44}
+{"detail":"BLD-000081 — lay 52 tiles of road","kind":"ticket.filed","sim_seconds":3.25,"tick":65}
+{"detail":"BLD-000081 — completed_and_validated","kind":"ticket.retired","sim_seconds":3.4,"tick":68}
