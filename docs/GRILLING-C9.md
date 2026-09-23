@@ -1556,3 +1556,58 @@ An appropriation names an amount and a purpose; drawing beyond it is **refused b
 custody, Q137); an emergency overrun is a **recorded act the next budget must ratify**. This is
 `authorized ≠ funded` made mechanical, and it is what makes Q159's queue load-bearing: a city that cannot fund
 its obligations has a queue everyone can read.
+
+---
+
+## Built — phase 3's first slice, and what it recorded
+
+*Written after the grilling closed, because the order's phase 3 had a contract and no data.* The
+build notes below are **implementation, not questions**: nothing here reopens a decision, and
+the two readings that were genuinely open are named as readings rather than as conclusions.
+
+**What landed.** `tools/materials/declare.py` carries the substance and process tables
+(`TIERS`, `SUBSTANCES` — 16 rows including the five geology already generates — and
+`PROCESSES`, the seven rows of `SCHEMA.md`'s worked stone chain). `tools/materials/schema.py`
+is the gate. `emit.py` runs it and **refuses to write** while it reports a defect, and
+`schema.py` is in the digest's source list so loosening the gate cannot leave the artifact
+looking current. `src/materials/schema.rs` is the runtime's typed view — a `Unit` enum with a
+closed list, `Rational` with no float in it, `grams()` returning `None` rather than rounding —
+with the same checks mirrored **at the point of use**, because the emitting gate cannot see a
+hand-edited table or a call site that invents a quantity.
+
+**Three readings, stated rather than assumed.**
+
+* **Densities moved out of `geology.rs`.** That module carried a note saying they belonged in
+  `SUBSTANCES` once it existed; it exists, so the deposit kind is now *where* a substance is
+  found (a noise floor and a share) and the substance is *what it is* (family, hue, density).
+  A deposit kind and a substance table that disagreed about a density would have been two
+  homes for one fact, which is the defect the whole declaration exists to remove.
+* **A gather is not a transformation.** `SCHEMA.md`'s chain marks its gathers as *source*, and
+  the ledger's extraction side is what balances them — so the gram balance is required of every
+  process that consumes something, and a process with **no inputs** is legal only while every
+  substance it produces is `mined`, `gathered` or `salvaged`. A no-input process producing a
+  `made` good is `grow()` wearing a row, and both gates refuse it.
+* **Rot is zero everywhere, deliberately.** Q15 said materials rot; the *mechanism* (condition →
+  mass loss → the destination account) is phase 7's coupling, and a nonzero rate that nothing
+  reads would be a placeholder with a number, which this record refuses elsewhere.
+
+**What the gate found on its first run — five defects, three of them real.** `sand` and `clay`
+were mineable with no consumer and **no declared reason**, which the consumer rule made visible;
+and the balance rule as first written refused a gather, so the rule was corrected rather than
+the data. The other two were the same rule applied to itself: a gather's totals are not a
+balance, and the gate now prints every gather as a *reading* — `gather timber draws 3000 g of
+`timber` out of the world's own ground` — because source is the one place mass legitimately
+enters the world, and a reader should be able to check that claim directly.
+
+**What this slice deliberately left open**, printed by `SCHEMA_OPEN` in the game's own report
+rather than hidden: the ages (two tiers are declared and Q69 asked for as many as possible —
+adding one touches no schema), every duration, labour cost and loss ratio as `[D]` declared
+numbers, the ore-to-blade rung as blocked on `SOURCES`' `[NS]` rows rather than on this schema,
+and the four substances that are mined and consumed by nothing yet, each naming the process it
+is waiting for.
+
+**Next, and it is the rest of phase 3:** the MAKE/MAINTAIN machinery — a process run as a
+citizen's task at a declared structure, with `Maintain` walking the same path rather than a
+second repair system — and the process structures themselves. `VOCABULARY["structure"]` is
+empty today, so the first process that needs a kiln must declare one; that emptiness is a
+declaration, and the gate refuses an entry no process requires.

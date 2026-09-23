@@ -1,0 +1,29 @@
+{
+  "id": "RET-000147",
+  "ticket": "BLD-000114",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "lay 5 tiles of road",
+  "completion_claim": "the world shows 4 tiles are road",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "all 5 tiles are road"
+    ],
+    "checks_run": [
+      "4 tiles are road"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000134"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 512,
+  "retired_by": "operator"
+}

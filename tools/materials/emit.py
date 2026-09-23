@@ -27,13 +27,20 @@ sys.path.insert(0, HERE)
 
 import declare  # noqa: E402
 import palette  # noqa: E402
+import schema  # noqa: E402
 
 OUT = os.path.join(ROOT, "src", "materials", "generated.rs")
 
 #: The files this artifact is derived from, in a declared order — the digest is over
 #: exactly these bytes, and both languages read the same list.
+#:
+#: `schema.py` is here although it contributes no *values*: it decides what may be
+#: part of the tables, so a change to it changes what the generated file should
+#: contain. A gate whose edits leave the artifact looking current is a gate that can
+#: be loosened without anything noticing.
 SOURCES = (
     os.path.join(HERE, "declare.py"),
+    os.path.join(HERE, "schema.py"),
     os.path.join(ICONS, "palette.py"),
 )
 
@@ -143,6 +150,23 @@ def token_colours(entries: list) -> tuple:
 
 def rust_string(text: str) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def rust_rational(value) -> str:
+    """A declared rational as two integers. **Never a float**: this is the type the
+    ledger's exactness depends on, and emitting `0.6` for `26/10` would put the one
+    value the schema refuses into the artifact that is supposed to enforce it.
+    """
+    from fractions import Fraction
+
+    fraction = Fraction(value)
+    return f"Rational {{ num: {fraction.numerator}, den: {fraction.denominator} }}"
+
+
+def rust_quantities(pairs) -> str:
+    return "&[" + ", ".join(
+        f"({rust_string(name)}, {rust_rational(amount)})" for name, amount in pairs
+    ) + "]"
 
 
 def rust_f32(value) -> str:
@@ -338,6 +362,138 @@ def render() -> str:
     number_table("SURFACE_SPEED", declare.SURFACE_SPEED, "Travel speed over a surface; 0.0 means unbuildable.")
     number_table("DESIRABILITY", declare.DESIRABILITY, "How a structure moves demand around it.")
     number_table("NUISANCE", declare.NUISANCE, "Noise and pollution per structure, sampled at read points.")
+    # --- the substance and process tables (C9 phase 3) ----------------------
+    add("/// One declared rational: a numerator over a denominator, in integers.")
+    add("///")
+    add("/// A float is what the schema refuses, because a ledger in mixed units balances")
+    add("/// only if every conversion is exact — so the type holding a density, a unit mass,")
+    add("/// a rot rate and a quantity has no float in it at all.")
+    add("#[derive(Clone, Copy, Debug, PartialEq, Eq)]")
+    add("pub struct Rational {")
+    add("    pub num: i64,")
+    add("    pub den: i64,")
+    add("}")
+    add("")
+    add("/// One substance: what it is measured in, what it presents as, and where it")
+    add("/// comes from.")
+    add("#[derive(Clone, Copy, Debug)]")
+    add("pub struct Substance {")
+    add("    pub name: &'static str,")
+    add("    pub family: &'static str,")
+    add("    pub hue: &'static str,")
+    add("    /// Mass | Volume | Count | Gas — the canonical unit the ledger counts in.")
+    add("    pub unit: &'static str,")
+    add("    /// g/mL, required for Volume and Gas; zero where the unit does not need it.")
+    add("    pub density: Rational,")
+    add("    /// Grams per unit, required for Count; zero where the unit does not need it.")
+    add("    pub unit_mass: Rational,")
+    add("    /// Condition lost per sim-day. All zero today: rot's mechanism arrives with")
+    add("    /// phase 7's couplings, and a rate nothing reads would be a placeholder.")
+    add("    pub rot_per_day: Rational,")
+    add("    pub tags: &'static [&'static str],")
+    add("    pub source: &'static str,")
+    add("    /// The natural unit a person reads it in, and its exact grams per unit. Never")
+    add("    /// used in arithmetic — Q67's per-substance units are a reading, not a conversion.")
+    add("    pub display_unit: &'static str,")
+    add("    pub display_grams: Rational,")
+    add("    /// Why nothing consumes it, or empty when something does.")
+    add("    pub no_consumer: &'static str,")
+    add("    pub note: &'static str,")
+    add("}")
+    add("")
+    add("/// What a process costs to run, as numbers rather than as prose (Q37's rule).")
+    add("#[derive(Clone, Copy, Debug)]")
+    add("pub struct Mechanism {")
+    add("    pub heat_c: i64,")
+    add("    /// `material` or `flame`, empty when nothing is heated. The two readings of")
+    add("    /// \"kiln temperature\" differ by ~600 °C and both are correct.")
+    add("    pub heat_kind: &'static str,")
+    add("    pub hours: Rational,")
+    add("    pub labour_hours: Rational,")
+    add("    pub power_kw: i64,")
+    add("}")
+    add("")
+    add("/// One process: what it takes, what it gives, and the number behind it.")
+    add("#[derive(Clone, Copy, Debug)]")
+    add("pub struct Process {")
+    add("    pub name: &'static str,")
+    add("    pub tier: &'static str,")
+    add("    pub inputs: &'static [(&'static str, Rational)],")
+    add("    pub outputs: &'static [(&'static str, Rational)],")
+    add("    pub mechanism: Mechanism,")
+    add("    /// What must exist for the work to be possible: (kind, name) pairs, each a")
+    add("    /// declared entry in the vocabulary that kind owns.")
+    add("    pub requires: &'static [(&'static str, &'static str)],")
+    add("    pub note: &'static str,")
+    add("}")
+    add("")
+    add("/// The ages, as rows. An age is *reached* rather than assumed, so the ordinal is")
+    add("/// what a progression compares against.")
+    add("pub const TIERS: &[(&str, i64, &str)] = &[")
+    for name, ordinal, note in declare.TIERS:
+        add(f"    ({rust_string(name)}, {ordinal}, {rust_string(note)}),")
+    add("];")
+    add("")
+    add("/// Every declared substance. The type has no float in it, which is the point.")
+    add("pub const SUBSTANCES: &[Substance] = &[")
+    for name, s in declare.SUBSTANCES.items():
+        tags = ", ".join(rust_string(tag) for tag in s.get("tags", ()))
+        display_unit, display_grams = s.get("display", ("", None))
+        add("    Substance {")
+        add(f"        name: {rust_string(name)},")
+        add(f"        family: {rust_string(s['family'])}, hue: {rust_string(s['hue'])}, "
+            f"unit: {rust_string(s['unit'])},")
+        add(f"        density: {rust_rational(s.get('density', 0))}, "
+            f"unit_mass: {rust_rational(s.get('unit_mass', 0))}, "
+            f"rot_per_day: {rust_rational(s.get('rot', 0))},")
+        add(f"        tags: &[{tags}] as &[&str],")
+        add(f"        source: {rust_string(s['source'])}, "
+            f"display_unit: {rust_string(display_unit)}, "
+            f"display_grams: {rust_rational(display_grams or 0)},")
+        add(f"        no_consumer: {rust_string(s.get('no_consumer', ''))}, "
+            f"note: {rust_string(s.get('note', ''))},")
+        add("    },")
+    add("];")
+    add("")
+    add("/// Every declared process. `SCHEMA.md` is the contract these rows must satisfy,")
+    add("/// and `schema.py` is the gate that refuses a row which does not.")
+    add("pub const PROCESSES: &[Process] = &[")
+    for name, p in declare.PROCESSES.items():
+        mechanism = p["mechanism"]
+        requires = ", ".join(
+            f"({rust_string(kind)}, {rust_string(entry)})"
+            for kind, entry in sorted(p.get("requires", {}).items())
+        )
+        add("    Process {")
+        add(f"        name: {rust_string(name)}, tier: {rust_string(p['tier'])},")
+        add(f"        inputs: {rust_quantities(p.get('inputs', ()))},")
+        add(f"        outputs: {rust_quantities(p.get('outputs', ()))},")
+        add(f"        mechanism: Mechanism {{ heat_c: {int(mechanism.get('heat_c', 0))}, "
+            f"heat_kind: {rust_string(mechanism.get('heat_kind', ''))}, "
+            f"hours: {rust_rational(mechanism.get('hours', 0))}, "
+            f"labour_hours: {rust_rational(mechanism.get('labour_hours', 0))}, "
+            f"power_kw: {int(mechanism.get('power_kw', 0))} }},")
+        add(f"        requires: &[{requires}] as &[(&str, &str)],")
+        add(f"        note: {rust_string(p.get('note', ''))},")
+        add("    },")
+    add("];")
+    add("")
+    add("/// The closed vocabularies a process may require from: what exists, as rows.")
+    add("/// Empty today because the first rung is hand work — and an entry no process")
+    add("/// requires is refused by the gate, so this cannot fill with intentions.")
+    for kind in ("structure", "tool", "skill"):
+        constant = f"{kind.upper()}S"
+        add(f"pub const {constant}: &[(&str, &str)] = &[")
+        for name, note in declare.VOCABULARY[kind].items():
+            add(f"    ({rust_string(name)}, {rust_string(note)}),")
+        add("];")
+        add("")
+    add("/// What the substance and process tables deliberately do not decide.")
+    add("pub const SCHEMA_OPEN: &[&str] = &[")
+    for item in schema.open_items():
+        add(f"    {rust_string(item)},")
+    add("];")
+    add("")
     add("/// What this table cannot check, printed every run rather than implied away.")
     add("pub const OPEN: &[&str] = &[")
     for item in declare.OPEN:
@@ -348,6 +504,17 @@ def render() -> str:
 
 
 def main() -> int:
+    # The gate runs before anything is written, and it **fails closed**: a table with a
+    # defect does not become an artifact. Every defect is printed rather than the
+    # first, for the same reason `design::verify` reports all of them — a check that
+    # reports one problem per run is a check somebody stops running.
+    found = schema.defects()
+    for item in found:
+        print(f"schema: DEFECT: {item}")
+    if found:
+        print(f"materials: refusing to emit — {len(found)} defect(s) in the substance and "
+              f"process tables")
+        return 1
     text = render()
     check = "--check" in sys.argv
     existing = None

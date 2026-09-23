@@ -545,3 +545,116 @@
 {"detail":"BLD-000080 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.2,"tick":44}
 {"detail":"BLD-000081 — lay 52 tiles of road","kind":"ticket.filed","sim_seconds":3.25,"tick":65}
 {"detail":"BLD-000081 — completed_and_validated","kind":"ticket.retired","sim_seconds":3.4,"tick":68}
+{"detail":"BLD-000082 — lay 24 tiles of road","kind":"ticket.filed","sim_seconds":0.85,"tick":17}
+{"detail":"BLD-000082 — completed_and_validated","kind":"ticket.retired","sim_seconds":1.0,"tick":20}
+{"detail":"BLD-000083 — lay 24 tiles of road","kind":"ticket.filed","sim_seconds":1.5,"tick":30}
+{"detail":"BLD-000083 — completed_and_validated","kind":"ticket.retired","sim_seconds":1.6,"tick":32}
+{"detail":"BLD-000084 — zone 12 tiles residential","kind":"ticket.filed","sim_seconds":2.15,"tick":43}
+{"detail":"BLD-000084 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.4,"tick":48}
+{"detail":"BLD-000085 — lay 7 tiles of road","kind":"ticket.filed","sim_seconds":2.65,"tick":53}
+{"detail":"BLD-000085 — completed_and_validated","kind":"ticket.retired","sim_seconds":2.8,"tick":56}
+{"detail":"BLD-000086 — place power plant 1","kind":"ticket.filed","sim_seconds":3.1,"tick":62}
+{"detail":"MAT-000001 — material of power plant 1","kind":"ticket.filed","sim_seconds":3.1,"tick":62}
+{"detail":"BLD-000086 — completed_and_validated","kind":"ticket.retired","sim_seconds":3.2,"tick":64}
+{"detail":"MAT-000001 — completed_and_validated","kind":"ticket.retired","sim_seconds":3.2,"tick":64}
+{"detail":"BLD-000087 — lay 7 tiles of road","kind":"ticket.filed","sim_seconds":4.7,"tick":94}
+{"detail":"BLD-000087 — completed_and_validated","kind":"ticket.retired","sim_seconds":4.8,"tick":96}
+{"detail":"BLD-000088 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":6.55,"tick":131}
+{"detail":"BLD-000088 — completed_and_validated","kind":"ticket.retired","sim_seconds":6.8,"tick":136}
+{"detail":"BLD-000089 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":6.9,"tick":138}
+{"detail":"BLD-000089 — completed_and_validated","kind":"ticket.retired","sim_seconds":7.0,"tick":140}
+{"detail":"BLD-000090 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":7.25,"tick":145}
+{"detail":"BLD-000090 — completed_and_validated","kind":"ticket.retired","sim_seconds":7.4,"tick":148}
+{"detail":"BLD-000091 — zone 6 tiles industrial","kind":"ticket.filed","sim_seconds":8.55,"tick":171}
+{"detail":"BLD-000091 — completed_and_validated","kind":"ticket.retired","sim_seconds":8.8,"tick":176}
+{"detail":"BLD-000092 — zone 12 tiles industrial","kind":"ticket.filed","sim_seconds":8.85,"tick":177}
+{"detail":"BLD-000092 — completed_and_validated","kind":"ticket.retired","sim_seconds":9.0,"tick":180}
+{"detail":"BLD-000093 — zone 12 tiles residential","kind":"ticket.filed","sim_seconds":9.9,"tick":198}
+{"detail":"BLD-000093 — completed_and_validated","kind":"ticket.retired","sim_seconds":10.0,"tick":200}
+{"detail":"CSE-000029 — district 28: 22 zoned tiles have no power; growth has stopped on them","kind":"case.opened","sim_seconds":10.0,"tick":200}
+{"detail":"CSE-000029 supersedes CSE-000019","kind":"case.supersedes","sim_seconds":10.0,"tick":200}
+{"detail":"BLD-000094 — zone 12 tiles commercial","kind":"ticket.filed","sim_seconds":10.45,"tick":209}
+{"detail":"BLD-000094 — completed_and_validated","kind":"ticket.retired","sim_seconds":10.6,"tick":212}
+{"detail":"BLD-000095 — zone 12 tiles commercial","kind":"ticket.filed","sim_seconds":10.75,"tick":215}
+{"detail":"BLD-000095 — completed_and_validated","kind":"ticket.retired","sim_seconds":11.0,"tick":220}
+{"detail":"BLD-000096 — place power plant 2","kind":"ticket.filed","sim_seconds":11.3,"tick":226}
+{"detail":"MAT-000002 — material of power plant 2","kind":"ticket.filed","sim_seconds":11.3,"tick":226}
+{"detail":"BLD-000096 — completed_and_validated","kind":"ticket.retired","sim_seconds":11.4,"tick":228}
+{"detail":"MAT-000002 — completed_and_validated","kind":"ticket.retired","sim_seconds":11.4,"tick":228}
+{"detail":"CSE-000029 — completed_and_validated","kind":"ticket.retired","sim_seconds":12.0,"tick":240}
+{"detail":"BLD-000097 — lay 1 tiles of road","kind":"ticket.filed","sim_seconds":15.8,"tick":316}
+{"detail":"BLD-000097 — completed_and_validated","kind":"ticket.retired","sim_seconds":16.0,"tick":320}
+{"detail":"BLD-000098 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":16.05,"tick":321}
+{"detail":"BLD-000098 — completed_and_validated","kind":"ticket.retired","sim_seconds":16.2,"tick":324}
+{"detail":"BLD-000099 — lay 18 tiles of road","kind":"ticket.filed","sim_seconds":16.5,"tick":330}
+{"detail":"BLD-000099 — completed_and_validated","kind":"ticket.retired","sim_seconds":16.6,"tick":332}
+{"detail":"BLD-000100 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":16.7,"tick":334}
+{"detail":"BLD-000100 — completed_and_validated","kind":"ticket.retired","sim_seconds":16.8,"tick":336}
+{"detail":"BLD-000101 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":19.15,"tick":383}
+{"detail":"BLD-000101 — completed_and_validated","kind":"ticket.retired","sim_seconds":19.4,"tick":388}
+{"detail":"BLD-000102 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":19.4,"tick":388}
+{"detail":"BLD-000102 — completed_and_validated","kind":"ticket.retired","sim_seconds":19.6,"tick":392}
+{"detail":"BLD-000103 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":19.6,"tick":392}
+{"detail":"BLD-000103 — completed_and_validated","kind":"ticket.retired","sim_seconds":19.8,"tick":396}
+{"detail":"BLD-000104 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":19.85,"tick":397}
+{"detail":"BLD-000104 — completed_and_validated","kind":"ticket.retired","sim_seconds":20.0,"tick":400}
+{"detail":"BLD-000105 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":20.15,"tick":403}
+{"detail":"BLD-000105 — completed_and_validated","kind":"ticket.retired","sim_seconds":20.4,"tick":408}
+{"detail":"BLD-000106 — lay 17 tiles of road","kind":"ticket.filed","sim_seconds":20.65,"tick":413}
+{"detail":"BLD-000106 — completed_and_validated","kind":"ticket.retired","sim_seconds":20.8,"tick":416}
+{"detail":"BLD-000107 — zone 44 tiles residential","kind":"ticket.filed","sim_seconds":22.05,"tick":441}
+{"detail":"BLD-000107 — completed_and_validated","kind":"ticket.retired","sim_seconds":22.2,"tick":444}
+{"detail":"BLD-000108 — place power plant 3","kind":"ticket.filed","sim_seconds":22.9,"tick":458}
+{"detail":"MAT-000003 — material of power plant 3","kind":"ticket.filed","sim_seconds":22.9,"tick":458}
+{"detail":"BLD-000108 — completed_and_validated","kind":"ticket.retired","sim_seconds":23.0,"tick":460}
+{"detail":"MAT-000003 — completed_and_validated","kind":"ticket.retired","sim_seconds":23.0,"tick":460}
+{"detail":"BLD-000109 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":24.2,"tick":484}
+{"detail":"BLD-000109 — completed_and_validated","kind":"ticket.retired","sim_seconds":24.4,"tick":488}
+{"detail":"BLD-000110 — lay 18 tiles of road","kind":"ticket.filed","sim_seconds":24.5,"tick":490}
+{"detail":"BLD-000110 — completed_and_validated","kind":"ticket.retired","sim_seconds":24.6,"tick":492}
+{"detail":"BLD-000111 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":24.65,"tick":493}
+{"detail":"BLD-000111 — completed_and_validated","kind":"ticket.retired","sim_seconds":24.8,"tick":496}
+{"detail":"BLD-000112 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":24.95,"tick":499}
+{"detail":"BLD-000112 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.2,"tick":504}
+{"detail":"BLD-000113 — lay 4 tiles of road","kind":"ticket.filed","sim_seconds":25.25,"tick":505}
+{"detail":"BLD-000113 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.4,"tick":508}
+{"detail":"BLD-000114 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":25.45,"tick":509}
+{"detail":"BLD-000114 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.6,"tick":512}
+{"detail":"BLD-000115 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":25.7,"tick":514}
+{"detail":"BLD-000115 — completed_and_validated","kind":"ticket.retired","sim_seconds":25.8,"tick":516}
+{"detail":"BLD-000116 — lay 17 tiles of road","kind":"ticket.filed","sim_seconds":26.4,"tick":528}
+{"detail":"BLD-000117 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":26.55,"tick":531}
+{"detail":"BLD-000116 — completed_and_validated","kind":"ticket.retired","sim_seconds":26.6,"tick":532}
+{"detail":"BLD-000117 — completed_and_validated","kind":"ticket.retired","sim_seconds":26.8,"tick":536}
+{"detail":"BLD-000118 — zone 31 tiles industrial","kind":"ticket.filed","sim_seconds":28.15,"tick":563}
+{"detail":"BLD-000118 — completed_and_validated","kind":"ticket.retired","sim_seconds":28.4,"tick":568}
+{"detail":"BLD-000119 — place power plant 4","kind":"ticket.filed","sim_seconds":32.25,"tick":645}
+{"detail":"MAT-000004 — material of power plant 4","kind":"ticket.filed","sim_seconds":32.25,"tick":645}
+{"detail":"BLD-000119 — completed_and_validated","kind":"ticket.retired","sim_seconds":32.4,"tick":648}
+{"detail":"MAT-000004 — completed_and_validated","kind":"ticket.retired","sim_seconds":32.4,"tick":648}
+{"detail":"BLD-000120 — lay 24 tiles of road","kind":"ticket.filed","sim_seconds":34.45,"tick":689}
+{"detail":"BLD-000120 — completed_and_validated","kind":"ticket.retired","sim_seconds":34.6,"tick":692}
+{"detail":"BLD-000121 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":34.7,"tick":694}
+{"detail":"BLD-000121 — completed_and_validated","kind":"ticket.retired","sim_seconds":34.8,"tick":696}
+{"detail":"BLD-000122 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":35.2,"tick":704}
+{"detail":"BLD-000122 — completed_and_validated","kind":"ticket.retired","sim_seconds":35.4,"tick":708}
+{"detail":"BLD-000123 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":35.5,"tick":710}
+{"detail":"BLD-000123 — completed_and_validated","kind":"ticket.retired","sim_seconds":35.6,"tick":712}
+{"detail":"BLD-000124 — lay 5 tiles of road","kind":"ticket.filed","sim_seconds":36.5,"tick":730}
+{"detail":"BLD-000124 — completed_and_validated","kind":"ticket.retired","sim_seconds":36.6,"tick":732}
+{"detail":"BLD-000125 — lay 6 tiles of road","kind":"ticket.filed","sim_seconds":36.95,"tick":739}
+{"detail":"BLD-000125 — completed_and_validated","kind":"ticket.retired","sim_seconds":37.2,"tick":744}
+{"detail":"BLD-000126 — lay 7 tiles of road","kind":"ticket.filed","sim_seconds":37.35,"tick":747}
+{"detail":"BLD-000126 — completed_and_validated","kind":"ticket.retired","sim_seconds":37.6,"tick":752}
+{"detail":"BLD-000127 — zone 60 tiles industrial","kind":"ticket.filed","sim_seconds":38.7,"tick":774}
+{"detail":"BLD-000127 — completed_and_validated","kind":"ticket.retired","sim_seconds":38.8,"tick":776}
+{"detail":"BLD-000128 — place power plant 5","kind":"ticket.filed","sim_seconds":39.6,"tick":792}
+{"detail":"MAT-000005 — material of power plant 5","kind":"ticket.filed","sim_seconds":39.6,"tick":792}
+{"detail":"BLD-000128 — completed_and_validated","kind":"ticket.retired","sim_seconds":39.8,"tick":796}
+{"detail":"MAT-000005 — completed_and_validated","kind":"ticket.retired","sim_seconds":39.8,"tick":796}
+{"detail":"BLD-000129 — zone 1 tiles industrial","kind":"ticket.filed","sim_seconds":64.25,"tick":1285}
+{"detail":"BLD-000129 — completed_and_validated","kind":"ticket.retired","sim_seconds":64.4,"tick":1288}
+{"detail":"BLD-000130 — place power plant 6","kind":"ticket.filed","sim_seconds":65.55,"tick":1311}
+{"detail":"MAT-000006 — material of power plant 6","kind":"ticket.filed","sim_seconds":65.55,"tick":1311}
+{"detail":"BLD-000130 — completed_and_validated","kind":"ticket.retired","sim_seconds":65.8,"tick":1316}
+{"detail":"MAT-000006 — completed_and_validated","kind":"ticket.retired","sim_seconds":65.8,"tick":1316}

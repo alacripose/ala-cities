@@ -21,17 +21,18 @@
 //! * **Exact.** Mass is derived from the declared scale factor in integers — see
 //!   [`PROVISIONAL`] for why that phrase is doing work here.
 //!
-//! # PROVISIONAL: where these numbers are going
+//! # Where the numbers live
 //!
-//! The scale factor, the deposit kinds and their densities are **declared data**, and this
-//! repo keeps declared data in `tools/materials/declare.py`, emitted into
-//! `src/materials/generated.rs` by `emit.py`. They are Rust constants here only because the
-//! `SUBSTANCES` table they belong to does not exist yet: `tools/materials/SCHEMA.md` declares
-//! the shape, and the substances have to land before a density has a home to live in.
+//! The **densities have moved** into `SUBSTANCES` (`tools/materials/declare.py`, emitted
+//! into `src/materials/generated.rs`), which is what the previous note here said would
+//! happen when that table landed: a substance's density is a fact about the substance, not
+//! about one place it is found. What stays here is the **derivation** — the tile size, the
+//! seam depth, the noise, the kind thresholds and shares — because those are facts about a
+//! site rather than about a material.
 //!
-//! So this is a **recorded deviation, not a second home**: when `SUBSTANCES` is emitted, the
-//! kinds below move into it and this module keeps only the derivation. The numbers are
-//! declared once, here, and a reader can see all of them in one screen.
+//! One declared scale factor still sets everything: [`TILE_METRES`] times the seam depth
+//! times the substance's own density. A wrong density is now a row somebody can read beside
+//! every other material fact, which is the whole reason the table exists.
 
 /// Metres to a centimetre, so the arithmetic below stays in integers.
 const CM_PER_M: i64 = 100;
@@ -59,20 +60,16 @@ pub fn tile_volume_ml() -> i64 {
 /// Tiles across one geology cell. Bigger than a tile, so deposits are regional.
 pub const GEOLOGY_CELL: u32 = 32;
 
-/// One declared deposit kind.
+/// One declared deposit kind: **where** a substance is found, not what it is.
 ///
-/// `density` is a **rational** — the schema refuses a float, because a float conversion is
-/// where a ledger silently stops balancing. `share` is the kind's weight when the field
-/// decides *which* substance a patch holds, so iron is rarer than stone as a declared
-/// number rather than as an accident of a hash.
+/// The substance, its density and the family it presents as all come from
+/// [`crate::materials::schema`]'s `SUBSTANCES` table, so a deposit cannot hold a material
+/// the table does not describe. What belongs to a *site* is here: the noise floor a tile
+/// must clear, and the kind's weight when the field decides which substance a patch holds
+/// — so iron is rarer than stone as a declared number rather than as an accident of a hash.
 pub struct DepositKind {
     /// The substance, in the schema's vocabulary.
     pub substance: &'static str,
-    /// The appearance family it presents as, so a deposit draws in the world's own colours.
-    pub family: &'static str,
-    /// Density as a rational, in g/mL.
-    pub density_num: i64,
-    pub density_den: i64,
     /// The noise floor (0..=1000) a tile must clear to hold this kind.
     pub min_richness: i64,
     /// Relative weight when the field picks a kind, largest last is *not* assumed.
@@ -81,17 +78,32 @@ pub struct DepositKind {
 
 /// The declared deposit kinds, in the order the field slices into them.
 pub const DEPOSIT_KINDS: &[DepositKind] = &[
-    DepositKind { substance: "stone", family: "ceramic", density_num: 26, density_den: 10,
-                  min_richness: 620, share: 34 },
-    DepositKind { substance: "sand", family: "ceramic", density_num: 16, density_den: 10,
-                  min_richness: 660, share: 22 },
-    DepositKind { substance: "clay", family: "ceramic", density_num: 19, density_den: 10,
-                  min_richness: 640, share: 22 },
-    DepositKind { substance: "coal", family: "soil", density_num: 13, density_den: 10,
-                  min_richness: 700, share: 14 },
-    DepositKind { substance: "iron_ore", family: "metal", density_num: 27, density_den: 10,
-                  min_richness: 740, share: 8 },
+    DepositKind { substance: "stone", min_richness: 620, share: 34 },
+    DepositKind { substance: "sand", min_richness: 660, share: 22 },
+    DepositKind { substance: "clay", min_richness: 640, share: 22 },
+    DepositKind { substance: "coal", min_richness: 700, share: 14 },
+    DepositKind { substance: "iron_ore", min_richness: 740, share: 8 },
 ];
+
+/// The substance a kind holds.
+pub fn kind_substance(kind: usize) -> &'static str {
+    DEPOSIT_KINDS[kind].substance
+}
+
+/// The appearance family a kind presents as — the substance's own, so a deposit draws in
+/// the world's declared colours rather than in a second opinion about what it looks like.
+pub fn kind_family(kind: usize) -> &'static str {
+    crate::materials::schema::substance(kind_substance(kind))
+        .map(|entry| entry.family)
+        .unwrap_or_else(|| panic!("deposit kind {kind} names a substance the table does not declare"))
+}
+
+/// A kind's density as a declared rational, in g/mL.
+fn kind_density(kind: usize) -> (i64, i64) {
+    let entry = crate::materials::schema::substance(kind_substance(kind))
+        .unwrap_or_else(|| panic!("deposit kind {kind} names an undeclared substance"));
+    (entry.density.num, entry.density.den)
+}
 
 /// One tile's deposit: which kind, and how much of it is there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,10 +125,9 @@ pub struct Deposit {
 /// which is the "one worked tile is worth about a house and a half" figure the record
 /// states, now derived rather than asserted.
 pub fn mass_g(kind: usize, richness: i64) -> i64 {
-    let declaration = &DEPOSIT_KINDS[kind];
+    let (density_num, density_den) = kind_density(kind);
     let richness = richness.clamp(0, RICHNESS_ONE);
-    tile_volume_ml() * declaration.density_num * richness
-        / (declaration.density_den * RICHNESS_ONE)
+    tile_volume_ml() * density_num * richness / (density_den * RICHNESS_ONE)
 }
 
 /// The top of the richness scale. A plain integer scale so that comparisons and slices are
@@ -144,7 +155,7 @@ pub fn full_tile_mass_g(kind: usize) -> i64 {
 /// that a patch is *one* substance rather than a different one every few tiles — a mine that
 /// changes what it is digging every 8 metres is not a mine.
 fn kind_at(seed: u64, x: u32, y: u32) -> usize {
-    let cell = (GEOLOGY_CELL * 4) as u32;
+    let cell = GEOLOGY_CELL * 4;
     let pick = noise(seed, SALT_KIND, (x / cell) * cell, (y / cell) * cell);
     let total: i64 = DEPOSIT_KINDS.iter().map(|kind| kind.share).sum();
     let mut target = pick * total / RICHNESS_ONE;
@@ -285,6 +296,11 @@ mod tests {
         }
         for (index, kind) in DEPOSIT_KINDS.iter().enumerate() {
             assert!(seen[index], "`{}` is declared but never occurs", kind.substance);
+            assert!(
+                crate::materials::schema::substance(kind.substance).is_some(),
+                "`{}` is a deposit and not a substance in the table",
+                kind.substance
+            );
         }
     }
 

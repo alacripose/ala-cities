@@ -1,0 +1,29 @@
+{
+  "id": "RET-000123",
+  "ticket": "BLD-000093",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "zone 12 tiles residential",
+  "completion_claim": "the world shows 12 tiles carry the zone set",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "all 12 tiles carry the zone set"
+    ],
+    "checks_run": [
+      "12 tiles carry the zone set"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000110"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 200,
+  "retired_by": "operator"
+}

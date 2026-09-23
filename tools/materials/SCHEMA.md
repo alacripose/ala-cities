@@ -1,5 +1,15 @@
 # The substance and process schema (C9, Q12/Q37/Q66/Q67)
 
+> **Built, 2026-09-23.** The two tables and the gate now exist: `declare.py` carries
+> `TIERS`, `SUBSTANCES` (16 rows) and `PROCESSES` (7 rows, the stone rung); `schema.py`
+> is the gate; `emit.py` runs it and **refuses to write** while it reports a defect;
+> and `src/materials/schema.rs` is the runtime's typed view with the same checks
+> mirrored at the point of use. `SCHEMA_OPEN` carries what the tables do not decide
+> into the game's own report. What is *not* built is the second half of phase 3 — the
+> MAKE/MAINTAIN machinery that runs a process, and the process structures themselves
+> (`VOCABULARY["structure"]` is deliberately empty, which is a declaration rather than
+> an oversight). See the build note at the end of `docs/GRILLING-C9.md`.
+
 The campaign's claim is that **nothing is made from nothing**, and this document is where that
 becomes checkable rather than asserted. Two data tables, one gate, and one worked chain proven in
 exact integers.
@@ -119,6 +129,16 @@ Two things this chain proves rather than claims:
 The ore-to-blade chain is the rung above it and is not written here: it needs the source table's
 ratios (Q42/Q70) before its numbers are citations rather than inventions. **The schema does not
 depend on it, which is the point** — the schema is written once and the ages are rows.
+
+## Built, and what the gate found on its first run
+
+The gate's first run against the tables found **five defects**, and three were real
+things rather than my arithmetic: `sand` and `clay` were mined with no consumer and no
+declared reason (the rule made the omission visible), and the balance rule as first
+written refused a *gather* — a process whose other side is the world's own ground, which
+the worked chain above marks as "source". Both were fixed in the data and the rule
+respectively, and the gather case is now stated: a process with no inputs may only
+produce what the world already holds, which is the rule that replaces `grow()`.
 
 ## What this document does not decide
 

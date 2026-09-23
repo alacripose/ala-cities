@@ -1,0 +1,8 @@
+{
+  "id": "EVD-000114",
+  "ticket": "MAT-000002",
+  "grade": "B",
+  "kind": "world_read_back",
+  "detail": "read back from world state at tick 228: the power.frame on tile 32133 is metal/natural/body",
+  "tick": 228
+}

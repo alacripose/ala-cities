@@ -1,0 +1,147 @@
+{
+  "id": "BLD-000118",
+  "contract": "CTR-CITY-0001",
+  "kind": "Build",
+  "status": "Open",
+  "objective": "zone 31 tiles industrial",
+  "gate": "all 31 tiles carry the zone set",
+  "opened_tick": 563,
+  "closed_tick": null,
+  "terminal": null,
+  "supersedes": null,
+  "governor_version": 3,
+  "case_key": null,
+  "count": 1,
+  "expectation": {
+    "ZonedTiles": [
+      [
+        32121,
+        "Industrial"
+      ],
+      [
+        32122,
+        "Industrial"
+      ],
+      [
+        32124,
+        "Industrial"
+      ],
+      [
+        32125,
+        "Industrial"
+      ],
+      [
+        32127,
+        "Industrial"
+      ],
+      [
+        32128,
+        "Industrial"
+      ],
+      [
+        32130,
+        "Industrial"
+      ],
+      [
+        32131,
+        "Industrial"
+      ],
+      [
+        32134,
+        "Industrial"
+      ],
+      [
+        32135,
+        "Industrial"
+      ],
+      [
+        32633,
+        "Industrial"
+      ],
+      [
+        32634,
+        "Industrial"
+      ],
+      [
+        32636,
+        "Industrial"
+      ],
+      [
+        32637,
+        "Industrial"
+      ],
+      [
+        32639,
+        "Industrial"
+      ],
+      [
+        32640,
+        "Industrial"
+      ],
+      [
+        32642,
+        "Industrial"
+      ],
+      [
+        32643,
+        "Industrial"
+      ],
+      [
+        32645,
+        "Industrial"
+      ],
+      [
+        32646,
+        "Industrial"
+      ],
+      [
+        32647,
+        "Industrial"
+      ],
+      [
+        32889,
+        "Industrial"
+      ],
+      [
+        32890,
+        "Industrial"
+      ],
+      [
+        32892,
+        "Industrial"
+      ],
+      [
+        32893,
+        "Industrial"
+      ],
+      [
+        32895,
+        "Industrial"
+      ],
+      [
+        32896,
+        "Industrial"
+      ],
+      [
+        32898,
+        "Industrial"
+      ],
+      [
+        32899,
+        "Industrial"
+      ],
+      [
+        32901,
+        "Industrial"
+      ],
+      [
+        32902,
+        "Industrial"
+      ]
+    ]
+  },
+  "roads_before": [],
+  "evidence": [],
+  "actor": "operator",
+  "corrected": null
+}

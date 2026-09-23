@@ -27,6 +27,7 @@ pub mod effects;
 pub mod generated;
 pub mod geology;
 pub mod ledger;
+pub mod schema;
 pub mod world;
 
 pub use generated::*;
@@ -280,6 +281,10 @@ pub fn verify() -> Report {
             .push(format!("materials: {token} moved — {was}; {now}"));
     }
 
+    // The substance and process tables: the campaign's own invariant, checked where
+    // the tables are used rather than only where they are emitted.
+    schema::verify(&mut report);
+
     for item in OPEN {
         report.lines.push(format!("materials: open — {item}"));
     }
@@ -315,8 +320,12 @@ mod tests {
             digest
         }
         let mut digest = 0xCBF2_9CE4_8422_2325;
+        // The same list, in the same order, as `tools/materials/emit.py`'s `SOURCES`.
+        // `schema.py` is in it although it contributes no values: it decides what may be
+        // part of the tables, so loosening the gate must make the artifact look stale.
         for path in [
             "tools/materials/declare.py",
+            "tools/materials/schema.py",
             "tools/icons/palette.py",
         ] {
             let bytes = std::fs::read(path)

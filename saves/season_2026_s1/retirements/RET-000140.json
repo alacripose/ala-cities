@@ -1,0 +1,29 @@
+{
+  "id": "RET-000140",
+  "ticket": "BLD-000108",
+  "contract": "CTR-CITY-0001",
+  "terminal_state": "retired",
+  "retirement_reason": "completed_and_validated",
+  "objective": "place power plant 3",
+  "completion_claim": "the world shows a structure stands on tile 28290",
+  "grounding": {
+    "inputs_verified": true,
+    "note": "the governor version stamped on this ticket is v3"
+  },
+  "verification": {
+    "acceptance_criteria": [
+      "a structure stands on the tile"
+    ],
+    "checks_run": [
+      "a structure stands on tile 28290"
+    ],
+    "passed": true,
+    "regressions_detected": false
+  },
+  "evidence": [
+    "EVD-000127"
+  ],
+  "governor_version": 3,
+  "retired_at_tick": 460,
+  "retired_by": "operator"
+}

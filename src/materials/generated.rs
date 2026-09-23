@@ -4,7 +4,7 @@
 //! the world's sim all read these values, and `tests` in `mod.rs` refuses a build
 //! whose generated source no longer matches the declaration it came from.
 
-pub const SOURCE_DIGEST: u64 = 0x91E420B09277D482;
+pub const SOURCE_DIGEST: u64 = 0x4218A3E2DCE1FCC2;
 pub const GENERATED_BY: &str = "tools/materials/emit.py";
 
 /// One declared material family: its own lightness, the chroma a hue variation
@@ -519,6 +519,301 @@ pub const NUISANCE: &[(&str, f32)] = &[
     ("water", 0.0),
     ("organic", 0.0),
     ("soil", 0.1),
+];
+
+/// One declared rational: a numerator over a denominator, in integers.
+///
+/// A float is what the schema refuses, because a ledger in mixed units balances
+/// only if every conversion is exact — so the type holding a density, a unit mass,
+/// a rot rate and a quantity has no float in it at all.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Rational {
+    pub num: i64,
+    pub den: i64,
+}
+
+/// One substance: what it is measured in, what it presents as, and where it
+/// comes from.
+#[derive(Clone, Copy, Debug)]
+pub struct Substance {
+    pub name: &'static str,
+    pub family: &'static str,
+    pub hue: &'static str,
+    /// Mass | Volume | Count | Gas — the canonical unit the ledger counts in.
+    pub unit: &'static str,
+    /// g/mL, required for Volume and Gas; zero where the unit does not need it.
+    pub density: Rational,
+    /// Grams per unit, required for Count; zero where the unit does not need it.
+    pub unit_mass: Rational,
+    /// Condition lost per sim-day. All zero today: rot's mechanism arrives with
+    /// phase 7's couplings, and a rate nothing reads would be a placeholder.
+    pub rot_per_day: Rational,
+    pub tags: &'static [&'static str],
+    pub source: &'static str,
+    /// The natural unit a person reads it in, and its exact grams per unit. Never
+    /// used in arithmetic — Q67's per-substance units are a reading, not a conversion.
+    pub display_unit: &'static str,
+    pub display_grams: Rational,
+    /// Why nothing consumes it, or empty when something does.
+    pub no_consumer: &'static str,
+    pub note: &'static str,
+}
+
+/// What a process costs to run, as numbers rather than as prose (Q37's rule).
+#[derive(Clone, Copy, Debug)]
+pub struct Mechanism {
+    pub heat_c: i64,
+    /// `material` or `flame`, empty when nothing is heated. The two readings of
+    /// "kiln temperature" differ by ~600 °C and both are correct.
+    pub heat_kind: &'static str,
+    pub hours: Rational,
+    pub labour_hours: Rational,
+    pub power_kw: i64,
+}
+
+/// One process: what it takes, what it gives, and the number behind it.
+#[derive(Clone, Copy, Debug)]
+pub struct Process {
+    pub name: &'static str,
+    pub tier: &'static str,
+    pub inputs: &'static [(&'static str, Rational)],
+    pub outputs: &'static [(&'static str, Rational)],
+    pub mechanism: Mechanism,
+    /// What must exist for the work to be possible: (kind, name) pairs, each a
+    /// declared entry in the vocabulary that kind owns.
+    pub requires: &'static [(&'static str, &'static str)],
+    pub note: &'static str,
+}
+
+/// The ages, as rows. An age is *reached* rather than assumed, so the ordinal is
+/// what a progression compares against.
+pub const TIERS: &[(&str, i64, &str)] = &[
+    ("hands & stone", 0, "no structure and no tool: what a person does with hands and with stone picked up and used"),
+    ("bound & composite", 1, "things joined to other things — cord, haft, assembly — which is the first real manufacturing"),
+];
+
+/// Every declared substance. The type has no float in it, which is the point.
+pub const SUBSTANCES: &[Substance] = &[
+    Substance {
+        name: "stone",
+        family: "ceramic", hue: "natural", unit: "Mass",
+        density: Rational { num: 13, den: 5 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &["structure"] as &[&str],
+        source: "mined", display_unit: "t", display_grams: Rational { num: 1000000, den: 1 },
+        no_consumer: "", note: "the deposit kind `stone`; consumed by knapping, and the bulk of every masonry age",
+    },
+    Substance {
+        name: "sand",
+        family: "ceramic", hue: "natural", unit: "Mass",
+        density: Rational { num: 8, den: 5 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &["structure"] as &[&str],
+        source: "mined", display_unit: "t", display_grams: Rational { num: 1000000, den: 1 },
+        no_consumer: "the aggregate half of glass and mortar: glass waits for the kiln and mortar for the lime process, both of which need SOURCES [NS] rows", note: "the deposit kind `sand`; the aggregate half of glass and mortar",
+    },
+    Substance {
+        name: "clay",
+        family: "ceramic", hue: "natural", unit: "Mass",
+        density: Rational { num: 19, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &["structure"] as &[&str],
+        source: "mined", display_unit: "t", display_grams: Rational { num: 1000000, den: 1 },
+        no_consumer: "unfired it is mud, which is why brick waits for the kiln — and the kiln is a process structure this table has not declared yet", note: "the deposit kind `clay`; unfired it is mud, which is why brick waits for the kiln",
+    },
+    Substance {
+        name: "coal",
+        family: "soil", hue: "natural", unit: "Mass",
+        density: Rational { num: 13, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &["fuel"] as &[&str],
+        source: "mined", display_unit: "t", display_grams: Rational { num: 1000000, den: 1 },
+        no_consumer: "the fuel of the coal ages: nothing burns anything until the smelt lands, and the smelt needs SOURCES [NS] rows (coke per tonne, blast temperature)", note: "",
+    },
+    Substance {
+        name: "iron_ore",
+        family: "metal", hue: "natural", unit: "Mass",
+        density: Rational { num: 27, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "mined", display_unit: "t", display_grams: Rational { num: 1000000, den: 1 },
+        no_consumer: "the metal ages' input: the ore-to-blade rung is blocked on the iron ore grade row in `tools/materials/SOURCES.md`, which is [NS] — and an invented grade would make the whole ledger look sourced while being declared", note: "",
+    },
+    Substance {
+        name: "timber",
+        family: "organic", hue: "natural", unit: "Mass",
+        density: Rational { num: 7, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &["fuel", "structure"] as &[&str],
+        source: "gathered", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "", note: "taken from a standing surface deposit (Q102); the first material a founder touches",
+    },
+    Substance {
+        name: "plant_fibre",
+        family: "organic", hue: "natural", unit: "Mass",
+        density: Rational { num: 3, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "gathered", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "", note: "brush and cordage stock; the only thing available to bind with before metal",
+    },
+    Substance {
+        name: "haft_blank",
+        family: "organic", hue: "natural", unit: "Mass",
+        density: Rational { num: 7, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "", note: "a riven haft, before assembly: the same timber, one process later",
+    },
+    Substance {
+        name: "knapped_edge",
+        family: "ceramic", hue: "natural", unit: "Mass",
+        density: Rational { num: 13, den: 5 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "", note: "a worked stone edge: flaked, not ground, which is what the stone age actually did",
+    },
+    Substance {
+        name: "cord",
+        family: "organic", hue: "natural", unit: "Mass",
+        density: Rational { num: 1, den: 2 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "", note: "twisted fibre; the first thing in the world that binds two other things together",
+    },
+    Substance {
+        name: "hatchet",
+        family: "ceramic", hue: "natural", unit: "Count",
+        density: Rational { num: 0, den: 1 }, unit_mass: Rational { num: 2900, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &["tool"] as &[&str],
+        source: "made", display_unit: "hatchet", display_grams: Rational { num: 0, den: 1 },
+        no_consumer: "a tool is held and used, not consumed by a process: what consumes it is wear, which is the MAINTAIN half of phase 3 and not a row in this rung", note: "the edge is the part that identifies it, so the table reads it as the stone it is made of — a tool of two materials presents as the one that says what it does",
+    },
+    Substance {
+        name: "timber_offcuts",
+        family: "organic", hue: "natural", unit: "Mass",
+        density: Rational { num: 7, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "an end product: offcuts leave the process and accumulate. They are mass the ledger can still point at, which is why a loss is declared as an output rather than subtracted from the total", note: "declared, not hoped for: a process that loses mass silently is a process that creates it",
+    },
+    Substance {
+        name: "stone_flakes",
+        family: "ceramic", hue: "natural", unit: "Mass",
+        density: Rational { num: 13, den: 5 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "an end product: debitage. Salvage (Q71) is where it earns a consumer", note: "knapping loses more than half its stone as flakes, and the ratio is declared here",
+    },
+    Substance {
+        name: "fibre_dust",
+        family: "organic", hue: "natural", unit: "Mass",
+        density: Rational { num: 3, den: 10 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "an end product: short fibres too fine to twist", note: "",
+    },
+    Substance {
+        name: "trim_waste",
+        family: "soil", hue: "natural", unit: "Mass",
+        density: Rational { num: 1, den: 1 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "made", display_unit: "kg", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "an end product: mixed-material trimmings, and the one declared destination for a process whose losses are not one material", note: "declared as `soil` because a mixture of stone, timber and fibre reads as aggregate",
+    },
+    Substance {
+        name: "water",
+        family: "water", hue: "natural", unit: "Volume",
+        density: Rational { num: 1, den: 1 }, unit_mass: Rational { num: 0, den: 1 }, rot_per_day: Rational { num: 0, den: 1 },
+        tags: &[] as &[&str],
+        source: "gathered", display_unit: "L", display_grams: Rational { num: 1000, den: 1 },
+        no_consumer: "drinking, washing and irrigation arrive with phase 7's couplings; the world already draws it, so the substance exists and the consumer does not", note: "declared in millilitres with a density of 1 g/mL, so the conversion is exact by construction rather than by a constant that happens to be 1",
+    },
+];
+
+/// Every declared process. `SCHEMA.md` is the contract these rows must satisfy,
+/// and `schema.py` is the gate that refuses a row which does not.
+pub const PROCESSES: &[Process] = &[
+    Process {
+        name: "gather timber", tier: "hands & stone",
+        inputs: &[],
+        outputs: &[("timber", Rational { num: 3000, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 4 }, labour_hours: Rational { num: 1, den: 4 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "3000 g is one armful; the rate is declared (SOURCES: durations and labour costs are `[D]`, because no source states what a game gather costs)",
+    },
+    Process {
+        name: "riven haft", tier: "hands & stone",
+        inputs: &[("timber", Rational { num: 3000, den: 1 })],
+        outputs: &[("haft_blank", Rational { num: 2400, den: 1 }), ("timber_offcuts", Rational { num: 600, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 3 }, labour_hours: Rational { num: 1, den: 3 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "riving, not sawing: splitting along the grain is what the stone age can do, and it is why a haft is a blank rather than a cut board",
+    },
+    Process {
+        name: "gather stone", tier: "hands & stone",
+        inputs: &[],
+        outputs: &[("stone", Rational { num: 1000, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 4 }, labour_hours: Rational { num: 1, den: 4 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "1000 g is one carried load",
+    },
+    Process {
+        name: "knap a core", tier: "hands & stone",
+        inputs: &[("stone", Rational { num: 1000, den: 1 })],
+        outputs: &[("knapped_edge", Rational { num: 800, den: 1 }), ("stone_flakes", Rational { num: 200, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 2 }, labour_hours: Rational { num: 1, den: 2 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "the 800/200 split is declared `[D]`: real knapping loses more, but a usable edge is what the process is for and the flakes are the loss",
+    },
+    Process {
+        name: "gather plant fibre", tier: "hands & stone",
+        inputs: &[],
+        outputs: &[("plant_fibre", Rational { num: 100, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 6 }, labour_hours: Rational { num: 1, den: 6 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "",
+    },
+    Process {
+        name: "twist cord", tier: "bound & composite",
+        inputs: &[("plant_fibre", Rational { num: 100, den: 1 })],
+        outputs: &[("cord", Rational { num: 95, den: 1 }), ("fibre_dust", Rational { num: 5, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 4 }, labour_hours: Rational { num: 1, den: 4 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "the first process in `bound & composite`, and the reason that tier exists: binding is what makes a composite tool possible before metal is",
+    },
+    Process {
+        name: "assemble the hatchet", tier: "bound & composite",
+        inputs: &[("knapped_edge", Rational { num: 800, den: 1 }), ("haft_blank", Rational { num: 2400, den: 1 }), ("cord", Rational { num: 95, den: 1 })],
+        outputs: &[("hatchet", Rational { num: 1, den: 1 }), ("trim_waste", Rational { num: 395, den: 1 })],
+        mechanism: Mechanism { heat_c: 0, heat_kind: "", hours: Rational { num: 1, den: 2 }, labour_hours: Rational { num: 1, den: 2 }, power_kw: 0 },
+        requires: &[] as &[(&str, &str)],
+        note: "the chain's end, and Q7's own example: a hatchet fashioned from natural materials, which is the tool that multiplies work before anything is mined",
+    },
+];
+
+/// The closed vocabularies a process may require from: what exists, as rows.
+/// Empty today because the first rung is hand work — and an entry no process
+/// requires is refused by the gate, so this cannot fill with intentions.
+pub const STRUCTURES: &[(&str, &str)] = &[
+];
+
+pub const TOOLS: &[(&str, &str)] = &[
+];
+
+pub const SKILLS: &[(&str, &str)] = &[
+];
+
+/// What the substance and process tables deliberately do not decide.
+pub const SCHEMA_OPEN: &[&str] = &[
+    "`sand` is declared and nothing consumes it: the aggregate half of glass and mortar: glass waits for the kiln and mortar for the lime process, both of which need SOURCES [NS] rows",
+    "`clay` is declared and nothing consumes it: unfired it is mud, which is why brick waits for the kiln — and the kiln is a process structure this table has not declared yet",
+    "`coal` is declared and nothing consumes it: the fuel of the coal ages: nothing burns anything until the smelt lands, and the smelt needs SOURCES [NS] rows (coke per tonne, blast temperature)",
+    "`iron_ore` is declared and nothing consumes it: the metal ages' input: the ore-to-blade rung is blocked on the iron ore grade row in `tools/materials/SOURCES.md`, which is [NS] — and an invented grade would make the whole ledger look sourced while being declared",
+    "`hatchet` is declared and nothing consumes it: a tool is held and used, not consumed by a process: what consumes it is wear, which is the MAINTAIN half of phase 3 and not a row in this rung",
+    "`timber_offcuts` is declared and nothing consumes it: an end product: offcuts leave the process and accumulate. They are mass the ledger can still point at, which is why a loss is declared as an output rather than subtracted from the total",
+    "`stone_flakes` is declared and nothing consumes it: an end product: debitage. Salvage (Q71) is where it earns a consumer",
+    "`fibre_dust` is declared and nothing consumes it: an end product: short fibres too fine to twist",
+    "`trim_waste` is declared and nothing consumes it: an end product: mixed-material trimmings, and the one declared destination for a process whose losses are not one material",
+    "`water` is declared and nothing consumes it: drinking, washing and irrigation arrive with phase 7's couplings; the world already draws it, so the substance exists and the consumer does not",
+    "`gather timber` draws 3000 g of `timber` out of the world's own ground",
+    "`gather stone` draws 1000 g of `stone` out of the world's own ground",
+    "`gather plant fibre` draws 100 g of `plant_fibre` out of the world's own ground",
+    "the ages: two tiers are declared and Q69 asked for as many as possible — the content is unbounded and an age is rows, so adding one touches no schema",
+    "the numbers in these tables are declared, not measured: every duration, labour cost, power figure and loss ratio is `[D]`, and the rung above the stone one is blocked on `[NS]` source rows rather than on this schema",
 ];
 
 /// What this table cannot check, printed every run rather than implied away.

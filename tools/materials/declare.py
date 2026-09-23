@@ -25,6 +25,8 @@ overridable line by line; an override is recorded as an override, not applied
 quietly.
 """
 
+from fractions import Fraction
+
 # ---------------------------------------------------------------------------
 # The seven icon families, verbatim from the matrix C4 derived
 # ---------------------------------------------------------------------------
@@ -346,6 +348,268 @@ NUISANCE = {
     "metal": 0.3, "enamel": 0.1, "glass": 0.0, "ceramic": 0.05, "polymer": 0.1,
     "paper": 0.0, "road": 0.25, "water": 0.0, "organic": 0.0, "soil": 0.1,
 }
+
+# ---------------------------------------------------------------------------
+# The substance and process tables (C9 phase 3; tools/materials/SCHEMA.md)
+# ---------------------------------------------------------------------------
+#
+# The campaign's claim is that **nothing is made from nothing**, and these two
+# tables are where that becomes checkable. `tools/materials/SCHEMA.md` is the
+# contract; this is the data, and `tools/materials/schema.py` is the gate that
+# refuses a row which breaks it.
+#
+# Two rules govern every number here:
+#
+# * **Rationals, never floats.** A ledger in mixed units balances only if every
+#   conversion is exact, so a density, a unit mass, a rot rate and a quantity are
+#   all `Fraction`s. `q()` refuses a float rather than rounding one, because
+#   round at declaration time is exactly where a balance stops balancing without
+#   saying so.
+# * **The content is unbounded; the schema is not.** Q66 and Q69 asked for the
+#   whole substance set and as many ages as possible, so an age is *rows*: adding
+#   one must never require touching `schema.py` or `emit.py`.
+
+
+def q(numerator, denominator=1):
+    """A declared rational — the only numeric type this section accepts.
+
+    A float is refused at declaration time rather than converted, for the reason
+    the schema gives: `2995 / 3000` is a different number in two precisions, and a
+    ledger that balances to within a rounding error cannot tell conservation from
+    a bug.
+    """
+    for value in (numerator, denominator):
+        if isinstance(value, float):
+            raise TypeError(
+                f"{value!r} is a float; a quantity, density, unit mass or rot rate "
+                f"must be a rational — declare it with q(numerator, denominator)"
+            )
+    return Fraction(numerator, denominator)
+
+
+#: The ages, as rows, in the order work has to happen in. `ordinal` is what a
+#: progression compares against, so an age is *reached* rather than assumed.
+#: Two rows today because the first rung needs two — and `bound & composite` is
+#: the one Q69's answer most depends on: without it the stone age has nowhere to
+#: be, and the first tool is gated behind mining metal, which is circular.
+TIERS = (
+    ("hands & stone", 0,
+     "no structure and no tool: what a person does with hands and with stone picked up and used"),
+    ("bound & composite", 1,
+     "things joined to other things — cord, haft, assembly — which is the first real manufacturing"),
+)
+
+#: Every substance, keyed by identifier. A substance, not a family (`iron_ore`,
+#: not `metal`).
+#:
+#: `unit` is one of `Mass | Volume | Count | Gas`, and it is the *canonical* unit
+#: the ledger counts in — grams, millilitres, units. `display` is the natural unit
+#: a person reads it in (Q67's per-substance units) with its exact grams per unit,
+#: and it is **never used in arithmetic**: a display conversion that could round is
+#: the risk Q67's answer carried, so the ledger works in canonical units and the
+#: display factor only renders a listing.
+#:
+#: `no_consumer` is the schema's rule 4 made mandatory: a substance nothing uses
+#: must say **why** it exists, and the gate prints every such reason as open. A
+#: substance with no consumer and no reason is a defect, which is the honest form
+#: of "a substance nothing uses is a defect, not a placeholder" — because a
+#: substance something *will* use as soon as the rung above lands is not a defect,
+#: it is unfinished work with a name.
+#:
+#: `rot` is condition lost per sim-day. Every rate is 0 today and that is a
+#: recorded absence rather than a claim: rot's mechanism (condition → mass loss →
+#: the atmosphere account) arrives with phase 7's couplings, and a nonzero rate
+#: that nothing reads would be a placeholder wearing a number.
+#:
+#: Density is **moved here from `src/materials/geology.rs`**, which declared it with
+#: a note saying this table was where it belonged. Geology keeps the derivation and
+#: the deposit's own thresholds; the substance keeps the physical fact.
+SUBSTANCES = {
+    # --- mined: the deposit kinds geology already generates -------------------
+    "stone": dict(
+        family="ceramic", hue="natural", unit="Mass",
+        density=q(26, 10), tags=("structure",), source="mined",
+        display=("t", q(1_000_000)),
+        note="the deposit kind `stone`; consumed by knapping, and the bulk of every masonry age"),
+    "sand": dict(
+        family="ceramic", hue="natural", unit="Mass",
+        density=q(16, 10), tags=("structure",), source="mined",
+        display=("t", q(1_000_000)),
+        no_consumer="the aggregate half of glass and mortar: glass waits for the kiln and mortar "
+                    "for the lime process, both of which need SOURCES [NS] rows",
+        note="the deposit kind `sand`; the aggregate half of glass and mortar"),
+    "clay": dict(
+        family="ceramic", hue="natural", unit="Mass",
+        density=q(19, 10), tags=("structure",), source="mined",
+        display=("t", q(1_000_000)),
+        no_consumer="unfired it is mud, which is why brick waits for the kiln — and the kiln is a "
+                    "process structure this table has not declared yet",
+        note="the deposit kind `clay`; unfired it is mud, which is why brick waits for the kiln"),
+    "coal": dict(
+        family="soil", hue="natural", unit="Mass",
+        density=q(13, 10), tags=("fuel",), source="mined",
+        display=("t", q(1_000_000)),
+        no_consumer="the fuel of the coal ages: nothing burns anything until the smelt lands, "
+                    "and the smelt needs SOURCES [NS] rows (coke per tonne, blast temperature)"),
+    "iron_ore": dict(
+        family="metal", hue="natural", unit="Mass",
+        density=q(27, 10), tags=(), source="mined",
+        display=("t", q(1_000_000)),
+        no_consumer="the metal ages' input: the ore-to-blade rung is blocked on the iron ore "
+                    "grade row in `tools/materials/SOURCES.md`, which is [NS] — and an invented "
+                    "grade would make the whole ledger look sourced while being declared"),
+    # --- gathered: taken from a surface deposit, by hand, at a bad rate ----
+    "timber": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(7, 10), tags=("fuel", "structure"), source="gathered",
+        display=("kg", q(1000)),
+        note="taken from a standing surface deposit (Q102); the first material a founder touches"),
+    "plant_fibre": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(3, 10), tags=(), source="gathered",
+        display=("kg", q(1000)),
+        note="brush and cordage stock; the only thing available to bind with before metal"),
+    # --- made: what a process produces -------------------------------------
+    "haft_blank": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(7, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        note="a riven haft, before assembly: the same timber, one process later"),
+    "knapped_edge": dict(
+        family="ceramic", hue="natural", unit="Mass",
+        density=q(26, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        note="a worked stone edge: flaked, not ground, which is what the stone age actually did"),
+    "cord": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(5, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        note="twisted fibre; the first thing in the world that binds two other things together"),
+    "hatchet": dict(
+        family="ceramic", hue="natural", unit="Count",
+        unit_mass=q(2900), tags=("tool",), source="made",
+        display=("hatchet", None),
+        no_consumer="a tool is held and used, not consumed by a process: what consumes it is wear, "
+                    "which is the MAINTAIN half of phase 3 and not a row in this rung",
+        note="the edge is the part that identifies it, so the table reads it as the stone it is "
+             "made of — a tool of two materials presents as the one that says what it does"),
+    # --- waste: outputs, which is why they balance -------------------------
+    "timber_offcuts": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(7, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        no_consumer="an end product: offcuts leave the process and accumulate. They are mass the "
+                    "ledger can still point at, which is why a loss is declared as an output "
+                    "rather than subtracted from the total",
+        note="declared, not hoped for: a process that loses mass silently is a process that "
+             "creates it"),
+    "stone_flakes": dict(
+        family="ceramic", hue="natural", unit="Mass",
+        density=q(26, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        no_consumer="an end product: debitage. Salvage (Q71) is where it earns a consumer",
+        note="knapping loses more than half its stone as flakes, and the ratio is declared here"),
+    "fibre_dust": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(3, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        no_consumer="an end product: short fibres too fine to twist",
+        note=""),
+    "trim_waste": dict(
+        family="soil", hue="natural", unit="Mass",
+        density=q(10, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        no_consumer="an end product: mixed-material trimmings, and the one declared destination "
+                    "for a process whose losses are not one material",
+        note="declared as `soil` because a mixture of stone, timber and fibre reads as aggregate"),
+    # --- water: a volume, and the one substance that is not measured in mass --
+    "water": dict(
+        family="water", hue="natural", unit="Volume",
+        density=q(1, 1), tags=(), source="gathered",
+        display=("L", q(1000)),
+        no_consumer="drinking, washing and irrigation arrive with phase 7's couplings; the world "
+                    "already draws it, so the substance exists and the consumer does not",
+        note="declared in millilitres with a density of 1 g/mL, so the conversion is exact by "
+             "construction rather than by a constant that happens to be 1"),
+}
+
+#: The process structures, tools and skills a process may require, each with the
+#: note that says what it is. **Empty today, and that is the declaration**: the
+#: first rung is hand work (Q5 — a founder dropped into the world works by hand at
+#: a bad rate), so `hands & stone` requires no structure and no tool, and the first
+#: process that needs a roof, a kiln or a hammer must declare one here to be
+#: legal. An entry no process requires is refused, so this cannot fill up with
+#: intentions.
+VOCABULARY = {
+    "structure": {},
+    "tool": {},
+    "skill": {},
+}
+
+#: Every process: a declared mechanism with a number, inputs and outputs that
+#: balance in grams to the gram, and the tier it belongs to.
+#:
+#: `source` processes — a gather — have **no inputs**, and the gate refuses one
+#: unless every substance it produces is `gathered`, `mined` or `salvaged`. That is
+#: the whole campaign in one rule: a process that makes something from nothing is
+#: exactly the thing this table exists to refuse, and a gather is not that — it is
+#: the world handing over what it already held.
+#:
+#: `heat_kind` is not decoration: `tools/materials/SOURCES.md` found that "kiln
+#: temperature" is ambiguous between the **material** and the **flame** by about
+#: 600 °C, so a process declaring heat must say which it means, and the gate refuses
+#: heat with no kind.
+PROCESSES = {
+    "gather timber": dict(
+        tier="hands & stone", inputs=(),
+        outputs=(("timber", q(3000)),),
+        mechanism=dict(hours=q(1, 4), labour_hours=q(1, 4), power_kw=0),
+        requires=dict(),
+        note="3000 g is one armful; the rate is declared (SOURCES: durations and labour costs "
+             "are `[D]`, because no source states what a game gather costs)"),
+    "riven haft": dict(
+        tier="hands & stone", inputs=(("timber", q(3000)),),
+        outputs=(("haft_blank", q(2400)), ("timber_offcuts", q(600))),
+        mechanism=dict(hours=q(1, 3), labour_hours=q(1, 3), power_kw=0),
+        requires=dict(),
+        note="riving, not sawing: splitting along the grain is what the stone age can do, and "
+             "it is why a haft is a blank rather than a cut board"),
+    "gather stone": dict(
+        tier="hands & stone", inputs=(),
+        outputs=(("stone", q(1000)),),
+        mechanism=dict(hours=q(1, 4), labour_hours=q(1, 4), power_kw=0),
+        requires=dict(),
+        note="1000 g is one carried load"),
+    "knap a core": dict(
+        tier="hands & stone", inputs=(("stone", q(1000)),),
+        outputs=(("knapped_edge", q(800)), ("stone_flakes", q(200))),
+        mechanism=dict(hours=q(1, 2), labour_hours=q(1, 2), power_kw=0),
+        requires=dict(),
+        note="the 800/200 split is declared `[D]`: real knapping loses more, but a usable edge is "
+             "what the process is for and the flakes are the loss"),
+    "gather plant fibre": dict(
+        tier="hands & stone", inputs=(),
+        outputs=(("plant_fibre", q(100)),),
+        mechanism=dict(hours=q(1, 6), labour_hours=q(1, 6), power_kw=0),
+        requires=dict(),
+        note=""),
+    "twist cord": dict(
+        tier="bound & composite", inputs=(("plant_fibre", q(100)),),
+        outputs=(("cord", q(95)), ("fibre_dust", q(5))),
+        mechanism=dict(hours=q(1, 4), labour_hours=q(1, 4), power_kw=0),
+        requires=dict(),
+        note="the first process in `bound & composite`, and the reason that tier exists: binding "
+             "is what makes a composite tool possible before metal is"),
+    "assemble the hatchet": dict(
+        tier="bound & composite",
+        inputs=(("knapped_edge", q(800)), ("haft_blank", q(2400)), ("cord", q(95))),
+        outputs=(("hatchet", q(1)), ("trim_waste", q(395))),
+        mechanism=dict(hours=q(1, 2), labour_hours=q(1, 2), power_kw=0),
+        requires=dict(),
+        note="the chain's end, and Q7's own example: a hatchet fashioned from natural materials, "
+             "which is the tool that multiplies work before anything is mined"),
+}
+
 
 #: What this declaration refuses to claim. Printed by the gate every run, in the
 #: same spirit as `design::verify`'s open list.

@@ -897,7 +897,7 @@ impl World {
                 extracted_g += tile.extracted_g;
                 continue;
             };
-            let substance = material_geology::DEPOSIT_KINDS[deposit.kind].substance;
+            let substance = material_geology::kind_substance(deposit.kind);
             ledger.record(&material_ledger::ground_account(substance), -tile.extracted_g);
             extracted_g += tile.extracted_g;
         }
@@ -970,8 +970,8 @@ impl World {
             let Some(deposit) = self.deposit_at(index) else {
                 continue;
             };
-            let kind = &material_geology::DEPOSIT_KINDS[deposit.kind];
-            if kind.family != family {
+            let substance = material_geology::kind_substance(deposit.kind);
+            if material_geology::kind_family(deposit.kind) != family {
                 continue;
             }
             let (x, y) = (index % self.width, index / self.width);
@@ -979,7 +979,7 @@ impl World {
                 x as i64 - sx as i64,
                 y as i64 - sy as i64,
             );
-            candidates.push((dx * dx + dy * dy, index, kind.substance));
+            candidates.push((dx * dx + dy * dy, index, substance));
         }
         // Nearest first, and a stable tie-break so the plan is a function of the world alone.
         candidates.sort_by_key(|(distance, index, _)| (*distance, *index));
@@ -2018,7 +2018,6 @@ fn first_task_id() -> u32 {
 }
 
 #[cfg(test)]
-
 pub mod tests_support {
     use super::{Terrain, Tile};
 
@@ -2163,7 +2162,7 @@ mod tests {
         let mut mass = 0;
         for index in 0..world.tiles.len() as u32 {
             if let Some(deposit) = world.deposit_at(index) {
-                if material_geology::DEPOSIT_KINDS[deposit.kind].family == family {
+                if material_geology::kind_family(deposit.kind) == family {
                     tiles += 1;
                     mass += deposit.mass_g;
                 }
@@ -2510,13 +2509,14 @@ mod tests {
             .expect("a 32×32 world should cover a home");
         for line in &plan {
             let deposit = world.deposit_at(line.tile).expect("a planned tile holds something");
-            let kind = &material_geology::DEPOSIT_KINDS[deposit.kind];
+            let substance = material_geology::kind_substance(deposit.kind);
+            let family = material_geology::kind_family(deposit.kind);
             assert_eq!(
-                kind.family, claim.family,
+                family, claim.family,
                 "tile {} is {} ({}), not {}",
-                line.tile, kind.substance, kind.family, claim.family
+                line.tile, substance, family, claim.family
             );
-            assert_eq!(line.substance, kind.substance, "and the line names what is there");
+            assert_eq!(line.substance, substance, "and the line names what is there");
         }
     }
 
