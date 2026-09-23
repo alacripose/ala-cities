@@ -1027,3 +1027,46 @@ someone else's tile — and that divergence is what the claim market trades in.
 First-of-kind acts, anything the government posted, and anything carrying a case; everything else accrues as
 counts per organisation per day. The axis is **novelty and accountability**, not size, so a hundred citizens
 hauling gravel is a count while one citizen raising the city's first kiln is a record.
+
+---
+
+## Round 18 — the government, and one decay for everything
+
+### Q106 — is the government an organisation. Answered: **yes — and it mirrors real-world government, staffed by private citizens.**
+
+This is the answer that pulls in `GOD_AGENTS.md` again, and the part of it that matters is §4.4/§4.5: the
+**five authority layers** (constitutional → statute → appropriations → regulation → procedures →
+transaction), the boundary list that says roles *must not be conflated because each runs through a different
+authority* (congressional office ≠ contracting office, **authorized ≠ funded**, proposed rule ≠ final rule), and
+§4.7's ten rules — several of which C9 already adopted before reading them (rule 4 authorization ≠ funding,
+rule 7 conflicts as preconditions, rule 10 *"done means a defined test passed"*).
+
+**Private citizens work inside the government.** So the state is not a separate body of actors: it is citizens
+holding offices and doing work, and the difference between a citizen's public act and their private act is
+**the authority the act carries**, not who they are.
+
+### Q107 — who owes the citizen. Answered: **(a) per-issuer obligations.**
+
+An organisation's IOUs are its credit, the government's are its own, and each issuer's promises can fail
+independently. The a104 sentence is what requires it — *orgs, citizens and the government trading with each
+other* needs more than one issuer, or there is nothing to trade.
+
+### Q108 — do surface deposits regenerate. Answered: **(a) yes, with (c) planting as its deliberate form.**
+
+Brush regrows on a declared cycle if not stripped to the soil; stands take years; mineral deposits never
+regrow. Stripping is therefore a real decision, and Q15's farms arrive as **husbandry** — the same mechanism
+driven by a task — rather than as a bolt-on.
+
+### Q109 — material at a stalled or abandoned site. Answered: **(a) — and decay is one mechanism across every class.**
+
+The answer is broader than the question: *"decomposing through the material system, same with tools,
+buildings, people."* One declared decay covers **material, tools, buildings and people** — a building's
+exposure, a tool's wear, a stock's rot and a corpse's decomposition are the same kind of fact, which is
+a54's one-system rule applied to entropy rather than to making.
+
+### Q110 — what a transfer is. Answered: **(a) two levels** — a spot transfer is a ledger entry, an agreement is a scoped record with a gate.
+
+### Q111 — org work versus public work. Answered: **(c) pure utility, with membership as a declared preference weight.**
+
+Q53's weights already exist, so precedence is a tunable number rather than a hidden rule, and *"why is nobody
+hauling for the public works"* stays a question with a readable answer.
