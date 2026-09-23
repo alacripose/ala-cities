@@ -56,8 +56,8 @@ means the material or the flame would produce two different games from the same 
 |---|---|---|
 | Iron ore grade (% Fe by deposit type) | the whole extraction-to-metal ratio rests on it | **[NS]** |
 | Steelmaking: pig iron + scrap per tonne of steel | the rung above the smelt | **[NS]** |
-| Charcoal yield from timber (kg charcoal per kg wood) | the pre-coal ages need it, and it is the bronze/iron era's actual fuel | **[NS]** |
-| Timber and crop yields per hectare per year | food and the bound & composite tier | **[NS]** |
+| Charcoal yield from timber (kg charcoal per kg wood) | the pre-coal ages need it, and it is the bronze/iron era's actual fuel | **[NS]**, and **declared around** since round 28: `char timber` uses 25 %, marked `[D]` in its own note, because a fire is what the founding day has and the row is still unfilled |
+| Timber and crop yields per hectare per year | food and the bound & composite tier | **[NS]**, and **declared around** since round 28: `forage` uses 2 kg for half an hour's work, marked `[D]`, because a person has to eat before either row is filled |
 | Charcoal/wood heat for a bloomery | the pre-blast-furnace iron path | **[NS]** |
 
 **These need USGS and agronomy/forestry sources, not market summaries**, and they are the next fetch

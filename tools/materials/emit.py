@@ -411,6 +411,10 @@ def render() -> str:
     add("    pub display_grams: Rational,")
     add("    /// Why nothing consumes it, or empty when something does.")
     add("    pub no_consumer: &'static str,")
+    add("    /// Where it goes when a process gives it up: `holding` means the site it was made")
+    add("    /// at, `atmosphere` means the open air. A gas must declare one: a gas that lands in")
+    add("    /// a site holding is a gas somebody is holding, which is a contradiction in terms.")
+    add("    pub sink: &'static str,")
     add("    pub note: &'static str,")
     add("}")
     add("")
@@ -464,6 +468,7 @@ def render() -> str:
             f"display_unit: {rust_string(display_unit)}, "
             f"display_grams: {rust_rational(display_grams or 0)},")
         add(f"        no_consumer: {rust_string(s.get('no_consumer', ''))}, "
+            f"sink: {rust_string(s.get('sink', 'holding'))}, "
             f"note: {rust_string(s.get('note', ''))},")
         add("    },")
     add("];")

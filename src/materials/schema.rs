@@ -465,9 +465,13 @@ mod tests {
             "the three inputs are the hatchet plus the declared trim waste — 3295 = 2900 + 395"
         );
 
-        // The chain's gathers are the only mass the world gives up, and the sum is
-        // what the ground stops holding.
-        let drawn: i64 = gathers().iter().map(|(_, _, grams)| grams).sum();
+        // The rung's own gathers are the mass the world gives up **for it**, and the sum is
+        // what the ground stops holding. Read from the reduction rather than by summing every
+        // gather in the world: the founding day added its own gathers (`forage` first among
+        // them), and the old form of this line was secretly asserting that nothing else in the
+        // world is ever gathered — which stopped being true the moment somebody could eat.
+        let plan = crate::materials::chain::plan("hatchet", 2900).expect("the rung reaches the ground");
+        let drawn: i64 = plan.leaves.iter().map(|leaf| leaf.grams).sum();
         assert_eq!(drawn, 3000 + 1000 + 100, "the stone rung draws 4.1 kg from the world");
         assert!(
             gathers().iter().all(|(_, name, _)| substance(name)

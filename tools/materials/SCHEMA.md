@@ -76,6 +76,10 @@ rot             condition lost per sim-day as a rational — 0 for anything that
                 a rot that is not mass is a rot nothing has to account for
 tags            declared, closed: fuel, edible, tool, structure, precious, salvage
 source          how it enters the world: mined | grown | gathered | salvaged | made
+sink            where it goes when a process gives it up: holding (the default, the site the
+                work happened at) | atmosphere (the open air). A **Gas must declare one**, and
+                a gas that declares `holding` is refused: a gas that lands at a site is a gas
+                somebody is holding, which is what the `Gas` unit exists to say is not true
 ```
 
 `source` is the slot Q71 asked to reserve, and **`salvaged` is a working entry, not a placeholder**:
@@ -96,6 +100,12 @@ waste           the declared losses, which are outputs and therefore balance
 
 A process with no `mechanism` is a defect. A process whose tier does not exist is a defect. A
 process whose inputs or outputs cannot become grams is a defect.
+
+`requires` is where a process says what has to **stand** for the work to be possible, and it is
+checked against `VOCABULARY`, which is a vocabulary and not a wish list: an entry appears there
+when a process requires it and not before, and an entry nothing requires is refused. The first
+entry — `structure: kiln` — arrived with the first three processes that need a fire, which is the
+rule working rather than an exception to it.
 
 ## The gate
 

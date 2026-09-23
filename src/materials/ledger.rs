@@ -99,6 +99,18 @@ pub fn worn_account(family: &str) -> String {
     format!("worn:{family}")
 }
 
+/// The account a substance goes to when it leaves the world a person can touch (Q174): a gas
+/// whose declared `sink` is `atmosphere` is booked here rather than at the site it was made at.
+///
+/// It is an ordinary account in an ordinary map, and that is the whole point rather than a
+/// convenience: the air is somewhere mass *is*, so the audit reads it, `verify.exe` prints it,
+/// and a fire that turned a kilo of charcoal into smoke leaves the books balanced without a
+/// single exception being made for it. Nothing can pick it up again — which is a rule the sim
+/// keeps by never making this account a source, rather than a rule the ledger has to enforce.
+pub fn atmosphere_account(substance: &str) -> String {
+    format!("atmosphere:{substance}")
+}
+
 /// An account holding loose mass **at a site**: what stands on a tile waiting to be worked or
 /// carried away (C9 round 13, Q77).
 ///

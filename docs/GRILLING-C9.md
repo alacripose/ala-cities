@@ -1847,4 +1847,143 @@ it has its own test now.
   planting is unbuilt). Unchanged, and restated here only because the audit now reads one more
   account and a reader should check the same claim against it.
 
+---
+
+## Round 28 — the founding party, and what a first day costs
+
+*Asked after the maintain landed, and opened by playing it: the report from the running game was
+that **nothing happens** in a fresh world except roads and power plants, and that those two should
+not be conforming — they appear out of credits rather than out of material. Grilling from there
+re-shaped the next three slices before any of them was written.*
+
+| # | Question | ➡️ recommendation | ✔ answer |
+|---|---|---|---|
+| Q166 | What lands next, given nothing is visible until there are hands | finish phase 3, or hands first | ✔ **hands first** — Q5's founder works by hand at t=0 and Q99's needs post the first work |
+| Q167 | The cut, once the road half grew its own mechanics | structures and gate now, roads next | ✔ **all of it in one slice** at first, then re-cut by Q168 and Q169 |
+| Q168 | Where a dirt road's earth comes from | a surface scrape, a borrow pit, or the tile's own ground | ✔ **between all three** — and the primitive road is a **desire path** worn by traffic, not a built thing; the material it moves *has to go somewhere*; and soils want the model farming needs |
+| Q169 | The order those answers imply | hands now, generator next, paths after | ✔ **hands → generator → paths (cut and fill)** |
+| Q170 | Who the founding party is | one founder / a small party / the founder and the player | ✔ **a small party**, and the player's civilian may drop in **asynchronously**, resuming the progress recorded in that save from the last time they entered first person (Q160) |
+| Q171 | A founder has no home, and today a citizen without one cannot walk or claim work | a shelter / sleeping rough / a camp | ✔ **both** — a **Shelter** they raise (Q102) *and* a homeless citizen who can walk and work |
+| Q172 | How much of the needs model lands | shelter's rung only / all five / none | ✔ **all five wired** |
+| Q173 | What satisfies **food** | forage patches / let hunger not kill / animals | ✔ **forage patches** — a new biological surface kind, taken by hand, the first consumer of the `edible` tag |
+| Q174 | What satisfies **warmth** | a fire that burns fuel / being inside a shelter / wait | ✔ **a fire that burns fuel** — and burned mass has a destination, which makes the **atmosphere** account real |
+| Q175 | How far Q51's rungs run | degrade and illness, death gated / the whole ladder | ✔ **the whole ladder, death included** |
+| Q176 | Q160's incarnate | named, not built / a minimal incarnation | ✔ **named, not built** — an incarnate is a citizen record like any other, which it already is |
+
+### Settled
+
+* **The primitive road is not built, it is worn.** A desire path is what traffic makes: where people
+  walk a lot, a track appears, and it is cheaper to walk than open ground. That inverts the road
+  from a thing the player lays into a thing the city *shows* — and it makes Q84's *"a person walks
+  anywhere; a wagon needs a road"* a precondition rather than a remark, because a world whose
+  citizens are bound to the road graph cannot wear a path off it. **Desire paths cannot be built
+  before off-road walking**, and both come after the ground has a real model.
+* **The generator comes before anything that depends on the ground.** The terrain today is grass and
+  water booleans; a path, a graded road and a farm all read the ground's own soil, and building any
+  of them on a placeholder would have to be rewritten. So the order is **hands → the ground →
+  paths/roads/farming**, and the ground slice is Q168's *"cut and fill, properly"*: a real terrain
+  with biomes and layers that carry mass.
+* **A first day has to be survivable by hand.** The founding party lands with nothing: they gather
+  **forage** (a new biological patch), take **timber and fibre**, raise a **shelter** out of what
+  they gathered, and light a **fire** that burns fuel. Every one of those steps is a declared
+  substance, patch, kind or process, and each is drawn, held and audited like everything else —
+  which is what makes the first hour of the game the same system as the last.
+* **A fire's mass goes to the atmosphere.** Burning is the first process whose output a person
+  cannot hold: timber in, charcoal and ash out, and the rest leaves as **flue gas** into an
+  `atmosphere:` account. That is not a convenience — Q114's rule is that nothing disappears, and a
+  process whose loss is unnameable is the one place this campaign would have to start making
+  exceptions. `Gas` and the tables' own note about a future atmosphere account already anticipated
+  it.
+* **Death is part of the first slice, deliberately.** Q51's third rung is death, Q114 says a corpse
+  is mass like any other, and Q129 says an estate settles — debts first, then heirs, escheat to the
+  last issuer or the government. The consequence is accepted rather than softened: a founder can
+  starve, the corpse enters the ledger, and the run continues without them (Q60: the run is never
+  ended for the player, only the body).
+* **A homeless citizen is a citizen.** `claim_tasks` and `step_citizens` both return early on a
+  citizen with no home, which is why the founding party could not exist before now: the code
+  required a building to be *in* the world before it would let anybody act *on* it. A person's place
+  becomes where they stand, and the shelter stops being a precondition for work.
+* **The player proposes, and the record already said so.** Q35/Q87 (*"an ordinary task"*), Q98's
+  non-authoritative plan store and round 1's own *"the player is a proposer, not a place-er"* are one
+  decision: the player's click writes a **proposal**, and proposals are worked by hands or not at all.
+  A power plant the player asks for is therefore mass the ground gives up, not credits conjured into
+  a box — and the same is true of every road that is ever built rather than worn.
+* **The incarnate waits for the interface.** Q160 settled what an incarnate *is* (a citizen record
+  like any other: needs, tasks, obligations, decay, death, and no privilege but the loss of one).
+  Entering the world in first person is an interface project, and the record keeps the decision
+  rather than half-building it.
+
+### What this round changes about what has already landed
+
+* **The player's own build pays in credits, not material** — named open in phase 3's first note — is
+  now **scheduled**, not merely recorded: it becomes a proposal in the founding slice.
+* **`WORK_REACH` and the road-bound router** are still right for a city that has roads, and they are
+  now explicitly the *before* half of Q84: the off-road walk with its declared cost arrives with
+  paths, and the router's reach stays what it always was.
+* **Two kinds arrive that Q102 named and no slice had built**: a **Shelter** (thatch on sticks —
+  timber and fibre, no joinery) and a **Kiln** (fire under clay, which is what warmth, brick and
+  charcoal all need). `Store` waits for storage to mean something.
+
+---
+
+## Built — the founding day's tables, and the sky
+
+*The first half of round 28's slice, landed and gated while the sim half is written: the note is
+split so that what exists can be checked rather than assumed, and the list of what does **not**
+exist yet is at the bottom of it.*
+
+**What landed.** A first day's worth of substances, and the first thing the world has ever done
+that a person cannot hold:
+
+* **Five substances**: `forage` (the first consumer of the `edible` tag — eaten by a *person*,
+  which is a need rather than a process row), `charcoal` and `brick` (what a fire makes), `ash`
+  (what a fire leaves that is still solid) and **`flue_gas`** — the first substance in the world
+  whose declared **sink** is the atmosphere.
+* **A substance now says where it goes.** `sink` is closed — `holding` (the default: the site the
+  work happened at) or `atmosphere` — and the gate refuses a **Gas** that declares `holding`,
+  because a gas that lands at a site is a gas somebody is holding. That is the `Gas` unit's whole
+  reason, now enforced rather than implied.
+* **The vocabulary's first entry**: `VOCABULARY["structure"]["kiln"]`, required by three of the
+  four new processes. The comment that stood over an empty table — *"the first process that needs
+  a roof, a kiln or a hammer must declare one here to be legal"* — now has a row under it, and
+  the gate that refuses an entry nothing requires is unchanged.
+* **Four processes**: `forage` (2000 g, half an hour, no structure), `fire brick` (clay in,
+  brick and water vapour out, 950 °C of *material* heat), `char timber` (timber in, charcoal, ash
+  and smoke out, 400 °C) and `burn charcoal` (the warming fire, and the only row in the table
+  whose `heat_kind` is `flame`).
+* **The arithmetic that a gas forces.** A substance measured in millilitres cannot be declared in
+  grams, so every gas quantity is a volume whose mass is exact: 60 000 mL of flue gas is 78 g,
+  1 700 000 mL is 2 210 g, and the rows are whole **in both units** because the gate refuses
+  anything else. Physically this is the honest shape of a fire — a kilogram of smoke is most of a
+  cubic metre — and it is the first time the unit rule has had to be *used* rather than explained.
+* **The sky is an account.** An output whose substance declares `sink = atmosphere` is booked to
+  `atmosphere:<substance>` — an ordinary account in an ordinary map, read by the audit and printed
+  by `verify.exe` like any other holding. Nothing was changed to make the books balance for a
+  fire: **char a load of timber and burn a kilo of the charcoal, and `loose_g` is zero to the
+  gram**, with the smoke sitting in the air's account rather than vanishing.
+
+**One test was wrong, and the tables found it.** The schema's own rung test summed *every* gather
+in the world and asserted it totalled 4.1 kg — which quietly meant *nothing else is ever
+gathered*. The moment somebody could eat, that line failed. It now reads the rung's own leaves out
+of the reduction, so the number it checks is the rung's and not the world's.
+
+**Readings, stated rather than assumed.** Both of the new rates sit on `SOURCES.md` rows that are
+still `[NS]` — charcoal yield, and what a hectare yields — and both are therefore marked `[D]`
+in their own notes, with the source row amended to say a declared number is standing in for it.
+That is this record's rule for an unfilled row: **declare it, name the row, and never dress it as
+a citation.**
+
+**What this does not yet build, in the order it has to happen.**
+
+1. **The two kinds** — `Shelter` and `Kiln` as building kinds, with parts, mass and a claim, so a
+   fire can actually stand somewhere. Until then the vocabulary has no building behind it.
+2. **The gate's teeth** — a make whose process requires a structure being refused until that
+   structure stands within reach of the site, with the refusal naming it in a case.
+3. **The founding party**, the needs, the off-road walk and the player's proposal: the rest of
+   round 28, in that order.
+
+Until 1 and 2 land, the three kiln rows can be *planned* by a chain and *run* by a task with no
+kiln anywhere — which is exactly the state `VOCABULARY` was declared to make visible, and the
+reason this note says so out loud instead of leaving it to be discovered.
+
 [read_files: showing lines 1600-1639 of 1639.]

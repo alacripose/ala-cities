@@ -150,6 +150,16 @@ closes through the one `repair` a repair ticket also closes through. What gets b
 snapping the number up. On the rung's own fixture the city weathers its home and mends it with no
 help from the test, and the audit still reads zero.
 
+**A first day, and the sky.** The tables now carry what a founding party needs to stay alive: an
+`edible` substance taken from a forage patch, and a fire — `charcoal` and `brick` out of a kiln,
+`ash` left behind, and **`flue_gas`**, the first substance whose declared *sink* is the atmosphere.
+Where an output goes is the substance's own declaration rather than the caller's choice, and a gas
+declaring a site holding is refused by the gate: a kilogram of smoke is most of a cubic metre, so
+gas quantities are volumes whose mass is exact in both units. The air is an ordinary account
+(`atmosphere:flue_gas`) that the audit reads and `verify.exe` prints — burn a load of timber and a
+kilo of the charcoal, and the books balance **to the gram** with the smoke sitting in the sky
+rather than vanishing.
+
 A save carries the two deltas — worn, mended — and the condition is arithmetic, so the format went
 to **v3**: a v2 save's float condition is converted to mass on the way in, and the derivation is
 reported per structure rather than happening quietly. The gate is two-layered on purpose:

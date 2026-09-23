@@ -2292,7 +2292,16 @@ impl World {
             let Some(grams) = material_schema::quantity_grams(name, *amount) else {
                 return Some(format!("`{name}` in `{}` does not reach grams", process.name));
             };
-            let account = material_ledger::site_account(task.site, name);
+            // Where an output goes is the **substance's own declared sink** rather than this
+            // caller's choice: a gas that landed at the site would be a gas somebody is holding,
+            // which is the contradiction the schema refuses. Everything else lands where the work
+            // happened, which is what makes a loss a holding rather than a disappearance.
+            let account = match material_schema::substance(name) {
+                Some(entry) if entry.sink == "atmosphere" => {
+                    material_ledger::atmosphere_account(name)
+                }
+                _ => material_ledger::site_account(task.site, name),
+            };
             self.holdings.record(&account, grams);
         }
         None
@@ -4038,6 +4047,80 @@ mod tests {
 
         // The city has a tool, so it does not post the rung again — the want is answered.
         assert!(!world.post_works_tasks(), "a city with a hatchet has no first rung to work");
+    }
+
+    // -----------------------------------------------------------------
+    // A fire: what burns, and where what it gives up goes (round 28's Q174)
+    // -----------------------------------------------------------------
+
+    /// A kiln's smoke leaves the world a person can touch: an output whose **substance** declares
+    /// `sink = atmosphere` is booked in the air's own account rather than at the site it was made
+    /// at, and the audit reads it like any other holding. This is the whole reason `Gas` and that
+    /// account exist — a fire is the one place the ledger would otherwise have to make an
+    /// exception, and Q114 does not allow exceptions.
+    #[test]
+    fn a_fire_puts_its_smoke_in_the_atmosphere_and_the_books_still_balance() {
+        let mut world = rung_world();
+        let site = world.works_site().expect("a works");
+        // Timber, taken out of the world's own patch and left at the works: the mass a fire turns
+        // into smoke has to come from somewhere the audit already knows about.
+        let patch = (0..world.tiles.len() as u32)
+            .find(|index| world.surface_at(*index).is_some_and(|patch| patch.substance == "timber"))
+            .expect("the fixture grows timber");
+        let taken = world.harvest(patch, 3000);
+        assert_eq!(taken, 3000, "one armful of timber");
+        world.credit_holding(&material_ledger::site_account(site, "timber"), taken);
+
+        // Char it, then burn what it made. Both are declared rows with a kiln behind them; the
+        // gate for *that* is a later slice, and what is under test here is where the smoke goes.
+        let burn = |process: &str, world: &mut World| {
+            let task = Task {
+                id: 1,
+                verb: sim_task::Verb::Make,
+                kind: BuildingKind::Home,
+                site,
+                family: String::new(),
+                requires_g: 0,
+                material: Vec::new(),
+                process: process.to_string(),
+                substance: String::new(),
+                fetch_from: None,
+                stage: sim_task::Stage::Working,
+                work_remaining: 1,
+                claimed_by: None,
+                opened_tick: 0,
+            };
+            assert!(world.run_process(&task).is_none(), "`{process}` should run");
+        };
+        burn("char timber", &mut world);
+
+        let charcoal = world.holding_of(&material_ledger::site_account(site, "charcoal"));
+        let ash = world.holding_of(&material_ledger::site_account(site, "ash"));
+        let smoke = world.holding_of(&material_ledger::atmosphere_account("flue_gas"));
+        assert_eq!(charcoal, 750, "a quarter of the wood comes out as charcoal");
+        assert_eq!(ash, 40, "and 1 % of it stays as ash");
+        assert_eq!(smoke, 2210, "and the rest is 2 210 g of smoke, at 1.3 g/L");
+        assert_eq!(charcoal + ash + smoke, 3000, "the three outputs are the wood that went in");
+
+        // Burn the charcoal for heat, and the smoke it makes lands in the same air: an account, not
+        // a site, because a gas that sat at the works would be a gas somebody is holding.
+        burn("burn charcoal", &mut world);
+        let after = world.holding_of(&material_ledger::atmosphere_account("flue_gas"));
+        assert_eq!(after, 2210 + 975, "a second fire's smoke joins the first's");
+        assert_eq!(
+            world.holding_of(&material_ledger::site_account(site, "flue_gas")),
+            0,
+            "and none of it is ever standing at a site"
+        );
+
+        let audit = world.mass_audit();
+        assert!(!audit.holdings().is_empty(), "the air is read like any other holding");
+        assert!(
+            audit.conserves(),
+            "a fire moves mass and never loses it: {:#?}",
+            audit.findings()
+        );
+        assert_eq!(audit.loose_g(), 0, "to the gram, which is the only reading that counts");
     }
 
     // -----------------------------------------------------------------

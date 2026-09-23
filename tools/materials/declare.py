@@ -535,6 +535,65 @@ SUBSTANCES = {
         no_consumer="an end product: mixed-material trimmings, and the one declared destination "
                     "for a process whose losses are not one material",
         note="declared as `soil` because a mixture of stone, timber and fibre reads as aggregate"),
+    # --- fed, fired and burned: the founding day's own materials -------------
+    #
+    # These five are what Q173/Q174 asked for: something to eat, something to burn,
+    # something a fire makes, and the two things a fire leaves behind. The last of
+    # them is the first substance in the world that **nobody can hold** — see `sink`.
+    "forage": dict(
+        family="organic", hue="natural", unit="Mass",
+        density=q(6, 10), tags=("edible",), source="gathered",
+        display=("kg", q(1000)),
+        no_consumer="eaten by a **person**, which is a need rather than a process row (Q51): the "
+                    "first consumer of the `edible` tag is somebody's hunger, and the metabolism "
+                    "that would make it a process — food in, body mass and waste out — is the "
+                    "coupling phase 7 owns. A hungrier world would file this as unfinished work "
+                    "with a name, which is what it is",
+        note="what a person can pick and eat: greens, berries and roots, taken from a forage "
+             "patch by hand. The first consumer of the `edible` tag, and the first thing in the "
+             "world that keeps somebody alive rather than keeping a wall standing. Q15/Q28's "
+             "farming replaces the patch economy, not this substance"),
+    "charcoal": dict(
+        family="soil", hue="natural", unit="Mass",
+        density=q(5, 10), tags=("fuel",), source="made",
+        display=("kg", q(1000)),
+        note="carbonised wood: the fuel of the ages before coal, and the first thing a kiln "
+             "makes. Its yield from timber is **declared, not sourced** — `SOURCES.md`'s "
+             "charcoal-yield row is [NS], so the ratio below is a game rate wearing the word "
+             "declared rather than a citation"),
+    "brick": dict(
+        family="ceramic", hue="natural", unit="Mass",
+        density=q(19, 10), tags=("structure",), source="made",
+        display=("kg", q(1000)),
+        no_consumer="laid by a **build**, not by a process row: the first brick wall is a bill of "
+                    "materials a task plans, which is the sim's business rather than this "
+                    "table's. The process that would consume it — laying a fired wall — needs a "
+                    "mortar, and mortar needs the lime row `SOURCES.md` has not sourced yet",
+        note="fired clay, and the first substance in the world that a fire makes rather than a "
+             "hand: `clay`'s own note said brick waits for the kiln, and this is that kiln's "
+             "first product"),
+    "ash": dict(
+        family="soil", hue="natural", unit="Mass",
+        density=q(8, 10), tags=(), source="made",
+        display=("kg", q(1000)),
+        no_consumer="an end product: what a fire leaves that is still solid. It is mass the "
+                    "ledger can point at, which is the whole reason a burn declares it rather "
+                    "than rounding the loss away",
+        note="the mineral part of wood and charcoal, which does not burn: declared at 1 % of "
+             "the wood by mass for charring and 2.5 % for charcoal, marked [D]"),
+    "flue_gas": dict(
+        family="soil", hue="natural", unit="Gas",
+        density=q(13, 10_000), tags=(), source="made",
+        display=("L", q(1000)),
+        sink="atmosphere",
+        no_consumer="what leaves a fire, and it leaves **nowhere a person can hold it**: this "
+                    "is the first substance whose declared sink is the atmosphere (Q114 — decay "
+                    "goes to a destination account, never to nothing), and it is why the `Gas` "
+                    "unit exists",
+        note="a chimney's mixture read as one substance — mostly nitrogen, carbon dioxide and "
+             "water vapour — at air's own density, 1.3 g/L at STP. Declared as one substance "
+             "on purpose: splitting it into its components would be chemistry this game does "
+             "not model, and a mixture that balances in grams is what the ledger needs"),
     # --- water: a volume, and the one substance that is not measured in mass --
     "water": dict(
         family="water", hue="natural", unit="Volume",
@@ -547,14 +606,19 @@ SUBSTANCES = {
 }
 
 #: The process structures, tools and skills a process may require, each with the
-#: note that says what it is. **Empty today, and that is the declaration**: the
-#: first rung is hand work (Q5 — a founder dropped into the world works by hand at
-#: a bad rate), so `hands & stone` requires no structure and no tool, and the first
-#: process that needs a roof, a kiln or a hammer must declare one here to be
-#: legal. An entry no process requires is refused, so this cannot fill up with
-#: intentions.
+#: note that says what it is. **The first entry arrived with the first process that
+#: needed one**, which is what this comment said would happen: the rung itself is
+#: hand work (Q5 — a founder dropped into the world works by hand at a bad rate) and
+#: requires nothing, and a fire is the first thing that has to *stand* before work
+#: can happen at it. An entry no process requires is refused, so this cannot fill up
+#: with intentions.
 VOCABULARY = {
-    "structure": {},
+    "structure": {
+        "kiln": "a fire under clay: it fires brick, it chars timber, and it is where a person "
+                "warms their hands (Q102's `Kiln`/`Fire`, one kind with three jobs — an open "
+                "hearth and an insulated kiln differ by how much heat they keep, which is a "
+                "number this table does not model yet)",
+    },
     "tool": {},
     "skill": {},
 }
@@ -621,6 +685,61 @@ PROCESSES = {
         requires=dict(),
         note="the chain's end, and Q7's own example: a hatchet fashioned from natural materials, "
              "which is the tool that multiplies work before anything is mined"),
+
+    # --- the founding day: eat, then burn -----------------------------------
+    #
+    # Q173 and Q174 took these four rows: what a person picks and eats, what a fire
+    # makes, and what a fire does when it is the only warm thing in the world. Three
+    # of the four **require the kiln**, which is what turns `VOCABULARY["structure"]`
+    # from an empty declaration into a gate: no row here can be run by anybody
+    # standing anywhere, only at a fire that stands.
+    "forage": dict(
+        tier="hands & stone", inputs=(),
+        outputs=(("forage", q(2000)),),
+        mechanism=dict(hours=q(1, 2), labour_hours=q(1, 2), power_kw=0),
+        requires=dict(),
+        note="2000 g is a person's day of eating, picked in half an hour of game time: the "
+             "rate is declared [D], because no source states what a game forage costs, and "
+             "the real figure it should sit near (a person eats 1-2 kg of food a day) is the "
+             "only sourced half of it"),
+    "fire brick": dict(
+        tier="hands & stone",
+        inputs=(("clay", q(1000)),),
+        outputs=(("brick", q(922)), ("flue_gas", q(60_000)),),
+        mechanism=dict(hours=q(2), labour_hours=q(1, 2), power_kw=0,
+                       heat_c=q(950), heat_kind="material"),
+        requires=dict(structure="kiln"),
+        note="900-1000 °C is what fired brick is actually fired at, and `heat_kind` is "
+             "`material` because it is the clay body that has to reach it, not the flame — "
+             "the distinction SOURCES.md found is worth about 600 °C. The gas is declared as a "
+             "**volume** because a gas is one: 60 000 mL at 1.3 g/L is exactly 78 g, which is "
+             "the clay's loss on ignition [D] — 7.8 % of it leaves as water and carbon dioxide, "
+             "and the arithmetic is whole in both units or the gate refuses the row"),
+    "char timber": dict(
+        tier="hands & stone",
+        inputs=(("timber", q(3000)),),
+        outputs=(("charcoal", q(750)), ("ash", q(40)), ("flue_gas", q(1_700_000)),),
+        mechanism=dict(hours=q(4), labour_hours=q(1), power_kw=0,
+                       heat_c=q(400), heat_kind="material"),
+        requires=dict(structure="kiln"),
+        note="a quarter of the wood's mass comes out as charcoal, which is the low end of the "
+             "real range (20-35 % depending on the kiln) — **declared, not sourced**, because "
+             "`SOURCES.md`'s charcoal-yield row is [NS] and this table will not pretend to a "
+             "citation it does not have. 400 °C is where wood pyrolyses [S, range]. The rest "
+             "leaves as 1 700 L of flue gas (2 210 g at 1.3 g/L) and 40 g of ash, and the "
+             "three outputs are the 3 000 g that went in, to the gram and to the millilitre"),
+    "burn charcoal": dict(
+        tier="hands & stone",
+        inputs=(("charcoal", q(1000)),),
+        outputs=(("ash", q(25)), ("flue_gas", q(750_000)),),
+        mechanism=dict(hours=q(1), labour_hours=q(1, 8), power_kw=0,
+                       heat_c=q(900), heat_kind="flame"),
+        requires=dict(structure="kiln"),
+        note="the warming fire: a kilo of charcoal a day, 2.5 % of it left as ash and the "
+             "rest up the chimney as gas. `heat_kind` is `flame` here and `material` in the "
+             "two rows above, which is the ambiguity made explicit rather than averaged — "
+             "what a person warms their hands on is the flame, and what a brick needs is the "
+             "body of clay itself"),
 }
 
 

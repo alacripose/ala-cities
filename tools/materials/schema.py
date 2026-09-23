@@ -51,6 +51,11 @@ SOURCES = ("mined", "grown", "gathered", "salvaged", "made")
 #: a defect, because a vocabulary that grows by accident is not a vocabulary.
 TAGS = ("fuel", "edible", "tool", "structure", "precious", "salvage")
 
+#: Where a substance goes when a process gives it up. Closed, because "somewhere
+#: else" is how a ledger stops balancing: `holding` is the site the work happened
+#: at, `atmosphere` is the open air (Q114's destination account, made of air).
+SINKS = ("holding", "atmosphere")
+
 
 def _is_rational(value) -> bool:
     return isinstance(value, (int, Fraction)) and not isinstance(value, bool)
@@ -135,6 +140,19 @@ def defects() -> list:
                     f"{where} declares `{field}` as {value!r}, which is not a rational — "
                     f"a float here is where the balance stops balancing"
                 )
+        sink = substance.get("sink", "holding")
+        if sink not in SINKS:
+            found.append(
+                f"{where} declares sink `{sink}`, which is not one of {', '.join(SINKS)} "
+                f"— where a substance goes when a process gives it up is a decision, not a "
+                f"detail of the caller"
+            )
+        elif unit == "Gas" and sink == "holding":
+            found.append(
+                f"{where} is a gas and declares sink `holding`: a gas that lands at a site is "
+                f"a gas somebody is holding, and the whole reason the `Gas` unit exists is "
+                f"that some mass leaves the world a person can touch"
+            )
         if substance.get("source") not in SOURCES:
             found.append(
                 f"{where} declares source `{substance.get('source')}`, which is not one of "
