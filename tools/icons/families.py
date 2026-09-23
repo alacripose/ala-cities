@@ -22,6 +22,18 @@ a preference:
 * **A parameter that the object's identity pins is `fixed`**, with the measurement
   that pins it. The ticket is the same ticket at every point on the ladder; what
   moves is its detailing, and pretending otherwise would be inventing variation.
+* **A family's fill is a *response*, not a constant** (a204). Its envelope was one
+  number at λ = 0, because its reference is an md1 object, but the two built families
+  disagree in *direction*: the gear's fill falls along the ladder as its bore shrinks
+  (23.6 % → 6.5 % of the object) while the road's rises as its lanes widen. So each
+  family declares its fill at both ends — the md1 end measured from its own
+  reference, the iOS 6 end declared and then *replaced by measurement* as its
+  geometry lands — and the envelope interpolates.
+* **Whether the pose ramps is declared per family** (a205), because a carriageway and
+  a gear do not want the same projection. A family that holds its pose declares its
+  pose parameters with **equal ends** and `check()` enforces the equality, so a held
+  pose cannot quietly become a ramp later; a family with no pose parameters declares
+  nothing, because the question does not arise for it.
 
 `check()` is the gate on this table: a family without a reference, a parameter
 without a source, or a count whose endpoints are not whole numbers all fail it.
@@ -76,6 +88,16 @@ FAMILIES = {
                          "fill": 0.5665},
             "note": "6 runs at 0.80 and 0.92 of R; one 646 px void ≈ 0.39 R",
         },
+        "fill_response": {
+            "md1": 0.5665,
+            "md1_source": "measured: action/settings' own ink over its own box",
+            "ios6": 0.61,
+            "ios6_source": "measured: this family's own λ = 1 smoke render under the "
+                           "exclusion reading (0.6100). Note the direction: the gear "
+                           "gets *denser* along the ladder as its bore closes, so "
+                           "both of the family endpoints rise even though the bore "
+                           "share of the object falls 24.4 % → 6.4 %",
+        },
         "parameters": (
             {"name": "teeth", "type": "count", "md1": 6, "ios6": 12,
              "unit": "whole teeth",
@@ -105,6 +127,23 @@ FAMILIES = {
             "measured": {"box": [76, 76], "pieces": 6, "voids": 0, "fill": 0.2825},
             "note": "the ribbon arrives in 6 components; its centre column carries "
                     "2 runs at 89 % ink",
+        },
+        "fill_response": {
+            "md1": 0.2825,
+            "md1_source": "measured: maps/add_road's own ink over its own box",
+            "ios6": 0.605,
+            "ios6_source": "measured: this family's own λ = 1 smoke render under the "
+                           "exclusion reading (0.6050, four lanes at 24° heading and "
+                           "38° pitch)",
+        },
+        "pose": {
+            "response": "hold",
+            "parameters": ("heading", "pitch"),
+            "source": "a205: a road tile is seen obliquely, the way Cities: Skylines "
+                      "draws its UI tiles, so the pose is the object's own rather "
+                      "than a function of λ — the md1 sample keeps its reference's "
+                      "fragmentation and fill while taking its pose from that idiom, "
+                      "and both pose parameters carry equal ends",
         },
         "parameters": (
             {"name": "lanes", "type": "count", "md1": 2, "ios6": 4,
@@ -141,17 +180,19 @@ FAMILIES = {
                        "and an arm measured against the span overflowed the frame"},
             {"name": "corner_rounding", "type": "continuous", "md1": 0.0, "ios6": 0.14,
              "unit": "fraction of the ribbon span", "source": "authored"},
-            {"name": "heading", "type": "continuous", "md1": 45.0, "ios6": 24.0,
+            {"name": "heading", "type": "continuous", "md1": 45.0, "ios6": 45.0,
              "unit": "degrees in the icon's own plane",
-             "source": "measured in effect: the reference mark is diagonal (its box is "
-                       "76x76 while its ink is 17.7 % of it, so it cannot be an "
-                       "axis-aligned ribbon), which is also why its fill is 0.28"},
-            {"name": "pitch", "type": "continuous", "md1": 0.0, "ios6": 38.0,
+             "source": "measured: the reference mark is diagonal (its box is 76x76 "
+                       "while its ink is 17.7 % of it, so it cannot be an "
+                       "axis-aligned ribbon), which is also why its fill is 0.28. Held "
+                       "at every λ by the pose declaration below (a205)"},
+            {"name": "pitch", "type": "continuous", "md1": 38.0, "ios6": 38.0,
              "unit": "degrees about the carriageway's length",
-             "source": "authored (a203): the fake-isometric pose the person asked "
+             "source": "authored (a203/a205): the fake-isometric pose the person asked "
                        "for, which is what reveals the carriageway's top face and "
-                       "its side — flat at the md1 end, where the reference idiom is "
-                       "a flat mark, and posed at the iOS 6 end"},
+                       "its side. Held at every λ rather than ramped, because that "
+                       "is how the object is drawn rather than a property of the "
+                       "style language — so the md1 sample is an oblique md1 object"},
         ),
     },
     "bolt": {
@@ -164,6 +205,13 @@ FAMILIES = {
             "note": "re-pointed from action/power_settings_new (a198): a power "
                     "button asserts the switched-on state this icon forbids, and "
                     "the pylon the game means has no reference object behind it",
+        },
+        "fill_response": {
+            "md1": 0.3767,
+            "md1_source": "measured: content/bolt's own ink over its own box",
+            "ios6": 0.72,
+            "ios6_source": "authored provisionally; replaced by this family's own "
+                           "λ = 1 render under the exclusion reading",
         },
         "parameters": (
             {"name": "width_over_height", "type": "continuous", "md1": 0.56,
@@ -189,6 +237,13 @@ FAMILIES = {
             "measured": {"box": [69, 70], "bore_ratio": 0.51, "pieces": 1, "voids": 1,
                          "fill": 0.2812},
             "note": "one 1018 px void ≈ 0.51 R: the bore is what defines the object",
+        },
+        "fill_response": {
+            "md1": 0.2812,
+            "md1_source": "measured: action/search's own ink over its own box",
+            "ios6": 0.45,
+            "ios6_source": "authored provisionally; replaced by this family's own "
+                           "λ = 1 render under the exclusion reading",
         },
         "parameters": (
             {"name": "rings", "type": "count", "md1": 1, "ios6": 3,
@@ -218,6 +273,13 @@ FAMILIES = {
                          "lid_share": 0.17, "fill": 0.7946},
             "note": "the lid is a separate component (540 px of 3204) with a gap "
                     "between it and the body; the reference draws no ridges",
+        },
+        "fill_response": {
+            "md1": 0.7946,
+            "md1_source": "measured: action/delete's own ink over its own box",
+            "ios6": 0.78,
+            "ios6_source": "authored provisionally; replaced by this family's own "
+                           "λ = 1 render under the exclusion reading",
         },
         "parameters": (
             {"name": "taper", "type": "continuous", "md1": 0.68, "ios6": 0.86,
@@ -249,6 +311,14 @@ FAMILIES = {
             "note": "three notches of 64 px each, 1.37 % of the ink — the class the "
                     "3.5 % rule condemns, which is why the notches are drawn larger "
                     "(a199) and the containment divergence is recorded",
+        },
+        "fill_response": {
+            "md1": 0.9125,
+            "md1_source": "measured: notification/confirmation_number's own ink over "
+                          "its own box",
+            "ios6": 0.86,
+            "ios6_source": "authored provisionally; replaced by this family's own "
+                           "λ = 1 render under the exclusion reading",
         },
         "parameters": (
             {"name": "aspect", "type": "fixed", "md1": 1.25, "ios6": 1.25,
@@ -330,19 +400,33 @@ def vector(family: str, lam: float) -> dict:
     return out
 
 
-def fill_envelope(family: str) -> tuple:
-    """The fill range a candidate of this family is judged against (a201).
+def fill_envelope(family: str, lam: float = 0.0) -> tuple:
+    """The fill range this family's candidate **at a point on the ladder** is judged
+    against (a201/a204).
 
-    Its own reference's measurement, widened by the population's relative spread. The
-    corpus band is *not* used as the gate: it is recorded by the check that the
-    catalogue as a whole spans the archives, which is the claim it can actually
-    support.
+    The anchor is the family's own response, interpolated: its reference's measurement
+    at the md1 end, the iOS 6 end it declares — which becomes a measurement too, as
+    soon as that family's geometry exists, and says so in its source until then. One
+    envelope per family could not do this job: the gear's fill *falls* along the ladder
+    as its bore shrinks while the road's *rises* as its lanes widen, so a single range
+    would have to be either wrong at one end or wide enough to stop gating either.
+
+    The width is the population's relative spread, for the reason the constant above
+    records. The corpus band is still *not* the gate: it is a population statistic,
+    and four of the six reference objects fall outside it.
     """
-    fill = declaration(family)["reference"]["measured"].get("fill")
-    if fill is None:
-        raise KeyError(f"`{family}` records no measured fill, so it has no envelope")
-    spread = fill * POPULATION_RELATIVE_SPREAD
-    return (round(max(0.0, fill - spread), 4), round(min(1.0, fill + spread), 4))
+    if not 0.0 <= lam <= 1.0:
+        raise ValueError(f"λ {lam} is outside [0, 1]")
+    response = declaration(family).get("fill_response") or {}
+    md1, ios6 = response.get("md1"), response.get("ios6")
+    if md1 is None or ios6 is None:
+        raise KeyError(
+            f"`{family}` declares no fill response, so a204 has nothing to "
+            f"interpolate and no envelope can be built for it"
+        )
+    anchor = md1 + (ios6 - md1) * lam
+    spread = anchor * POPULATION_RELATIVE_SPREAD
+    return (round(max(0.0, anchor - spread), 4), round(min(1.0, anchor + spread), 4))
 
 
 def accent_slot(bounds: tuple, radius: float = None, clearance: float = None) -> tuple:
@@ -376,6 +460,8 @@ def describe() -> dict:
                 "icon": item["icon"],
                 "object": item["object"],
                 "reference": dict(item["reference"]),
+                "fill_response": dict(item.get("fill_response", {})),
+                "pose": dict(item.get("pose", {})),
                 "parameters": [dict(parameter) for parameter in item["parameters"]],
             }
             for name, item in sorted(FAMILIES.items())
@@ -401,11 +487,52 @@ def check() -> dict:
         if fill is None:
             problems.append(f"`{name}` records no measured fill, so a201 has nothing "
                             f"to build its envelope from")
+        response = item.get("fill_response") or {}
+        if not response:
+            problems.append(f"`{name}` declares no fill response, so a204 cannot judge "
+                            f"it at any λ but the one its reference measures")
         else:
-            low, high = fill_envelope(name)
-            if not low <= fill <= high:
-                problems.append(f"`{name}`'s own measurement {fill} falls outside the "
-                                f"envelope {low}-{high} derived from it")
+            for end in ("md1", "ios6"):
+                if response.get(end) is None:
+                    problems.append(f"`{name}`'s fill response has no {end} end")
+                if not response.get(f"{end}_source"):
+                    problems.append(f"`{name}`'s fill response {end} end has no source, "
+                                    f"so nobody can tell whether it was measured or "
+                                    f"chosen")
+            # Two homes for the same number is how a table like this drifts: the md1
+            # end of the response and the reference's own measurement are one fact.
+            if fill is not None and response.get("md1") != fill:
+                problems.append(f"`{name}`'s fill response starts at "
+                                f"{response.get('md1')} while its reference measures "
+                                f"{fill}; those are the same number")
+        pose = item.get("pose")
+        if pose:
+            if pose.get("response") not in ("hold", "ramp"):
+                problems.append(f"`{name}`'s pose response is "
+                                f"`{pose.get('response')}`, which is neither hold nor "
+                                f"ramp")
+            by_name = {parameter["name"]: parameter for parameter in item["parameters"]}
+            differed = False
+            for parameter_name in pose.get("parameters", ()):
+                parameter = by_name.get(parameter_name)
+                if parameter is None:
+                    problems.append(f"`{name}`'s pose names `{parameter_name}`, which is "
+                                    f"not a parameter of this family")
+                    continue
+                if parameter["type"] != "continuous":
+                    problems.append(f"`{name}`'s pose names `{parameter_name}`, which is "
+                                    f"{parameter['type']} — a pose cannot hold a count"
+                                    f" at a non-integer value")
+                if parameter["md1"] != parameter["ios6"]:
+                    differed = True
+            if pose.get("response") == "hold" and differed:
+                problems.append(f"`{name}` declares its pose as `hold` while a pose "
+                                f"parameter's ends differ, so the declaration would "
+                                f"be a ramp with the ramp deleted")
+            if pose.get("response") == "ramp" and not differed and pose.get("parameters"):
+                problems.append(f"`{name}` declares its pose as `ramp` while every "
+                                f"named pose parameter has equal ends, so the "
+                                f"declaration says nothing")
         icon = item["icon"]
         if icon in seen_icons:
             problems.append(f"`{icon}` is claimed by both `{seen_icons[icon]}` and `{name}`")
@@ -430,7 +557,10 @@ def check() -> dict:
             1 for item in FAMILIES.values() for parameter in item["parameters"]
             if parameter["source"].startswith("measured")
         ),
-        "fill_envelopes": {name: fill_envelope(name) for name in sorted(FAMILIES)},
+        "fill_envelopes": {
+            name: {str(lam): fill_envelope(name, lam) for lam in (0.0, 0.5, 1.0)}
+            for name in sorted(FAMILIES)
+        },
         "composition": dict(COMPOSITION),
         "problems": problems,
     }

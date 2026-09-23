@@ -1110,9 +1110,58 @@ the budget leaves**.
 2. **One envelope per family cannot judge every λ.** The family's envelope is a λ = 0
    reading, because its reference is an md1 object, while the corpus says fill *rises*
    along the ladder (md1 0.490 → touchwiz 0.937 → ios6 1.000) — and our objects'
-   responses differ per family: the **gear's fill falls** (0.327 → 0.404 as its bore
-   shrinks from 23.6 % to 6.5 %) while the **road's rises** (0.364 → 0.519 as its
-   lanes widen). So the gate needs a *response* along λ, not a constant.
+  responses differ per family: the **gear's fill falls** (0.327 → 0.404 as its bore
+  shrinks from 23.6 % to 6.5 %) while the **road's rises** (0.364 → 0.519 as its
+  lanes widen). So the gate needs a *response* along λ, not a constant.
+
+  > **Correction (same turn).** Both halves of that sentence are wrong, and the
+  > second is wrong about a direction I read straight off the numbers: 0.327 →
+  > 0.404 is a **rise**, not a fall. Once the reading actually describes the body
+  > (§8.13) both families rise along λ — the gear 0.469 → 0.610, the road 0.502 →
+  > 0.605 — so the two responses agree in sign and differ only in slope. What is
+  > still true, and is why a204 was needed, is that the *values* differ per family
+  > and per λ. Recorded rather than edited away: the wrong claim was written from
+  > accent-included readings, which is the same defect the correction below fixes.
+
+## 8.13 The reading describes the body, and what that exposed
+
+**The exclusion works, and its self-check passes**: the accent's declared disc
+projects to `excl 155–159` judged pixels against the accent's own `≈129`. (The
+excess is the disc's one-pixel margin, below.)
+
+**The first version of it produced a false defect, and the run caught it.** Cutting
+the disc exactly at the declared radius left the accent's antialiased fringe behind
+as a halo, and the topology walk honestly reported the **body** as arriving in four
+pieces — 1–11 px fragments at the same corner in every run. A measurement error that
+*looks like the defect the rule exists to catch* is the worst kind, so the disc is
+grown by one judged pixel and the reason is in the code rather than in a comment
+about tolerances.
+
+**With the reading honest, the body is one piece at every λ for both families, and
+the fill is what it says:**
+
+| family | λ | fill | envelope (a204) | pieces | voids |
+|---|---|---|---|---|---|
+| gear | 0.00 | 0.469 | 0.37–0.76 | 1 | 1 (24.4 %) |
+| gear | 0.50 | 0.521 | 0.38–0.79 | 1 | 1 (13.4 %) |
+| gear | 1.00 | 0.610 | 0.40–0.82 | 1 | 1 (6.4 %) |
+| road | 0.00 | **0.502** | **0.18–0.38** | 1 | 0 |
+| road | 0.25 | **0.519** | **0.24–0.49** | 1 | 0 |
+| road | 0.50 | 0.551 | 0.29–0.60 | 1 | 0 |
+| road | 1.00 | 0.605 | 0.40–0.81 | 1 | 0 |
+
+The gear is **in at every λ** once its own λ = 1 reading replaces the authored
+endpoint (0.61 measured, not 0.40 guessed) — the response curve doing exactly the job
+a204 asked of it. The road is in from λ = 0.5 up.
+
+**And the road's md1 end is a real conflict, not a tuning gap.** Its anchor is
+0.2825 — *measured from its own reference* — but that reference reaches 0.2825 by
+being a **fragmented** glyph: `maps/add_road` arrives in **6 components** with 17.7 %
+ink in a 76×76 box, because it is an MD1 *map symbol*, several strokes drawn apart.
+Our body must be **one welded piece** (a184/a202), and a solid oblique tile measures
+0.50 at the md1 end: an object cannot be one piece and six at once. So the number the
+family's own reference supplies is unreachable by the object the family declares, and
+choosing which of the two yields is the person's call, not the builder's (round 9).
 
 ---
 

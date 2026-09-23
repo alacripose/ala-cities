@@ -42,16 +42,22 @@ def material(bpy, family, hue, finish=None):
     return openpbr.build_material(bpy, f"smoke:{family}:{hue}", parameters)
 
 
-def render_and_read(scene, path, px=generate.DECISION_PX):
+def render_and_read(scene, path, exclude=None, px=generate.DECISION_PX):
     """Render at the rig's own resolution and read it back at the judged size.
 
     Exactly the sequence the review pipeline uses (`render_to` then
     `rig.downsample`), so a number printed here means what it will mean in the
     review set rather than being a second, friendlier measurement.
+
+    `exclude` is the accent's declared disc (a202/a204): the body is judged on its
+    own, because the reference mark is a bare object and a reading that averaged the
+    accent in would not be the same quantity.
     """
     pixels = generate.render_to(bpy, scene, path)
     small = rig.downsample(pixels, rig.RENDER_PX, px)
-    return generate.measure(small, px), generate.topography(small, px), small
+    return (generate.measure(small, px, exclude=exclude),
+            generate.topography(small, px, exclude=exclude, with_sites=True),
+            small)
 
 
 def main():
@@ -79,6 +85,8 @@ def main():
             # a cause on the record and a rule that removes it.
             # World bounds, not local ones: a posed body (a203) is turned after it is
             # welded, and a slot derived from its unposed box would sit inside it.
+            # (The same is true of the exclusion disc below, which is why the slot is
+            # read back in world space rather than from the body's local origin.)
             import mathutils
             corners = [obj.matrix_world @ mathutils.Vector(corner)
                        for corner in obj.bound_box]
@@ -88,24 +96,40 @@ def main():
             accent_obj = shapes.cylinder(
                 bpy, f"smoke accent {lam}", accent, slot_x, slot_z,
                 families.COMPOSITION["accent_radius"], depth=0.44, y=0.30)
+            # The accent's pixels are known rather than guessed: the camera is
+            # orthographic, so its disc maps to a raster disc. A run prints its area
+            # beside the accent's own so a wrong coordinate reads as a broken exclusion
+            # instead of as a cleaner render.
+            radius = families.COMPOSITION["accent_radius"]
+            disc = generate.raster_disc(slot_x, slot_z, radius, generate.DECISION_PX)
+            scale = generate.DECISION_PX / rig.ORTHO_SCALE
             path = os.path.join(generate.REVIEW, f"_smoke.{family}.{lam}.render.png")
-            found, topo, small = render_and_read(scene, path)
+            found, topo, small = render_and_read(scene, path, exclude=[disc])
             # Anything under the 3.5 % rule's floor is a sliver, and a sliver is only
             # fixable if the run says *where* it is (a196).
-            slivers = [site for site in generate.void_sites(small, generate.DECISION_PX)
+            slivers = [site for site in generate.void_sites(
+                           small, generate.DECISION_PX, exclude=[disc])
                        if site[0] / max(1, topo["covered_px"]) < 0.035]
             if slivers:
                 print(f"    slivers at {slivers[:4]} px, top-down, of "
                       f"{topo['covered_px']} covered px")
+            if topo["pieces"] > 1:
+                # The body has to be **one** piece (a184/a202). Naming where the
+                # extra ones are is the difference between a number and a fix.
+                print(f"    body arrives in {topo['pieces']} pieces: "
+                      f"{topo['piece_sites'][:6]} px at (x, y) top-down")
             counts = families.features(vector["teeth"] if family == "gear"
                                        else vector["lanes"])
             shares = topo.get("hole_shares") or []
             printed = " ".join(f"{share * 100:5.2f}%" for share in shares[:4]) or "none"
-            low, high = families.fill_envelope(family)
+            low, high = families.fill_envelope(family, lam)
             judged = "in" if low <= found["fill"] <= high else "OUT"
+            # The body alone is what a202 judges, and the accent's own pixels are out
+            # of the reading, so these are the *body's* pieces and holes.
             print(f"{family:8} {lam:6.2f}  {found['coverage']:6.3f} "
                   f"{found['fill']:6.3f} {judged:>3} ({low:.2f}-{high:.2f}) "
                   f"{topo.get('pieces'):6} {topo.get('holes'):5}  {printed:32} "
+                  f"excl {found['excluded_px']:5} of ~{3.14159 * (radius * scale) ** 2:6.0f}  "
                   f"{families.declaration(family)['parameters'][0]['name']}="
                   f"{vector[families.declaration(family)['parameters'][0]['name']]:.2f} "
                   f"-> {counts}")

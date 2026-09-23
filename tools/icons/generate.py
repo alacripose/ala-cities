@@ -140,8 +140,65 @@ def angle_difference(a: float, b: float) -> float:
     return min(difference, 360.0 - difference)
 
 
-def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
+def raster_disc(x: float, z: float, radius: float, px: int, span: float = None,
+                margin_px: float = 1.0) -> tuple:
+    """A world-space `(x, z)` disc as a raster-space `(cx, cy, r)` exclusion.
+
+    The camera is **orthographic** with `rig.ORTHO_SCALE` across the frame, so the
+    world-to-raster map is an affine and a disc stays a disc — which is what makes it
+    possible to read the *body* the way the reference mark was read, with a declared
+    accent piece's pixels removed (a202/a204). `y` runs top-down, matching
+    `flip_rows`, so a coordinate printed here matches the PNG a person opens.
+
+    Without this, `fill` counts the accent: the render's own box widens to hold it,
+    and the gear measured 0.327 against a bare reference mark's 0.5665 — two numbers
+    that were never describing the same object.
+    """
+    span = rig.ORTHO_SCALE if span is None else span
+    scale = px / span
+    return (
+        round((x / span + 0.5) * px - 0.5, 3),
+        round((0.5 - z / span) * px - 0.5, 3),
+        # Grown by one **judged pixel** (`margin_px`), which is the raster's own
+        # resolution rather than a tolerance: an object's edge covers about one pixel,
+        # so a disc cut exactly at the declared radius leaves the accent's antialiased
+        # fringe behind as a halo. That halo measured 1-11 px fragments at the same
+        # corner in every smoke run, and the topology walk honestly reported it as the
+        # *body* arriving in four pieces -- an artefact that looked like the defect the
+        # rule exists to catch, which is the worst kind of measurement error.
+        round(radius * scale + margin_px, 3),
+    )
+
+
+def with_exclusions(pixels, px: int, exclude) -> tuple:
+    """`(pixels, hidden_px)` with every pixel inside a declared exclusion cleared.
+
+    The count is returned rather than kept private because an exclusion that landed
+    somewhere other than the accent would otherwise read as a cleaner render instead
+    of as a broken coordinate: a run can compare it against the accent's own area.
+    """
+    if not exclude:
+        return pixels, 0
+    buffer = bytearray(pixels)
+    hidden = 0
+    for index in range(px * px):
+        x, y = index % px, index // px
+        for centre_x, centre_y, radius in exclude:
+            if (x + 0.5 - centre_x) ** 2 + (y + 0.5 - centre_y) ** 2 <= radius * radius:
+                if buffer[index * 4 + 3]:
+                    hidden += 1
+                buffer[index * 4 + 3] = 0
+                break
+    return bytes(buffer), hidden
+
+
+def measure(pixels, px: int, alpha_threshold: float = 0.5, exclude=None) -> dict:
     """Coverage, luminance distribution and chromaticity of a rendered icon.
+
+    `exclude` holds raster-space discs whose pixels are read as background (`a204`),
+    which is how a body is measured on its own while its accent is still in the
+    frame: the reference marks are bare objects, so the comparison is only honest if
+    the accent's pixels are removed rather than averaged in.
 
     The **75th percentile** is the number the contrast check uses, and it is the
     honest middle: the mean of a shaded solid is dragged down by its own shadow
@@ -149,6 +206,7 @@ def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
     component can be *perceived*, so the check asks what most of the glyph is
     doing, and the mean and peak are recorded beside it so a reader can disagree.
     """
+    pixels, excluded_px = with_exclusions(pixels, px, exclude)
     covered = 0
     clipped = 0
     luminances = []
@@ -186,6 +244,7 @@ def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
             "chromaticity_degrees": None,
             "note": "nothing opaque in the render at all",
             "clip_fraction": 0.0,
+            "excluded_px": excluded_px,
         }
 
     luminances.sort()
@@ -208,10 +267,12 @@ def measure(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
             / covered,
             4,
         ),
+        "excluded_px": excluded_px,
     }
 
 
-def topography(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
+def topography(pixels, px: int, alpha_threshold: float = 0.5, exclude=None,
+               with_sites: bool = False) -> dict:
     """Pieces and holes of the mark, counted the way the corpus was counted.
 
     8-connected for both, because `shapes.LADDER_SAMPLING` states 8-connectivity
@@ -230,30 +291,90 @@ def topography(pixels, px: int, alpha_threshold: float = 0.5) -> dict:
     rather than judged, because the gate belongs with the checks that act on it and a
     measurement that is only printed is still a measurement.
     """
+    pixels, excluded_px = with_exclusions(pixels, px, exclude)
     covered = _components(pixels, px, alpha_threshold, want_covered=True)
     voids = _components(pixels, px, alpha_threshold, want_covered=False)
     # The denominator is the *area* the object covers, not the number of pieces it
     # arrives in: dividing by the piece count printed a one-pixel void as 100 % and
     # would have made every share meaningless in exactly the case the rule exists.
     area = covered["area"]
-    return {
+    out = {
         "pieces": covered["total"],
         "holes": voids["enclosed"],
         "covered_px": area,
+        "excluded_px": excluded_px,
         "hole_shares": [
             round(void / area, 4) if area else 0.0
             for void in sorted(voids["enclosed_areas"], reverse=True)
         ],
     }
+    if with_sites:
+        # A floating component refuses promotion (a183/a202), and a refusal has to
+        # name the fix: "4 pieces" cannot be acted on, "a 70 px piece at (61, 22)"
+        # can. Sites are top-down, matching the PNG a person opens.
+        out["piece_sites"] = [
+            (area_px, x, y)
+            for area_px, x, y in sorted(component_sites(pixels, px, alpha_threshold),
+                                        reverse=True)
+        ]
+    return out
 
 
-def void_sites(pixels, px: int, alpha_threshold: float = 0.5) -> list:
+def component_sites(pixels, px: int, alpha_threshold: float = 0.5) -> list:
+    """Every covered component as `(area_px, x, y)`, largest first.
+
+    Same walk as `_components`, with the site kept: the largest cell of the component
+    and the middle of the run through it, so two pieces that both report "at (61, 22)"
+    cannot be confused for one another.
+    """
+    seen = bytearray(px * px)
+    found = []
+    for start in range(px * px):
+        if seen[start] or pixels[start * 4 + 3] / 255.0 < alpha_threshold:
+            continue
+        stack = [start]
+        area = 0
+        best_x = best_y = 0
+        best_row = -1
+        while stack:
+            index = stack.pop()
+            if seen[index] or pixels[index * 4 + 3] / 255.0 < alpha_threshold:
+                continue
+            seen[index] = 1
+            area += 1
+            x, y = index % px, index // px
+            # The site is the widest run's middle: a component's own extent, not its
+            # first pixel, so the number is stable across antialiasing at its edge.
+            row = 0
+            left = x
+            while left - 1 >= 0 and pixels[(y * px + left - 1) * 4 + 3] / 255.0 >= alpha_threshold:
+                left -= 1
+            right = x
+            while right + 1 < px and pixels[(y * px + right + 1) * 4 + 3] / 255.0 >= alpha_threshold:
+                right += 1
+            row = right - left + 1
+            if row > best_row:
+                best_row = row
+                best_x, best_y = (left + right) // 2, y
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < px and 0 <= ny < px:
+                        j = ny * px + nx
+                        if not seen[j] and pixels[j * 4 + 3] / 255.0 >= alpha_threshold:
+                            stack.append(j)
+        found.append((area, best_x, best_y))
+    return found
+
+
+def void_sites(pixels, px: int, alpha_threshold: float = 0.5, exclude=None) -> list:
     """Every enclosed void as `(area_px, x, y)`, largest first.
 
     A refusal has to name the fix, and for a sliver the fix is a *place* in the
     frame: "a one-pixel void at (61, 34)" can be looked at, while "2 holes" cannot.
     Top-down coordinates on the judged raster, so it matches the PNG a person opens.
     """
+    pixels, _ = with_exclusions(pixels, px, exclude)
     seen = bytearray(px * px)
     stack = []
     for index in range(px * px):
