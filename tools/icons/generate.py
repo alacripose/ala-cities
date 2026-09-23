@@ -561,7 +561,22 @@ def silhouette_check(bpy, entry, decision_pixels) -> dict:
     by the render, and the render is allowed to add — the accent piece leaves the
     mark's box by design. The whole-icon overlap is recorded beside it so a reader
     can see how much was added rather than having to trust that it was the accent.
+
+    **Both sides are measured in the icon's own frame.** The declared mark is placed
+    by the same transform the mesh is built with, so the comparison is "did the render
+    carry the mark", not "did two framings agree". That distinction is the fault C8
+    isolated: the mask used to be binned where the mark sits **in its own file**, so a
+    mark that is not centred in its file (`maps/add_road` occupies x 0.167-0.948) was
+    compared against a mesh placed on its own bounds and centred — 0.3235 of the floor
+    for reasons that were never about the geometry. The old reading is still recorded,
+    as `containment_file_frame`, because a number that moved should stay readable.
     """
+    if abs(shapes.ICON_FRAME_SPAN - rig.ORTHO_SCALE) > 1e-9:
+        raise SystemExit(
+            f"the silhouette check's frame ({shapes.ICON_FRAME_SPAN}) and the rig's "
+            f"orthographic scale ({rig.ORTHO_SCALE}) disagree; the check would measure "
+            f"a frame nothing is rendered into"
+        )
     declared = entry.get("silhouette") or {}
     glyph = declared.get("glyph")
     reference = declared.get("reference")
@@ -581,18 +596,72 @@ def silhouette_check(bpy, entry, decision_pixels) -> dict:
         else:
             missing += 1
     total = covered + missing
-    containment = round(covered / total, 4) if total else 0.0
+    strict = round(covered / total, 4) if total else 0.0
     agreement = 0
     compared = 0
     for cell, render_cell in zip(mark["occupancy"], render_cells):
         compared += 1
         if (cell >= 0.5) == (render_cell >= 0.5):
             agreement += 1
+
+    # The judged reading (C8 a176): the share of the declared mark's **ink** the
+    # render actually carries. The strict cell count above is kept as a gate and a
+    # recorded number, because a yes/no reading on an 8-pixel cell turns on where the
+    # cell boundary happens to fall: `tool-power`'s thin ring has cells the mark fills
+    # 0.55 of and the render fills 0.40 of, and 0.40 is 73% of that cell's ink. The
+    # weighted reading says so; the strict count calls it a miss. Both are printed,
+    # and a strict miss still refuses promotion — so neither reading can hide the
+    # other.
+    declared_cells = [
+        (cell, render_cell)
+        for cell, render_cell in zip(mark["occupancy"], render_cells)
+        if cell >= 0.5
+    ]
+    declared_ink = sum(cell for cell, _ in declared_cells)
+    carried_ink = sum(min(cell, render_cell) for cell, render_cell in declared_cells)
+    weighted = round(carried_ink / declared_ink, 4) if declared_ink else 0.0
+    ratios = sorted(render_cell / cell for cell, render_cell in declared_cells if cell > 0)
+    worst_cell = round(ratios[0], 4) if ratios else 0.0
+    below = sum(1 for cell, render_cell in declared_cells if render_cell < 0.5)
+    containment = weighted
+
+    # Recorded, never judged: what the check said while it was comparing two
+    # different frames. It is kept so the correction above is auditable rather than
+    # a silent renumbering of every icon's history.
+    file_covered = file_missing = 0
+    for cell, render_cell in zip(mark["occupancy_file_frame"], render_cells):
+        if cell < 0.5:
+            continue
+        if render_cell >= 0.5:
+            file_covered += 1
+        else:
+            file_missing += 1
+    file_total = file_covered + file_missing
+
     return {
         "judged": True,
         "glyph": glyph,
         "reference": reference,
         "containment": containment,
+        "containment_kind": "weighted ink",
+        "containment_strict": strict,
+        "containment_strict_is_a_gate": (
+            "any declared cell under 0.5 covered refuses promotion, however the "
+            "weighted reading scores"
+        ),
+        "declared_cells": len(declared_cells),
+        "cells_below_threshold": below,
+        "worst_cell_ratio": worst_cell,
+        "containment_file_frame": round(file_covered / file_total, 4) if file_total else 0.0,
+        "frame": {
+            "icon_frame_span": mark["frame_span"],
+            "placement_span": mark["placement_span"],
+            "mark_pixels_outside_frame": mark["placed_outside_frame"],
+            "note": (
+                "both sides of the comparison are measured in the icon's own frame; "
+                "containment_file_frame is the reading this replaced, kept for audit"
+            ),
+        },
         "occupancy_agreement": round(agreement / compared, 4),
         "mark_coverage_at_96": mark["coverage"],
         "render_coverage_at_96": round(
@@ -698,6 +767,16 @@ def judge_generation(entry, generation) -> dict:
             f"the render carries {silhouette['containment']} of the declared "
             f"`{silhouette['glyph']}` mark, below the {silhouette['floor']} containment "
             f"floor: it is not the silhouette the brief names"
+        )
+    # The strict reading is a **gate of its own** (a176): a declared cell the render
+    # leaves under half covered is a note whether or not the weighted number passes,
+    # so the weighted reading cannot be used to walk past a hole in the mark.
+    if silhouette.get("judged") and silhouette.get("cells_below_threshold", 0) > 0:
+        notes.append(
+            f"{silhouette['cells_below_threshold']} of {silhouette['declared_cells']} "
+            f"declared cells of `{silhouette['glyph']}` are under half covered "
+            f"(worst carries {silhouette['worst_cell_ratio']} of its own ink): the mark "
+            f"is carried on average but not cell for cell"
         )
     sharp = next(s for s in generation["sizes"] if s["px"] == DECISION_PX)["measurements"]
     recognition = next(s for s in generation["sizes"] if s["px"] == RECOGNITION_PX)["measurements"]

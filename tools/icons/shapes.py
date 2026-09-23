@@ -12,7 +12,11 @@ import openpbr
 import palette
 from palette import rgba
 
-CONCEPT_SET = "pilot-six-c3-v1"
+#: The concept set these candidates belong to. Bumped by C8 a160: the silhouette
+#: check's frame and the traced outline both changed, so every render in the review
+#: set is a different artifact and the six promotions taken in C7 are void by the
+#: standard's own rule (§8) — re-decided in the picker, by a person.
+CONCEPT_SET = "pilot-six-c8-v1"
 CATALOGUE_STAGE = "pilot-six"
 
 #: The rule that settles an icon's form, settled in C3 and recorded in
@@ -553,6 +557,13 @@ def silhouette_record(icon_id: str) -> dict:
 #: it edge to edge would leave no margin at all — which is not how a locator reads.
 GLYPH_SPAN = 1.72
 
+#: The icon's own frame, in world units: the orthographic camera's scale. It is
+#: stated here because the silhouette check has to express the declared mark in the
+#: **same frame** the render is measured in, and the two must not disagree.
+#: `generate.py` refuses to run if this and `rig.ORTHO_SCALE` differ, so the number
+#: cannot drift apart from the rig it describes.
+ICON_FRAME_SPAN = 2.25
+
 
 def _load_glyph(bpy, glyph: str):
     """An MD1 mark's pixels, as Blender hands them back: bottom-up rows."""
@@ -616,6 +627,26 @@ def _components(cells):
     return found
 
 
+#: How far the traced outline is grown past the mark's own cells, in raster cells.
+#: One is the measured correction, and it has two causes that do not go away:
+#: `_trace` walks the **centres** of the boundary cells, so the polygon it produces
+#: sits half a cell inside the mark, and `_simplify` may cut up to its own tolerance
+#: (0.34 px) from every corner. At the decision size that cost the outermost declared
+#: cells about 15% of their ink — measured, not assumed — which is the difference
+#: between a render that *carries* the mark and one that sits just inside it.
+OUTLINE_GROW_CELLS = 1
+
+
+def _dilate(cells, radius: int = OUTLINE_GROW_CELLS):
+    """Grow a cell set by `radius` cells in every direction."""
+    grown = set()
+    for x, y in cells:
+        for dx in range(-radius, radius + 1):
+            for dy in range(-radius, radius + 1):
+                grown.add((x + dx, y + dy))
+    return grown
+
+
 def _trace(component) -> list:
     """Moore-neighbour boundary trace of one component, as cell coordinates.
 
@@ -671,8 +702,39 @@ def _simplify(points, tolerance: float = 0.34) -> list:
     return left[:-1] + right
 
 
-def placement(side_px: int, bounds) -> tuple:
-    """Mask pixels to world `(x, z)`, fitting the mark's **own** bounds to GLYPH_SPAN.
+def placement_scale(bounds, span: float = GLYPH_SPAN) -> float:
+    """World units per mask pixel, for a mark whose own bounds are fitted to `span`.
+
+    One rule, one home: the geometry builder and the silhouette check both ask this,
+    so the frame the check measures in cannot drift from the frame the mesh is built
+    in.
+    """
+    min_x, max_x, min_y, max_y = bounds
+    width = max(max_x - min_x, 1e-6)
+    height = max(max_y - min_y, 1e-6)
+    return span / max(width, height)
+
+
+def placed_frame(bounds, span: float = GLYPH_SPAN, frame: float = ICON_FRAME_SPAN):
+    """Mask pixel to the icon's frame as `(u, v)`, v measured downward.
+
+    The frame is the square the orthographic camera sees, so this is the transform
+    that makes a declared mask and a rendered frame comparable: without it the
+    comparison put a centred, own-bounds-fitted mark against a mask binned where it
+    sits **in its own file**, which is exactly the fault `ICON_STANDARD` left open
+    for `tool-road` (containment 0.3235) and `tool-road`'s mark does not sit centred.
+    """
+    to_world = placement(1, bounds, span)
+
+    def to_frame(pixel):
+        wx, wz = to_world(pixel)
+        return ((wx + frame / 2.0) / frame, (frame / 2.0 - wz) / frame)
+
+    return to_frame
+
+
+def placement(side_px: int, bounds, span: float = GLYPH_SPAN) -> tuple:
+    """Mask pixels to world `(x, z)`, fitting the mark's **own** bounds to `span`.
 
     Its own bounds, not the file's: the marks are not centred in their 24 dp box.
     `maps/add_road` occupies x 0.167-0.948 and `action/search` sits up-left of
@@ -682,9 +744,7 @@ def placement(side_px: int, bounds) -> tuple:
     placed rather than against an assumption about where it would have gone.
     """
     min_x, max_x, min_y, max_y = bounds
-    width = max(max_x - min_x, 1e-6)
-    height = max(max_y - min_y, 1e-6)
-    scale = GLYPH_SPAN / max(width, height)
+    scale = placement_scale(bounds, span)
     centre_x = (min_x + max_x) / 2.0
     centre_y = (min_y + max_y) / 2.0
 
@@ -749,7 +809,10 @@ def glyph_outline(bpy, glyph: str, minimum_cells: int = 24) -> dict:
     to_world = placement(width, (min(xs), max(xs) + 1, min(ys), max(ys) + 1))
 
     def outline(component):
-        traced = _trace(component)
+        # Both the body and the enclosed holes are grown: the same centre-sampling
+        # inset applies to a hole's boundary, and a hole traced from the raster is a
+        # cell too *large*, which is the same error read outward.
+        traced = _trace(_dilate(component))
         closed = _simplify(traced + [traced[0]], 0.34)
         # The closing point is dropped: the polygon is closed by the mesh builder
         # walking edge-to-edge, and a repeated vertex would make a degenerate quad.
@@ -771,6 +834,14 @@ def glyph_outline(bpy, glyph: str, minimum_cells: int = 24) -> dict:
         "placement": "own bounds, fitted to GLYPH_SPAN",
         "span": GLYPH_SPAN,
         "simplify_tolerance_px": 0.34,
+        "grow_cells": OUTLINE_GROW_CELLS,
+        "grow_why": (
+            "the trace walks boundary-cell centres, half a cell inside the mark, and "
+            "simplification shaves its own tolerance from every corner; the outline is "
+            "grown by this many cells so the render carries the mark rather than "
+            "sitting inside it"
+        ),
+        "bounds_from": "the mark's own cells, ungrown, so placement is unchanged",
     }
 
 
@@ -916,37 +987,66 @@ def _glyph_mask(bpy, glyph: str, alpha_threshold: float = 0.5) -> dict:
 
     width, height, pixels = _load_glyph(bpy, glyph)
 
-    covered = 0
+    covered_at = []
     sum_x = sum_y = 0.0
-    min_x, max_x, min_y, max_y = width, -1, height, -1
-    grid_side = 12
-    grid = [0] * (grid_side * grid_side)
     for row in range(height):
         for column in range(width):
-            alpha = pixels[(row * width + column) * 4 + 3]
-            if alpha < alpha_threshold:
+            if pixels[(row * width + column) * 4 + 3] < alpha_threshold:
                 continue
-            covered += 1
+            # Blender hands back bottom-up rows; everything here is stated top-down.
+            covered_at.append((column, height - 1 - row))
             sum_x += column
-            # Blender hands back bottom-up rows; the grid is stated top-down.
             sum_y += height - 1 - row
-            min_x, max_x = min(min_x, column), max(max_x, column)
-            min_y, max_y = min(min_y, height - 1 - row), max(max_y, height - 1 - row)
-            cell_x = min(grid_side - 1, column * grid_side // width)
-            cell_y = min(grid_side - 1, (height - 1 - row) * grid_side // height)
-            grid[cell_y * grid_side + cell_x] += 1
-    if covered == 0:
+    if not covered_at:
         raise ValueError(f"`{glyph}` has nothing opaque; it cannot be a silhouette")
+
+    covered = len(covered_at)
+    xs = [cell[0] for cell in covered_at]
+    ys = [cell[1] for cell in covered_at]
+    min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
+    del xs, ys
+    # The same half-open bounds convention the geometry builder uses, so the mask and
+    # the mesh are placed by one rule rather than by two that happen to agree today.
+    bounds = (min_x, max_x + 1, min_y, max_y + 1)
+
+    grid_side = 12
+    grid = [0] * (grid_side * grid_side)
+    placed = [0] * (grid_side * grid_side)
+    outside = 0
+    to_frame = placed_frame(bounds)
+    for column, y in covered_at:
+        grid[min(grid_side - 1, y * grid_side // height) * grid_side
+             + min(grid_side - 1, column * grid_side // width)] += 1
+        u, v = to_frame((column + 0.5, y + 0.5))
+        if not (0.0 <= u < 1.0 and 0.0 <= v < 1.0):
+            outside += 1
+            continue
+        placed[min(int(v * grid_side), grid_side - 1) * grid_side
+               + min(int(u * grid_side), grid_side - 1)] += 1
+
     total = width * height
     cell_area = (width / grid_side) * (height / grid_side)
+    # In the placed frame one mask pixel covers `scale` world units, and the frame is
+    # ICON_FRAME_SPAN across, so a cell holds this many mask pixels.
+    scale = placement_scale(bounds)
+    placed_cell_area = (ICON_FRAME_SPAN / (grid_side * scale)) ** 2
     return {
         "glyph": glyph,
         "side_px": [width, height],
         "coverage": round(covered / total, 4),
         "centroid": [round(sum_x / covered / width, 4), round(sum_y / covered / height, 4)],
         "bounds": {"x": [min_x / width, max_x / width], "y": [min_y / height, max_y / height]},
-        "occupancy": [round(cell / cell_area, 3) for cell in grid],
+        #: The grid the check reads: the mark as **placed** on the icon, which is the
+        #: only frame a rendered frame can be compared against.
+        "occupancy": [round(min(cell / placed_cell_area, 1.0), 3) for cell in placed],
+        #: The reading it replaced, kept because a number that moved should stay
+        #: readable: the mark binned where it sits in its own file, which is 0.3235 of
+        #: the floor for `tool-road` and was never a fault in the geometry.
+        "occupancy_file_frame": [round(cell / cell_area, 3) for cell in grid],
         "occupancy_grid": grid_side,
+        "placed_outside_frame": outside,
+        "frame_span": ICON_FRAME_SPAN,
+        "placement_span": GLYPH_SPAN,
     }
 
 
