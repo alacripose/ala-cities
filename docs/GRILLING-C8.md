@@ -649,6 +649,66 @@ strict as a gate too" as letting `tool-power` through. It does not — the stric
 is exactly what it fails (6 cells at 0.7778). What was chosen stands; the geometry
 is what has to change.
 
+### 7.9 A solid glyph and its `md1` slot (Q177, a177)
+
+The `md1` end of the ladder is fill 0.366–0.706 (anchor 0.49). Two of the six
+glyphs are intrinsically solid — `ticket` measures 0.956 and `tool-demolish`
+0.833 at every `plate` slot — so no body construction brings their marks into
+band. Settled: **the `md1` candidate draws that glyph hollowed** (the mark's
+interior shows the body through it), which is a form MD1's own archive ships. The
+mark's identity is unchanged, the other slots keep the solid form, and the fill
+band stays the promise it was rather than becoming a recorded exception.
+
+### 7.10 What a declared hue is measured on (Q178, a178)
+
+`vocab-settings` drifts 12.9–14.0° against the 12.0° tolerance in all six
+generations. The check took the mean chromaticity over **every covered pixel**,
+which includes the accent's cyan — declared, and a different hue on purpose — so
+a legitimate accent dragged the reading. This is the same class of defect as the
+containment frame error and is settled the same way: **the hue reading for a
+declared colour is taken over the pixels of the material that declares it**, and
+the whole-render composite is kept beside it as a recorded number, so a bad
+composite is visible rather than silent. No 12° reading in the set is moved by a
+material that is not the one being declared.
+
+### 7.11 The finish, wired and measured
+
+The emphasis now owns a **finish** (`LAYERS[...]["finish"]`: md1 `matte`, touchwiz
+`polished`, ios6 `skeuomorph`), and the candidate's materials travel with it, so the
+six candidates of an icon no longer share one surface. Two things had to be found by
+measuring rather than by writing the parameter down:
+
+* **The finish never reached the render.** When a family is in `reference.blend` the
+generator *copies* that material and overrides only its base colour, so the blend
+owned the whole surface and a declared finish was a name on nothing. `apply_finish`
+now applies it to the copy, and the record says which claim owns which part:
+`surface_source: reference-blend (metal) + declared finish (matte)`.
+* **`matte` had no branch at all**, and would not have bitten even with one: metal's
+brushed surface drives Roughness from a node, and a linked socket ignores a default
+value. A matte finish therefore *unlinks* the family's variation, which is what
+"matte" claims, and the link goes rather than the claim.
+
+tool-road, measured under the same rig, before and after:
+
+| slot | before | after | band |
+|---|---|---|---|
+| `b-md1-stack` gloss | 0.0602 | **0.0305** | 0.0 ± 0.03 |
+| `c`/`d-touchwiz` gloss | 0.0619 / 0.0595 | **0.068 / 0.0688** | 0.072–0.132 |
+| `e`/`f-ios6` gloss | 0.1105 / 0.1037 | **0.114 / 0.1176** | 0.189–0.291 |
+
+So the mechanism is live and directional, and **only one of the three anchors is
+reached**: md1's, and not everywhere (six md1 notes remain). The reason is now
+measured rather than argued: gloss counts the share of pixels above 1.6× the median,
+which rewards a **broad lobe**, not a mirror — sharpening the surface covers *fewer*
+pixels, so the ios6 distance is not a roughness number away. Closing it needs a
+**declared sweep** of the rig's response the way `rig.py` carries its environment
+sweep, not another guess. Until then the ios6 slots carry their own note and no icon
+is promoted, which is the state the notes exist to make visible.
+
+Still to wire from the decisions above: **7.10's per-material hue reading** (four
+`vocab-settings` notes remain, all still measured on the composite), and the plate
+body and the hollowed md1 marks (7.6, 7.8, 7.9).
+
 ---
 
 ## Still open, and deliberately so
