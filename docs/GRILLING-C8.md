@@ -573,6 +573,82 @@ containment where the mark is the object, occupancy agreement of the mark's regi
 where it is not (C6 Q130). The six declared accent forms (tab / seal / ribbon / notch
 / band / corner) are built once each, so the sixth axis stops being declared-and-absent.
 
+### 7.7 What the containment floor measures (Q176, a176)
+
+The floor's reading was left open by `ICON_STANDARD` §2, which says "the share of
+the declared mark's cells the render must cover" against a 0.90 floor. Measuring
+the committed renders showed the check and the geometry were talking about
+different frames, and that the two obvious readings of the sentence disagree in
+opposite directions. Settled as **both**:
+
+* **Judged — weighted ink.** For every declared cell the mark's region claims,
+the render must carry at least the declared share of that cell's *own ink*, and
+the icon's number is the ink-weighted mean over the claim. This is the number the
+90 % floor applies to, and it is the honest reading of "the share of the mark".
+* **Gated — strict cells.** Any declared cell carrying at least half its own ink
+in the mark must have at least half of its area covered by the render. This is
+binary per cell, is what "cell for cell" means, and **`tool-power` fails it** —
+which is a repair, not a reason to soften the gate.
+
+Two defects found while measuring, both in the check rather than the artwork:
+
+* **The mask was binned in file space while the render is placed.** The mark's
+  mask was computed in the glyph file's own frame, then compared against a render
+  placed by the rig's transform, so the two were only coincident when the glyph
+  happened to fill its frame. Fixed by binning the mask through the placement the
+  geometry already uses. `tool-road`'s recorded 0.3235 was **this**, not geometry:
+  the same render reads 0.9167 once the frames agree. The old file-frame number is
+  kept beside it as a recorded divergence rather than deleted.
+* **The trace walked pixel centres and Douglas–Peucker shaved its tolerance off
+  every corner**, leaving the polygon half a pixel inside the mark. Compensated
+  before tracing, so the outline sits on the mark's edge rather than inside it. A
+  bevel-removal probe showed the bevel was **not** the cause (strict 0.6667 with
+  and without it), which is why the fix is in the trace and not the material.
+
+After both: every icon is containment-clean at every reviewed size, `tool-power`
+strict 1.0000 / weighted 0.9933 and `tool-road` 1.0000 / 1.0000.
+
+### 7.8 What the fresh render measured, and what it means
+
+All six icons re-rendered under Blender 5.3.0 Alpha (5eaad57cfabe) in 82 s, four
+sizes each, concept set `pilot-six-c8-v1`, so C7's six decisions are void and the
+picker awaits again as recorded. Containment notes: **none**. What remains is the
+plate and the finish, and the numbers say why:
+
+| icon | glyph | fill at the `plate` slots (md1 / touchwiz / ios6) |
+|---|---|---|
+| `tool-road` | thin ribbon | 0.54 / 0.47 / 0.50 |
+| `tool-power` | bolt | 0.62 / 0.45 / 0.57 |
+| `tool-inspect` | ring + handle | 0.50 / 0.46 / 0.48 |
+| `tool-demolish` | solid | 0.83 / 0.80 / 0.85 |
+| `vocab-settings` | gear | 0.70 / 0.72 / 0.70 |
+| `ticket` | blocky | **0.96** / 0.88 / 0.94 |
+
+`fill` is covered ÷ the render's **own box**, so for a mark fitted to its span it
+is the mark's own ink. Every `plate` candidate measures its glyph's ink, which is
+the proof that **no plate body exists** (7.6, C6 a129): a candidate named `plate`
+is the traced mark plus a cylinder. The corpus ladder's three ends are therefore
+three *constructions*, not three shades of one:
+
+* **`md1` 0.49, band [0.366, 0.706]** — the object is the mark. Reached today by
+  the thin marks (road, power, inspect), not by the solid ones.
+* **`touchwiz` [0.784, 0.997]** — a body whose own box it fills to ≈0.95: a
+  squircle plate, whose cut corners are the missing area.
+* **`ios6` [1.0, 1.0]** — a body that fills its box exactly: a square plate.
+* **finish** — the gloss anchors (md1 0.0 ±0.03, touchwiz 0.102 ±0.03, ios6 0.24
+  ±0.051) are a property of the material, and the measured candidates sit *below*
+  each: touchwiz slots read 0.038–0.064 against 0.072–0.132, ios6 slots 0.094–0.137
+  against 0.189–0.291. The finish is a mechanism to set (roughness and coat per
+  language), measured rather than asserted.
+* **`vocab-settings` hue drift 12.9–14.0°** against the 12.0° tolerance in all six
+  generations — a real fault: the mean chromaticity over the covered area is dragged
+  by the accent's share, so either the accent's area or the declared colour moves.
+
+A correction owed and recorded: my option text for Q176 described "weighted judged,
+strict as a gate too" as letting `tool-power` through. It does not — the strict gate
+is exactly what it fails (6 cells at 0.7778). What was chosen stands; the geometry
+is what has to change.
+
 ---
 
 ## Still open, and deliberately so
