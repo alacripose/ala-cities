@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::gov::RetirementReason;
 use crate::materials::effects as material_effects;
+use crate::materials::geology as material_geology;
 use crate::materials::generated::REPAIR_CEILING;
 use crate::materials::world::{self as material_world, Level};
 use citizen::{Citizen, CitizenState};
@@ -177,6 +178,16 @@ pub struct Tile {
     /// Index into [`World::buildings`] for the structure standing here.
     pub building: Option<u32>,
     pub powered: bool,
+    /// How much of this tile's deposit has been taken out, in grams (C9 phase 1).
+    ///
+    /// The deposit itself is **derived** from the world's seed — `materials::geology` — and
+    /// never stored; this is the delta, which is round 9's Q59 rule applied to the ground.
+    /// It defaults to zero, and that default is *correct* rather than convenient: a save
+    /// written before this field existed has extracted nothing from a field it did not know
+    /// about. That is why the format does not need a version bump for it — a default that
+    /// would be a lie needs a migration, and this one would not be.
+    #[serde(default)]
+    pub extracted_g: i64,
 }
 
 impl Default for Tile {
@@ -187,6 +198,7 @@ impl Default for Tile {
             road: false,
             building: None,
             powered: false,
+            extracted_g: 0,
         }
     }
 }
@@ -609,6 +621,39 @@ impl World {
         }
         t.zone = zone;
         true
+    }
+
+    // ---------------------------------------------------------------------
+    // The ground's material (C9 phase 1). What a tile holds is derived; what
+    // has been taken out is stored. Nothing else about a deposit is state.
+    // ---------------------------------------------------------------------
+
+    /// What this tile still holds, in grams — derived from the seed and net of what has
+    /// been taken out. `None` where the ground is barren or worked out.
+    pub fn deposit_at(&self, tile: u32) -> Option<material_geology::Deposit> {
+        let (x, y) = self.coords(tile);
+        let found = material_geology::deposit(self.seed, x, y)?;
+        let remaining = found.mass_g - self.tiles[tile as usize].extracted_g;
+        (remaining > 0).then_some(material_geology::Deposit {
+            mass_g: remaining,
+            ..found
+        })
+    }
+
+    /// Take up to `grams` out of a tile, recording the delta and returning **only what was
+    /// actually there**.
+    ///
+    /// Returning the take rather than the request is the whole point: a caller that asked
+    /// for more than the ground held must not be handed a number that conservation would
+    /// contradict. Padding the answer or refusing silently would both break the ledger, and
+    /// the ledger is what this campaign exists to make checkable.
+    pub fn extract(&mut self, tile: u32, grams: i64) -> i64 {
+        let Some(found) = self.deposit_at(tile) else {
+            return 0;
+        };
+        let taken = grams.min(found.mass_g).max(0);
+        self.tiles[tile as usize].extracted_g += taken;
+        taken
     }
 
     /// Demolish whatever stands on a tile. The building is **retired**, not
@@ -1444,6 +1489,48 @@ mod tests {
         world.buildings[0].repair_filed = true;
         assert!(world.repairs_due().is_empty(), "a ruin is not repairable");
         assert!(world.repair(0).is_none());
+    }
+
+    /// A tile gives up only what it holds (C9 phase 1). The deposit is derived, the delta
+    /// is stored, and the two agree with the geology module rather than with each other.
+    #[test]
+    fn a_tile_gives_up_only_what_it_holds_and_then_is_spent() {
+        let mut world = World::new(256, 256, 0xC117_2026);
+        let (tile, declared) = (0..256u32 * 256)
+            .find_map(|tile| {
+                world.deposit_at(tile).map(|found| (tile, found.mass_g))
+            })
+            .expect("this seed's map holds at least one deposit");
+
+        // Nothing taken yet, so the reading is the derivation itself.
+        let (x, y) = world.coords(tile);
+        assert_eq!(
+            declared,
+            material_geology::deposit(world.seed, x, y).unwrap().mass_g,
+            "an untouched tile reads exactly what the seed derives"
+        );
+
+        // Asking for more than is there takes only what is there.
+        let over = declared + 1_000_000;
+        assert_eq!(world.extract(tile, over), declared, "the request is not the take");
+        assert!(
+            world.deposit_at(tile).is_none(),
+            "a worked-out tile holds nothing"
+        );
+        assert_eq!(world.extract(tile, 1000), 0, "a spent tile gives nothing more");
+        assert_eq!(world.tiles[tile as usize].extracted_g, declared);
+
+        // A part-worked tile reports the remainder, which is what a mine's rate limit reads.
+        let other = find_another(&world, tile);
+        let full = world.deposit_at(other).expect("found").mass_g;
+        assert_eq!(world.extract(other, full / 3), full / 3);
+        assert_eq!(world.deposit_at(other).expect("remains").mass_g, full - full / 3);
+
+        fn find_another(world: &World, skip: u32) -> u32 {
+            (0..256u32 * 256)
+                .find(|tile| *tile != skip && world.deposit_at(*tile).is_some())
+                .expect("a second deposit exists")
+        }
     }
 
     #[test]
