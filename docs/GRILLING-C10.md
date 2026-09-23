@@ -553,3 +553,61 @@ refactor stage by decision Q188"), and the seams ticket's gate names retiring th
 unmentioned.
 
 ➡️ **(a)**. A known red carried as a reading is the difference between a decision and an oversight.
+
+## Round 3 — answered, and the map charted
+
+*Answered 2026-09-23. Four of the six overrode their recommendation, and the charting followed in the
+same session — the map, its children and their blocking are on GitHub, and the charting session ends
+there, because wayfinder resolves one ticket per session and that was the chartering act.*
+
+| # | ➡️ recommendation | ✔ answer |
+|---|---|---|
+| Q191 | four named skills in the map's Notes | ⚠ **overridden: (c) — the whole installed suite, listed.** All 156 names are in the map's Notes |
+| Q192 | nine children: the plan, the seams, then the eight phases | ✔ **(a)** — **and the option's arithmetic was wrong**: it said nine and listed ten. Ten is what the map carries, and the map says so out loud |
+| Q193 | one `research` ticket producing a triage index | ⚠ **overridden: (c) no index** — the classes emerge per stage, as each stage's grilling reaches its decisions |
+| Q194 | lazily; the plan's own vocabulary fixed inside the plan's ticket | ✔ **lazily, and with a correction that matters**: *"with fresh vocabulary since most of it was derived from your model"* — the record's terms are agent-derived, so `domain-modeling` coins the domain's language rather than inheriting this record's |
+| Q195 | triage index first, then the seams | ⚠ **overridden: (c) the seams inventory first** |
+| Q196 | carry the red five tests in the Notes | ⚠ **overridden: (b) leave it unmentioned** — the tree's red state is not the map's business; the seams ticket's own gate still retires it |
+
+### The map, charted
+
+**Map: [The plan — ala-cities, phase by phase](https://github.com/alacripose/ala-cities/issues/1)**
+(`wayfinder:map`), with ten children and GitHub's native blocking wired:
+
+| # | ticket | label | blocked by |
+|---|---|---|---|
+| [#2](https://github.com/alacripose/ala-cities/issues/2) | the seams — one declared table per vocabulary, and the two-way check | `wayfinder:task` | **nothing — the frontier** |
+| [#3](https://github.com/alacripose/ala-cities/issues/3) | the plan and its gates — `PLAN.md` as this map's projection | `wayfinder:task` | #2 |
+| [#4](https://github.com/alacripose/ala-cities/issues/4) | phase 1 — the world substrate | `wayfinder:task` | #2, #3 |
+| [#5](https://github.com/alacripose/ala-cities/issues/5) | phase 2 — mass and the ledger | `wayfinder:task` | #4 |
+| [#6](https://github.com/alacripose/ala-cities/issues/6) | phase 3 — processes and making | `wayfinder:task` | #5 |
+| [#7](https://github.com/alacripose/ala-cities/issues/7) | phase 4 — agents | `wayfinder:task` | #6 |
+| [#8](https://github.com/alacripose/ala-cities/issues/8) | phase 5 — institutions and money | `wayfinder:task` | #7 |
+| [#9](https://github.com/alacripose/ala-cities/issues/9) | phase 6 — progression | `wayfinder:task` | #8 |
+| [#10](https://github.com/alacripose/ala-cities/issues/10) | phase 7 — food and the couplings | `wayfinder:task` | #9 |
+| [#11](https://github.com/alacripose/ala-cities/issues/11) | phase 8 — growth | `wayfinder:task` | #10 |
+
+The **frontier** is #2 and only #2: it is open, unblocked and unclaimed, and every other child has an
+open blocker. The five labels (`wayfinder:map`, `:task`, `:grilling`, `:research`, `:prototype`) exist
+on the repo, the map carries the ordered route as a task list (the tracker doc's fallback), and every
+child opens with `Part of #1`.
+
+**What the charting decided rather than assumed.** The map's Notes carry: the domain in three
+sentences; the whole installed suite by name; the method (wayfinder for the route, Apex's
+Analyze → Plan → Execute → eXamine loop per stage, `writing-plans` before code,
+`excalidraw-diagram` when a picture beats prose); the plan's shape (map canonical, `PLAN.md` its
+projection, a gate that names commands, readings, evidence and a playtest); the round-1…3 answers it
+has to live inside; and the arithmetic correction of Q192.
+
+**What the map deliberately does not carry.** The red five tests (Q196), and any triage index
+(Q193). Both are decisions, and both are recorded here so their absence is a choice rather than an
+oversight.
+
+### The defect found while charting
+
+The charting command created a single label named `wayfinder` five times instead of the five
+namespaced labels, because `${l%%:*}` splits on the first colon and the label names contain colons.
+It was caught by reading the labels back rather than trusting the loop's `ok`, the stray label was
+deleted, and the five labels exist correctly now. Recorded because the campaign's rule is that a
+found defect is written down, and because the same mistake is waiting in any future shell that slices
+a `wayfinder:*` name.
