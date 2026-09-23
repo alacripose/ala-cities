@@ -28,6 +28,7 @@ use ala_cities::audio::{self, Sound};
 use ala_cities::design::{self, Space, Step, Target, UiScale};
 use ala_cities::hud::{self, Token};
 use ala_cities::icons::{self, IconSet};
+use ala_cities::materials;
 use ala_cities::render::{
     self, Batcher, Camera, Face, Gpu, ImageBatcher, Layer, Screen, Text, WorldBatch,
     LEVEL_HEIGHT, TILE,
@@ -2646,6 +2647,23 @@ fn main() {
             eprintln!("  - {defect}");
         }
         eprintln!("fix these and restart; nothing will be drawn until the scales hold.");
+        std::process::exit(1);
+    }
+
+    // The material gate, in the same shape: every line printed, every defect named,
+    // and a defect refuses the start. The world's materials are claims — this part
+    // is this material, and its colour arrives by this mechanism — so a table that
+    // does not hold is not a table to draw the city from.
+    let materials = materials::verify();
+    for line in &materials.lines {
+        tracing::info!("{line}");
+    }
+    if !materials.ok() {
+        eprintln!("the material check failed closed:");
+        for defect in &materials.defects {
+            eprintln!("  - {defect}");
+        }
+        eprintln!("fix the declaration and re-run `python tools/materials/emit.py`.");
         std::process::exit(1);
     }
 

@@ -24,6 +24,7 @@ pub mod gov;
 pub mod hud;
 pub mod iconreview;
 pub mod icons;
+pub mod materials;
 pub mod render;
 pub mod session;
 pub mod sim;

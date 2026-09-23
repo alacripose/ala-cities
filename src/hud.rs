@@ -188,20 +188,28 @@ fn boxed(fill: [f32; 4], border: [f32; 4]) -> Style {
     }
 }
 
+//: A colour this table does **not** own is a literal here, and the two reasons are
+//: both deliberate: it is either pure interface chrome that no icon is ever measured
+//: against (text pairs, borders, the plaque's own ink), or it is *derived* from an
+//: owned colour at the point of use (`Powered` is Nature at 55 % alpha). Everything
+//: else — the host surfaces, the world's surfaces, and the state colours the world
+//: draws — is resolved from [`crate::materials`], which is the one home for it.
+use crate::materials::token_or_defect as material_token;
+
 static STYLES: LazyLock<Vec<(Token, Style)>> = LazyLock::new(|| {
     // Desk and paper are warm neutrals that do not scroll away; text sits on a
     // scrim rather than on a texture, because there are no textures.
-    let desk = oklch(0.17, 0.012, 260.0);
-    let panel = oklch(0.25, 0.014, 260.0);
-    let panel_raised = oklch(0.31, 0.016, 260.0);
-    let plaque = oklch(0.42, 0.030, 80.0);
-    let ink_blue = oklch(0.45, 0.130, 250.0);
-    let nature = oklch(0.70, 0.150, 150.0);
-    let warning = oklch(0.74, 0.160, 70.0);
-    let refused = oklch(0.62, 0.180, 25.0);
-    let not_obtained = oklch(0.55, 0.020, 260.0);
-    let text_body = oklch(0.96, 0.005, 260.0);
-    let text_muted = oklch(0.80, 0.010, 260.0);
+    let desk = material_token("Desk");
+    let panel = material_token("Panel");
+    let panel_raised = material_token("PanelRaised");
+    let plaque = material_token("Plaque");
+    let ink_blue = material_token("Ink");
+    let nature = material_token("Nature");
+    let warning = material_token("Warning");
+    let refused = material_token("Refused");
+    let not_obtained = material_token("NotObtained");
+    let text_body = material_token("TextBody");
+    let text_muted = material_token("TextMuted");
     let on_ink = oklch(0.98, 0.005, 250.0);
 
     vec![
@@ -224,21 +232,23 @@ static STYLES: LazyLock<Vec<(Token, Style)>> = LazyLock::new(|| {
         (Token::TextMuted, ink(text_muted)),
         (Token::TextOnInk, ink(on_ink)),
         (Token::TextPlaque, ink(oklch(0.97, 0.01, 80.0))),
-        (Token::Grid, ink(with_alpha(oklch(0.35, 0.01, 260.0), 0.35))),
-        (Token::Ground, solid_fill(oklch(0.30, 0.030, 140.0))),
-        (Token::Water, solid_fill(oklch(0.42, 0.070, 240.0))),
-        (Token::Road, solid_fill(oklch(0.42, 0.005, 260.0))),
-        (Token::RoadEdge, solid_fill(oklch(0.52, 0.005, 260.0))),
+        (Token::Grid, ink(with_alpha(material_token("Grid"), 0.35))),
+        // The world's surfaces are the *readings* of their materials, and the gate
+        // checks that to the last float: a road is aggregate before it is a colour.
+        (Token::Ground, solid_fill(material_token("Ground"))),
+        (Token::Water, solid_fill(material_token("Water"))),
+        (Token::Road, solid_fill(material_token("Road"))),
+        (Token::RoadEdge, solid_fill(material_token("RoadEdge"))),
         // Under construction: a named solid, not a half-drawn building.
-        (Token::Scaffold, solid_fill(oklch(0.60, 0.090, 80.0))),
+        (Token::Scaffold, solid_fill(material_token("Scaffold"))),
         // Retired structures stay visible. The city shows its own history.
-        (Token::Retired, ink(with_alpha(oklch(0.65, 0.02, 260.0), 0.55))),
-        (Token::ZoneResidential, solid_fill(oklch(0.55, 0.130, 150.0))),
-        (Token::ZoneCommercial, solid_fill(oklch(0.55, 0.130, 250.0))),
-        (Token::ZoneIndustrial, solid_fill(oklch(0.55, 0.130, 60.0))),
+        (Token::Retired, ink(with_alpha(material_token("Retired"), 0.55))),
+        (Token::ZoneResidential, solid_fill(material_token("ZoneResidential"))),
+        (Token::ZoneCommercial, solid_fill(material_token("ZoneCommercial"))),
+        (Token::ZoneIndustrial, solid_fill(material_token("ZoneIndustrial"))),
         (Token::Powered, ink(with_alpha(nature, 0.55))),
         (Token::Brownout, ink(warning)),
-        (Token::Agent, solid_fill(oklch(0.92, 0.02, 260.0))),
+        (Token::Agent, solid_fill(material_token("Agent"))),
         (Token::AgentStuck, solid_fill(refused)),
         (Token::CaseOpen, ink(warning)),
         (Token::Verified, ink(nature)),

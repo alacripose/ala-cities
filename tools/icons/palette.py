@@ -1,17 +1,27 @@
-"""The interface's colours, recomputed for the renderer.
+"""The colour algebra, over a declaration this file no longer owns.
 
-The icons must agree with the surfaces they locate, and the only way to be sure
-of that is to derive them from the same numbers rather than to copy them. Every
-value here is the OKLCH triple that `src/hud.rs` carries for the same token, run
-through the same OKLab conversion, so a token change that is not followed by a
-re-render shows up as a palette hash mismatch in the manifest.
+The icons must agree with the surfaces they locate, and the only way to be sure of
+that is to derive them from the same numbers rather than to copy them. Every value
+here comes from `tools/materials/declare.py`, which `src/materials/generated.rs` is
+also generated from — so the icons and the game read **one** table, and the old
+transcription of `src/hud.rs` is gone rather than kept in step by a hash.
 
-`src/hud.rs` is the authority; this file is a transcription of it, and
-`tests.rs`-style duplication is avoided by hashing the transcription into the
-manifest so the two can be compared by eye or by script.
+What lives here is the algebra: OKLCH to linear sRGB, the gamut search, the matrix
+resolution, and the contrast a component owes. The declaration is data and lives in
+one file; this one computes with it.
 """
 
 import hashlib
+import os
+import sys
+
+# The declaration is one directory over, so the generator, the icon pipeline and
+# this file can never disagree about where the values come from.
+_MATERIALS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "materials")
+if _MATERIALS not in sys.path:
+    sys.path.insert(0, _MATERIALS)
+
+import declare
 
 # ---------------------------------------------------------------------------
 # OKLab -> linear sRGB (the same algebra as hud.rs::oklch)
@@ -59,40 +69,21 @@ def out_of_gamut(lightness: float, chroma: float, hue_degrees: float) -> tuple:
 
 
 # ---------------------------------------------------------------------------
-# The tokens these icons borrow from, verbatim from src/hud.rs
+# The declared values, imported rather than transcribed
 # ---------------------------------------------------------------------------
 
-TOKENS = {
-    # name: (l, c, h) exactly as the style table builds them
-    "Desk": (0.17, 0.012, 260.0),
-    "Panel": (0.25, 0.014, 260.0),
-    "Ink": (0.45, 0.130, 250.0),
-    "Nature": (0.70, 0.150, 150.0),
-    "Warning": (0.74, 0.160, 70.0),
-    "Refused": (0.62, 0.180, 25.0),
-    "NotObtained": (0.55, 0.020, 260.0),
-    "TextBody": (0.96, 0.005, 260.0),
-    "TextMuted": (0.80, 0.010, 260.0),
-    "PanelRaised": (0.31, 0.016, 260.0),
-    "Plaque": (0.42, 0.030, 80.0),
-    "Road": (0.42, 0.005, 260.0),
-    "RoadEdge": (0.52, 0.005, 260.0),
-    "Scaffold": (0.60, 0.090, 80.0),
-    "ZoneResidential": (0.55, 0.130, 150.0),
-    "ZoneCommercial": (0.55, 0.130, 250.0),
-    "ZoneIndustrial": (0.55, 0.130, 60.0),
-    "CaseOpen": (0.74, 0.160, 70.0),
-    "Powered": None,  # derived from Nature with alpha in hud.rs
-    "Retired": (0.65, 0.020, 260.0),
-    "Agent": (0.92, 0.020, 260.0),
-    # The authored icon materials no longer live here. They are the matrix below,
-    # derived from the families rather than listed, and the old role names are
-    # aliases into it, so one value has one home. What survives from those roles is
-    # the part that was measured rather than guessed: Galaxy-era metal reads as a
-    # light cool object against a dark panel, and the earlier 0.62 body token
-    # rendered like charcoal under the fixed rig.
-    "IconBlack": (0.16, 0.018, 250.0),
-}
+#: The colours this pipeline measures against, declared once in
+#: `tools/materials/declare.py` and emitted for the game from the same source.
+TOKENS = dict(declare.SHARED_TOKENS)
+TOKENS.update(declare.ICON_COLOURS)
+#: Derived in `hud.rs` from Nature with alpha; declared here as a name so an icon
+#: brief may still refer to it without carrying a second value.
+TOKENS["Powered"] = None
+#: The authored icon materials are the matrix below, derived from the families
+#: rather than listed, and the old role names are aliases into it, so one value has
+#: one home. What survives from those roles is the part that was measured rather
+#: than guessed: Galaxy-era metal reads as a light cool object against a dark panel,
+#: and the earlier 0.62 body token rendered like charcoal under the fixed rig.
 
 
 # ---------------------------------------------------------------------------
@@ -112,15 +103,7 @@ TOKENS = {
 # the point — an anchor invented to fill a slot would carry a measurement's
 # authority with none of its evidence.
 
-HUE_ANCHORS = (
-    ("red", 25.0, "backed by Token::Refused (25) — destructive"),
-    ("amber", 62.0, "backed by ZoneIndustrial (60) / Warning (70) / Scaffold (80) — caution, power"),
-    ("yellow", 115.0, "declared slot — no reference and no game meaning occupies it"),
-    ("green", 150.0, "backed by Nature / ZoneResidential (150) — nature, residential"),
-    ("cyan", 200.0, "partially backed — the study's people (162.6) and store (201.8) classes; no game token"),
-    ("blue", 250.0, "backed by Ink / ZoneCommercial (250) — data, commercial"),
-    ("violet", 300.0, "declared slot — no reference and no game meaning occupies it"),
-)
+HUE_ANCHORS = declare.HUE_ANCHORS
 
 #: The seven physical families, at the study's own character. The pack's median
 #: saturation is 0.53-0.92 and its median value 0.69-0.92: TouchWiz colour is
@@ -131,16 +114,14 @@ HUE_ANCHORS = (
 #: chroma than a neutral one or rotating the hue changes nothing — at the old 0.018
 #: the seven "hues" of a metal are the same colour seven times. `natural` is the
 #: family's own untinted body, and it is what the old role tokens became.
-FAMILIES = {
-    # family:   (lightness, variant_chroma, natural_chroma, natural_hue, note)
-    "metal":   (0.78, 0.060, 0.018, 250.0, "the light cool object the study's chrome reads as"),
-    "paper":   (0.88, 0.060, 0.035, 82.0, "matte warm sheet"),
-    "ceramic": (0.90, 0.050, 0.025, 72.0, "glazed insulator"),
-    "glass":   (0.66, 0.100, 0.090, 220.0, "lens and pane"),
-    "polymer": (0.34, 0.050, 0.018, 250.0, "dark grip"),
-    "road":    (0.38, 0.040, 0.018, 250.0, "matte surface"),
-    "enamel":  (0.62, 0.190, 0.190, 245.0, "the study's blue control face; coated colour"),
-}
+#: The icon set's seven families. The world's extra families are declared beside
+#: them and deliberately **not** merged in: `ICON_STANDARD.md` states seven as a
+#: property of the icon set, so a material the world needs cannot widen what an icon
+#: may be made of.
+FAMILIES = declare.ICON_FAMILIES
+
+#: The world's own families: declared, resolvable, and not available to an icon.
+WORLD_FAMILIES = declare.WORLD_FAMILIES
 
 #: How colour physically arrives, per family -- and the most chroma that mechanism
 #: can carry. This is the difference between tinting a material and pretending a
@@ -153,36 +134,11 @@ FAMILIES = {
 #: The numbers are the family's declared `variant_chroma`, and `colour_mechanisms()`
 #: refuses a table where the two disagree -- one value, one home, and the ceiling
 #: cannot drift away from the chroma that is actually used.
-FAMILY_COLOUR = {
-    "metal": (
-        "anodised film: an oxide layer on the substrate, so a metal body stays a metal",
-        0.060,
-    ),
-    "glass": (
-        "body-tinted: colour held in the glass itself, which also tints what shows through it",
-        0.100,
-    ),
-    "ceramic": (
-        "fired glaze: a mineral glaze over the body, opaque rather than transparent",
-        0.050,
-    ),
-    "polymer": (
-        "pigmented resin: colour compounded into the plastic itself",
-        0.050,
-    ),
-    "paper": (
-        "dyed stock: pigment in the sheet, which is why it stays matte and pale",
-        0.060,
-    ),
-    "road": (
-        "aggregate: asphalt and stone, near-neutral because that is what it is made of",
-        0.040,
-    ),
-    "enamel": (
-        "painted colour: a pigmented coating over a substrate -- the family paint belongs to",
-        0.190,
-    ),
-}
+FAMILY_COLOUR = declare.FAMILY_COLOUR
+
+#: Every family the world may name, icon or world-only. The matrix below resolves
+#: the icon set; the world's entries are resolved for the generator.
+ALL_FAMILIES = {**declare.ICON_FAMILIES, **declare.WORLD_FAMILIES}
 
 
 #: A level is a declared lightness offset on the family's own lightness, so a body
@@ -190,45 +146,14 @@ FAMILY_COLOUR = {
 #: applied and then held inside these bounds: an edge on a family already at L 0.90
 #: would otherwise sit at exactly 1.00, where the only colour available is pure
 #: white and the family's whole identity is lost.
-MATERIAL_LEVELS = {"body": 0.0, "edge": 0.10, "deep": -0.18}
-MATERIAL_LIGHTNESS_BOUNDS = (0.05, 0.97)
+MATERIAL_LEVELS = declare.MATERIAL_LEVELS
+MATERIAL_LIGHTNESS_BOUNDS = declare.MATERIAL_LIGHTNESS_BOUNDS
 
 #: What the anchors and the families were derived from, recorded so the palette hash
 #: covers the provenance and not just the numbers.
-REFERENCE_SAMPLING = {
-    "pack": "assets/reference/galaxy-s4-icon-pack",
-    "population": "res/drawable/*.png — the TouchWiz-native raster icons",
-    "population_files": 125,
-    "population_note": (
-        "the APK also carries Material Components resources, which are not the "
-        "artistic-intent family; measured, the two populations give identical "
-        "anchors, so this is a provenance statement rather than a correction"
-    ),
-    "method": (
-        "per-class circular mean hue, weighted by saturation x value, over opaque "
-        "pixels with saturation above 0.25 and value above 0.15"
-    ),
-    "measured_class_hues": {
-        "people": 162.6, "message": 34.5, "media": 226.2,
-        "system": 131.4, "store": 201.8, "nature_health": 193.0,
-    },
-    "finding": (
-        "the study's classes occupy a 95 degree arc from green through cyan to blue "
-        "with one orange outlier: it contains no red, no yellow and no violet, so "
-        "seven anchors cannot be sampled from it. Four are backed by the game's own "
-        "declared hues, one is partial, and two are declared slots"
-    ),
-    "character": {
-        "median_saturation": (0.53, 0.92),
-        "median_value": (0.69, 0.92),
-        "reading": (
-            "TouchWiz colour is saturated and bright, so variant chroma follows that "
-            "rather than the near-neutral bodies the first pass used"
-        ),
-    },
-}
+REFERENCE_SAMPLING = declare.REFERENCE_SAMPLING
 
-HUE_ANCHOR_NAMES = tuple(name for name, _degrees, _backing in HUE_ANCHORS) + ("natural",)
+HUE_ANCHOR_NAMES = declare.HUE_ANCHOR_NAMES
 
 
 def _anchor_degrees(hue: str) -> float:
@@ -240,14 +165,17 @@ def _anchor_degrees(hue: str) -> float:
     raise KeyError(f"`{hue}` is not a declared hue anchor: {', '.join(HUE_ANCHOR_NAMES)}")
 
 
-def _material_value(family: str, hue: str, level: str) -> tuple:
-    if family not in FAMILIES:
-        raise KeyError(f"`{family}` is not a declared family: {', '.join(sorted(FAMILIES))}")
+def _material_value(family: str, hue: str, level: str, table: dict | None = None) -> tuple:
+    """Resolve one entry. `table` widens the families that may be named, which is
+    how a **world** family is resolved without joining the icon matrix."""
+    table = FAMILIES if table is None else table
+    if family not in table:
+        raise KeyError(f"`{family}` is not a declared family: {', '.join(sorted(table))}")
     if level not in MATERIAL_LEVELS:
         raise KeyError(f"`{level}` is not a declared level: {', '.join(MATERIAL_LEVELS)}")
     if hue not in HUE_ANCHOR_NAMES:
         raise KeyError(f"`{hue}` is not a declared hue: {', '.join(HUE_ANCHOR_NAMES)}")
-    lightness, variant_chroma, natural_chroma, natural_hue, _note = FAMILIES[family]
+    lightness, variant_chroma, natural_chroma, natural_hue, _note = table[family]
     low, high = MATERIAL_LIGHTNESS_BOUNDS
     value = min(max(lightness + MATERIAL_LEVELS[level], low), high)
     if hue == "natural":
@@ -302,8 +230,17 @@ def material_name(family: str, hue: str, level: str = "body") -> str:
 
 
 def material_value(family: str, hue: str, level: str = "body") -> tuple:
-    """One matrix entry's OKLCH triple."""
+    """One icon matrix entry's OKLCH triple."""
     return _material_value(family, hue, level)
+
+
+def world_material_value(family: str, hue: str, level: str = "body") -> tuple:
+    """One **world** family entry's OKLCH triple, resolved the same way.
+
+    A world family is resolvable but is not part of the icon matrix, so the icon set
+    stays exactly seven while the world may name water, organic matter and soil.
+    """
+    return _material_value(family, hue, level, table=ALL_FAMILIES)
 
 
 MATERIALS = {
@@ -315,16 +252,7 @@ MATERIALS = {
 
 #: The old role names, kept so an existing recipe still resolves and each one an
 #: alias into the matrix rather than a second copy of a value.
-MATERIAL_ALIASES = {
-    "MetalBody": "metal:natural",
-    "MetalEdge": "metal:natural:edge",
-    "PaperBody": "paper:natural",
-    "CeramicInsulator": "ceramic:natural",
-    "GlassLens": "glass:natural",
-    "PolymerGrip": "polymer:natural",
-    "RoadSurface": "road:natural",
-    "IconBlue": "enamel:natural",
-}
+MATERIAL_ALIASES = declare.MATERIAL_ALIASES
 
 TOKENS.update(MATERIALS)
 for _alias, _target in MATERIAL_ALIASES.items():
