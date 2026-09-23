@@ -1698,6 +1698,115 @@ already went through.
 
 ---
 
+## 8.22 The external decision layer, convicted by its own calibration
+
+Q207 asked whose eyes the validator is, and the answer named three instruments. Two of
+them do not do what the question assumed: `convaiinnovations/laya` is **text-only** — it
+has no pixels to look at — and `trycua/cua` is a desktop driver, not a judge. So the
+vision reading keeps the model it has (§8.18), and Laya was installed for the job it can
+actually do: make the pipeline's **admissibility** decisions, in the typed form the vision
+model failed at.
+
+Laya is the right shape for that on paper. Non-autoregressive: give it a state and typed
+questions (`choice`, `score`, `noul`) and it returns typed answers with calibrated
+probabilities in one forward pass. It never generates text, so there is nothing to parse
+and nothing to hallucinate. Installed here as `laya 0.3.6` with `torch 2.14.0` and
+`transformers 5.17.0`; the English checkpoint is ModernBERT-large at 421M with a **512
+token budget total, 192 of them reserved for option prompts** — tighter than the vision
+model's window, so a state is a handful of short lines or it does not fit.
+
+Its own card states the limit that shaped the design, and the design took it literally:
+
+> "Base checkpoints are near chance on typed-decisions zero-shot — 0.362 here … against
+a 0.318 random and 0.461 majority-class baseline."
+
+> "Ships over-confident: Refitting one temperature per (question type, option count)
+moves mean ECE 0.466 → 0.081 … **Do this on your own data** before trusting the
+probabilities."
+
+So `tools/icons/decide.py` quotes nothing until it has been calibrated **in the same
+run** against decisions whose answers are records rather than opinions: the thirty
+candidates `geometry_gate` judged, read back out of `review.json`, and the four inputs
+whose refusal `_smoke_families.py`'s `gate_self_test` already proves. The library's own
+caution is captured rather than allowed to scroll past, and it is a real one:
+
+```
+laya: this checkpoint ships temperatures outside [0.5, 5] which would distort
+confidence; clamping choice:11+=0.1006. Treat confidence from the affected buckets
+as uncalibrated.
+```
+
+| measured on 34 decisions whose answers are on record | |
+|---|---|
+| accuracy | **0.1765** |
+| majority class | 0.8824 (it does **not** beat it) |
+| catches the 4 known refusals | 0.5000 |
+| spares the 30 recorded passes | 0.1333 |
+| ECE, 5 bins | 0.5973 |
+| mean promote-probability when admissible | 0.2437 |
+| mean promote-probability when refused | 0.3672 |
+| accuracy if the answer were read **inverted** | 0.8235 |
+
+Those last two rows are the finding, and they separate two different faults. The model
+*does* order the classes — refusals sit above passes — but **the wrong way round**, which
+is a phrasing fault in my question: a compound "is this admissible?" is answered as if
+asked the negative. Read the right way it reaches 0.8235 and *still* falls below the
+0.8824 majority, because the separation is too weak. Sign is fixable by phrasing; ability
+is not, and only fine-tuning the `typed-decisions` checkpoint addresses it. The vendor's
+temperature refit is monotone and cannot raise a 0.8235 above a 0.8824 majority, so it is
+not attempted — it would buy calibrated probabilities for an answer that is still wrong.
+
+**So Laya is installed, wired, calibrated, and convicted by its own calibration.**
+`decide.py` reports `quotable: false` and exits non-zero, and nothing downstream may
+quote it. That is the point of writing the instrument this way: the failure is a number in
+the record rather than a confident sentence in a report, which is exactly the difference
+between §8.18's first form and its last.
+
+## 8.23 The read now gates promotion, and the only door through it is a reason
+
+Q206 answered that the validator's verdict **gates** promotion rather than being filed
+beside it, and the answer to the follow-up added the escape: a candidate that does not
+read as its own object may still be promoted by a person who **says why in the same act**.
+
+That lands in `iconreview::record`, not in a picker — it is the shared hand-off both
+tools write through, so neither can disagree with the other about what a promotion is.
+`record` now returns `Result` and a refusal writes **nothing**:
+
+| the gate refuses when | the refusal carries |
+|---|---|
+| there is no reading for the icon at all | that absence is not a free pass, it is no evidence |
+| the run's `calibration.calibrated` is false | the ceiling that run missed, so the verdict is not evidence either way |
+| a calibrated run read it as something else | the model, what it **was** read as, what it declares, the ceiling, and whether the ladder was one object |
+
+And it has exactly one door. `reason` is the mark's comment — a field already written
+with every mark, already read back as the next generation's directive — so the override
+needs no new file, no new UI and no separate act to be honest: **a reason typed into the
+comment box is the override, and it is on the record with the mark.** The picker's refusal
+prints that reason and leaves the person on the icon, because the way through the gate is
+the box they are already looking at.
+
+A gate that passes everything is not evidence, so the test is written against the
+refusals: an uncalibrated run refused; a misread refused **and nothing written to the
+decisions file**; the same mark with a reason recorded; a holding reading passed with no
+reason needed; no reading at all refused. `a_promotion_without_a_reason_fails_closed`
+passes, and the whole library is at **127 tests**.
+
+On the real ledger the gate is not hypothetical — it splits the reviewed set:
+
+| icon | ceiling | the gate |
+|---|---|---|
+| `vocab-settings` | 5/6 | **promote** (read as its gear at every λ) |
+| `tool-demolish` | 5/6 | **promote** (read as its bin at every λ) |
+| `tool-inspect` | 1/1 | refuse — read as gear, lens, road |
+| `tool-power` | 5/6 | refuse — read as bolt, gear, road |
+| `tool-road` | 5/6 | refuse — read as bin, gear, road |
+| `ticket` | 5/6 | refuse — read as gear, plaque |
+
+Four of six icons now need either their geometry changed or a person's written reason
+before they can ship. That is the roadmap Q206 asked for, printed by the gate itself.
+
+---
+
 ## Still open, and deliberately so
 
 * **`tool-zone`** — the locator half, unchanged by this campaign (a166).
@@ -1712,6 +1821,11 @@ already went through.
   decision ledger; whether the picker should rewrite it or the pipeline should
   regenerate before opening is not settled here, because the concept-set bump makes
   the six awaiting again anyway.
+* **Laya's fine-tuning** — §8.22 convicted the base checkpoint (0.8235 read inverted
+  against a 0.8824 majority). The vendor's remedy for the *ability* is fine-tuning the
+  `typed-decisions` checkpoint on our own known-answer set, which is 34 decisions wide
+  today: enough to convict, not enough to train on. It waits for more recorded
+  decisions from the gate above, which is now generating them.
 * **A hosted validator model** — the interface accepts one and `VALIDATOR_BASE_URL`
   points at it; no key exists and none is being bought in this campaign. The local model
   it runs against today is reported with its own ceiling beside every verdict (§8.18).

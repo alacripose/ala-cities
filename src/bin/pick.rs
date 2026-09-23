@@ -25,7 +25,7 @@ use ala_cities::design::{self, Space, Step, Target, UiScale};
 use ala_cities::hud::{self, Token};
 use ala_cities::iconreview::{
     load_review, read_directives, record, review_defects, Icon, Review, CANDIDATE_COUNT,
-    DECISIONS,
+    DECISIONS, VALIDATION,
 };
 use ala_cities::render::{
     Gpu, ImageBatcher, Screen, Text, ATLAS_SIZE, Batcher, Face,
@@ -281,14 +281,21 @@ impl Picker {
             ),
             None => "no target, comment only".to_string(),
         };
-        record(
+        // The promotion gate (Q206). A refusal leaves the person on this icon with
+        // the reason printed, because the way through the gate is the comment box
+        // they are already looking at — not a second tool, and not a silent skip.
+        if let Err(refusal) = record(
             &self.review,
             &icon,
             position,
             checked.is_some(),
             &comment,
             Path::new(DECISIONS),
-        );
+            Path::new(VALIDATION),
+        ) {
+            eprintln!("{refusal}");
+            return;
+        }
         println!("{what} on {} — recorded", icon.id);
         self.directives
             .entry(icon.id.clone())

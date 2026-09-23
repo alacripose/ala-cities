@@ -18,6 +18,9 @@ use serde_json::Value;
 
 pub const REVIEW_JSON: &str = "assets/icons/review.json";
 pub const DECISIONS: &str = "assets/icons/review-decisions.jsonl";
+/// What the external validator recorded about each icon's object (Q206). The
+/// picker reads it and the pipeline writes it; neither owns it alone.
+pub const VALIDATION: &str = "assets/icons/validation.jsonl";
 pub const ASSETS: &str = "assets/icons";
 pub const AUTHORING_PHASE: &str = "icon-authoring-review";
 pub const CANDIDATE_COUNT: usize = 6;
@@ -341,8 +344,159 @@ impl Generation {
     }
 }
 
+/// What an instrument outside this pipeline recorded about one icon's object.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Reading {
+    /// The family the icon declares as its own reading. `tool-power`'s is the bolt.
+    pub expected: String,
+    /// Every λ sample of the ladder read as that family. This is Q206's gate.
+    pub reads_as_own_object: bool,
+    /// The five samples were read as one object rather than as several.
+    pub ladder_is_one_object: bool,
+    /// Whatever families the ladder *was* read as — the refusal's evidence.
+    pub distinct_reads: Vec<String>,
+    /// Whether the run that produced this reading passed its own calibration.
+    pub calibrated: bool,
+    /// The corpus marks that run identified, against which the reading is read.
+    pub ceiling: String,
+    pub model: String,
+}
+
+/// The last reading recorded per icon, which is the one that stands.
+///
+/// Deciding again supersedes without erasing, exactly as a `target: true` line
+/// does: the lens's geometry was corrected after its first reading, and a gate
+/// that averaged the two would gate the object that no longer exists.
+///
+/// A ledger that is absent or unreadable yields no readings rather than an
+/// error — the caller's refusal says what that means.
+pub fn readings(path: &Path) -> HashMap<String, Reading> {
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return HashMap::new();
+    };
+    let mut out: HashMap<String, Reading> = HashMap::new();
+    for line in text.lines() {
+        let Ok(value) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+        if value.get("kind").and_then(Value::as_str) != Some("reading") {
+            continue;
+        }
+        let Some(icon) = value.get("icon").and_then(Value::as_str) else {
+            continue;
+        };
+        let calibration = value.get("calibration");
+        out.insert(
+            icon.to_string(),
+            Reading {
+                expected: text_of(&value, "expected"),
+                reads_as_own_object: flag(&value, "reads_as_own_object"),
+                ladder_is_one_object: flag(&value, "ladder_is_one_object"),
+                distinct_reads: value
+                    .get("distinct_reads")
+                    .and_then(Value::as_array)
+                    .map(|readings| readings.iter().filter_map(string_of).collect())
+                    .unwrap_or_default(),
+                calibrated: calibration
+                    .and_then(|c| c.get("calibrated"))
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+                ceiling: calibration
+                    .and_then(|c| c.get("ceiling"))
+                    .and_then(Value::as_str)
+                    .unwrap_or("none")
+                    .to_string(),
+                model: text_of(&value, "model"),
+            },
+        );
+    }
+    out
+}
+
+fn string_of(value: &Value) -> Option<String> {
+    value.as_str().map(str::to_string)
+}
+
+fn flag(value: &Value, key: &str) -> bool {
+    value.get(key).and_then(Value::as_bool).unwrap_or(false)
+}
+
+fn text_of(value: &Value, key: &str) -> String {
+    value.get(key).and_then(Value::as_str).unwrap_or("").to_string()
+}
+
+/// Why a promotion may not be recorded, or `None` when it may (Q206).
+///
+/// Q206 answered that the validator's verdict **gates** promotion rather than
+/// merely being filed, and Q211 added the escape: a candidate that does not read
+/// as its own object may still be promoted by a person who **says why in the same
+/// act**. So the gate has exactly one door, and it is a reason on the record.
+///
+/// `reason` is the mark's comment — already recorded with the mark, already the
+/// field a directive is read back from, so an override needs no new file, no new
+/// UI and no separate act to be honest about:
+///
+/// * a reason typed with the mark is the override, and it is written down;
+/// * no reason, a missing reading, or an uncalibrated run refuses the mark.
+///
+/// Failing closed matters more here than anywhere else in the pipeline: the
+/// refusal is the only thing standing between a person's click and an icon that
+/// nothing outside the pipeline has ever confirmed a player will recognise.
+pub fn promotion_refusal(icon: &Icon, reason: &str, path: &Path) -> Option<String> {
+    if !reason.trim().is_empty() {
+        return None;
+    }
+    let readings = readings(path);
+    let Some(reading) = readings.get(&icon.id) else {
+        return Some(format!(
+            "`{}` has no reading in {}: nothing outside this pipeline has said its \
+             object reads as itself, so there is no evidence to promote. Mark it again \
+             with the reason typed into the comment box — the reason is recorded with \
+             the mark, which is what an override is here.",
+            icon.id,
+            path.display()
+        ));
+    };
+    if !reading.calibrated {
+        return Some(format!(
+            "the run that read `{}` did not pass its own calibration (ceiling {}), so \
+             its verdict is not evidence either way. Re-run the validator, or mark with \
+             a reason to promote on a person's judgement.",
+            icon.id, reading.ceiling
+        ));
+    }
+    if reading.reads_as_own_object {
+        return None;
+    }
+    let read_as = if reading.distinct_reads.is_empty() {
+        "something its declaration does not name".to_string()
+    } else {
+        reading.distinct_reads.join(", ")
+    };
+    Some(format!(
+        "{} read `{}` as {} where it declares {} — ceiling {} on the corpus's own \
+         marks, ladder one object: {} — so it is not confirmed that a player sees the \
+         object it means. Mark with the reason typed into the comment box to promote it \
+         anyway.",
+        reading.model,
+        icon.id,
+        read_as,
+        reading.expected,
+        reading.ceiling,
+        reading.ladder_is_one_object
+    ))
+}
+
 /// One line, appended. A **mark** carries a target and the checked generation; a
 /// **note** carries only a comment. Returns the JSON line it wrote.
+///
+/// A mark is a promotion, so it passes the gate first (Q206): `Err` carries the
+/// refusal and nothing is written, which is how the refusal stays a refusal
+/// rather than becoming a note nobody reads.
+///
+/// `validation` is the ledger the gate reads. It is a parameter rather than the
+/// constant so the gate can be tested against a fixture — and a caller that
+/// passes a path holding no readings gets a refusal, not a free pass.
 pub fn record(
     review: &Review,
     icon: &Icon,
@@ -350,7 +504,13 @@ pub fn record(
     target: bool,
     comment: &str,
     path: &Path,
-) -> String {
+    validation: &Path,
+) -> Result<String, String> {
+    if target {
+        if let Some(refusal) = promotion_refusal(icon, comment, validation) {
+            return Err(refusal);
+        }
+    }
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_secs())
@@ -398,7 +558,7 @@ pub fn record(
         }
         Err(err) => eprintln!("could not open {}: {err}", path.display()),
     }
-    line
+    Ok(line)
 }
 
 /// Every comment recorded for an icon, oldest first, from the picker's own log — so
@@ -473,7 +633,16 @@ mod tests {
             forbidden_readings: vec!["capability grant".into()],
         };
         let path = std::env::temp_dir().join("ala-cities-c7-record-test.jsonl");
-        let line = record(&review, &icon, 0, true, "sharpen the tab", &path);
+        let line = record(
+            &review,
+            &icon,
+            0,
+            true,
+            "sharpen the tab",
+            &path,
+            Path::new(VALIDATION),
+        )
+        .expect("a reason with the mark is an override, so this records");
         let parsed: Value = serde_json::from_str(&line).expect("the line is valid JSON");
         assert_eq!(parsed.get("concept_set").and_then(Value::as_str), Some("test-set"));
         assert_eq!(parsed.get("target").and_then(Value::as_bool), Some(true));
@@ -482,5 +651,107 @@ mod tests {
             Some("sharpen the tab")
         );
         let _ = std::fs::remove_file(&path);
+    }
+
+    /// Q206's gate, tested the only way a gate can be evidence: it has to refuse.
+    ///
+    /// The three things it must not let through are a mark on an object nothing has
+    /// confirmed reads as itself, a mark whose only support is a run that failed its
+    /// own calibration, and a mark on an icon no run has read at all. The one thing
+    /// it must let through is a person's override — the mark with a reason typed
+    /// into the comment box, which is recorded with the mark.
+    #[test]
+    fn a_promotion_without_a_reason_fails_closed() {
+        let review = Review {
+            concept_set: "test-set".into(),
+            decision_px: 96.0,
+            recognition_px: 24.0,
+            context_px: 24.0,
+            fills: HashMap::new(),
+            host_fills: HashMap::new(),
+            blender: "Blender test".into(),
+            palette_hash: "abc".into(),
+            icons: Vec::new(),
+        };
+        let icon = Icon {
+            id: "tool-inspect".into(),
+            kind: "tool".into(),
+            meaning: "the inspect tool".into(),
+            locates: "Tool::Inspect".into(),
+            sits_on: vec!["PanelRaised".into()],
+            identity: None,
+            identity_as: String::new(),
+            directives: Vec::new(),
+            generations: vec![Generation {
+                id: "a-canonical".into(),
+                label: "canonical".into(),
+                why: "the clearest authored reading".into(),
+                sharp: PathBuf::new(),
+                recognition: PathBuf::new(),
+                context: PathBuf::new(),
+                measurements: Value::Null,
+                checks: Value::Null,
+                gate: Value::Array(Vec::new()),
+                brief: Value::Null,
+            }],
+            brief: Value::Null,
+            lineage: vec!["MD1".into()],
+            forbidden_readings: vec!["capability grant".into()],
+        };
+
+        let ledger = std::env::temp_dir().join("ala-cities-c8-gate-ledger.jsonl");
+        let decisions = std::env::temp_dir().join("ala-cities-c8-gate-decisions.jsonl");
+        let reading = |reads_as_own_object: bool, calibrated: bool| {
+            serde_json::json!({
+                "kind": "reading",
+                "icon": "tool-inspect",
+                "expected": "lens",
+                "reads_as_own_object": reads_as_own_object,
+                "ladder_is_one_object": true,
+                "distinct_reads": ["gear"],
+                "model": "a test instrument",
+                "calibration": { "calibrated": calibrated, "ceiling": "5/6" },
+            })
+            .to_string()
+        };
+        let write_ledger = |line: Option<String>| {
+            let text = line.map(|line| format!("{line}\n")).unwrap_or_default();
+            std::fs::write(&ledger, text).expect("the fixture ledger is written");
+        };
+
+        // Uncalibrated: the run's verdict is not evidence either way, so it refuses.
+        write_ledger(Some(reading(false, false)));
+        let refusal = promotion_refusal(&icon, "", &ledger).expect("an uncalibrated run refuses");
+        assert!(refusal.contains("did not pass its own calibration"), "{refusal}");
+
+        // Calibrated, and it does not read as the object it declares: refuse, naming
+        // both what it was read as and what it declares.
+        write_ledger(Some(reading(false, true)));
+        let refusal = promotion_refusal(&icon, "", &ledger).expect("a misreading refuses");
+        assert!(refusal.contains("as gear"), "{refusal}");
+        assert!(refusal.contains("declares lens"), "{refusal}");
+        assert!(
+            record(&review, &icon, 0, true, "", &decisions, &ledger).is_err(),
+            "a mark with no reason does not reach the decisions file"
+        );
+        assert!(!decisions.exists(), "nothing was written for the refused mark");
+
+        // The override: the same mark, with the reason typed in, is recorded.
+        let line = record(&review, &icon, 0, true, "the handle reads at 24px, ship it",
+                          &decisions, &ledger)
+            .expect("a reason with the mark is the override");
+        assert!(line.contains("the handle reads at 24px"), "{line}");
+
+        // A reading that holds: no refusal, and no reason needed.
+        write_ledger(Some(reading(true, true)));
+        assert_eq!(promotion_refusal(&icon, "", &ledger), None);
+
+        // No reading at all is not a free pass; it is the absence of evidence.
+        write_ledger(None);
+        let refusal = promotion_refusal(&icon, "", &ledger).expect("no reading refuses");
+        assert!(refusal.contains("has no reading in"), "{refusal}");
+
+        let _ = std::fs::remove_file(&ledger);
+        let _ = std::fs::remove_file(&decisions);
     }
 }
