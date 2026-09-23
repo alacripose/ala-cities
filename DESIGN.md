@@ -81,7 +81,14 @@ Every stage has a **gate**: named commands with expected **readings**, the
 | Q240 | capability design packet | ✔ twelve named fields and zero unresolved questions required for design-sweep completion |
 | Q241 | capability graph authorship | ✔ source-derived draft and reference view; agent reconciliation; human-approved typed graph is canonical; no hand-typing required |
 | Q242 | artifact census granularity | ✔ logical artifacts, producers, recipes, manifests, provenance, and compatibility decisions; generated derivatives inherit producer disposition |
+| Q243 | `docs/design/` layout | ✔ separated canonical fact files, schemas, per-capability packets, generated views, and diagrams joined by stable IDs |
+| Q244 | design authoring tool | ✔ Python CLI under `tools/design/`; agent applies Ask UI answers while the tool extracts, validates, checks coverage, and projects |
+| Q245 | generated artifact policy | ✔ check in useful projections and diagrams; record generator/source digests and reject stale output |
+| Q246 | package evolution | ✔ integer schema version, monotonic design revision, generator identity, source digests, and explicit migrations; Git remains evidence |
+| Q247 | source-derived capability view | ✔ checked-in `generated/source-capabilities.json`, visibly noncanonical and never auto-promoted |
+| Q248 | capability packet storage | ✔ one canonical JSON packet per capability under `docs/design/capabilities/` |
+| Q249 | design gate | ✔ named `design-verify` command locally and in CI/release gates |
 
-*Rounds 2–5 (Q217–Q242) are answered in `docs/GRILLING-C11.md`. The next
-frontier opens **world truth and replay** and generates the first typed design
-package drafts for review.*
+*Rounds 2–6 (Q217–Q249) are answered in `docs/GRILLING-C11.md`. The typed
+package and Python design CLI are now specified; the inherited-decision corpus
+and capability-graph drafts are the live blockers for world truth and replay.*

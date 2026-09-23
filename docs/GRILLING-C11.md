@@ -515,6 +515,98 @@ and representative outputs. Generated derivatives inherit their producer's
 disposition and are checked through manifests and digests rather than one manual
 row per file.
 
+---
+
+## Round 6 — typed package layout and enforcement (Q243–Q249)
+
+### Q243 — how facts are separated inside `docs/design/`
+
+Does one giant object win simplicity, one file per object win isolation, or do
+normalized fact files preserve one canonical home without a huge merge surface?
+
+➡️ **Separate canonical facts and reference them.** Decisions, capabilities,
+artifacts, and packets have different shapes and lifecycles.
+
+✔ **Separated fact files confirmed.** The package uses `decisions.json`,
+`capabilities.json`, `artifacts.json`, `schemas/`, `capabilities/<id>.json`,
+`generated/`, and `diagrams/`. Stable IDs connect the normalized records; no
+fact is manually maintained in two files.
+
+### Q244 — what authors and validates the design package
+
+Direct edits and an ad-hoc script make the typed package only decorative. Who
+owns extraction, validation, answer application, coverage, and projection?
+
+➡️ **A small Python design CLI.** The existing Python tool ecosystem is the
+right owner; the game runtime does not need to carry design-development tools.
+
+✔ **Python design CLI confirmed.** `tools/design/` owns extraction, validation,
+approved-answer application, coverage checks, stable formatting, and projection
+generation. The agent invokes it after Ask UI decisions; the person does not hand
+edit large JSON structures.
+
+### Q245 — which generated artifacts live in Git
+
+Should generated views be ephemeral, canonical, or retained beside their source?
+
+➡️ **Check in useful projections and verify freshness.** Reviews should not
+require a hidden generation step, and checked-in output must not drift.
+
+✔ **Check in and verify confirmed.** Canonical JSON, generated human views, and
+reviewed diagrams are retained. Every generated artifact records its generator
+and source digests, and `design-verify` refuses stale output.
+
+### Q246 — how the package evolves
+
+Do Git commits, semantic versions, or timestamps carry schema and design
+identity?
+
+➡️ **Schema version plus monotonic design revision.** Git identity is evidence,
+not a substitute for typed compatibility.
+
+✔ **Schema plus revision confirmed.** Every package root carries an integer
+schema version, monotonic design revision, generator identity, generated-from
+digests, and explicit migration records when structure changes. Git commit
+identity remains linked evidence.
+
+### Q247 — where the source-derived capability view lives
+
+The source-derived graph is a factual draft, not target truth. May it disappear
+between runs or compete with the approved graph?
+
+➡️ **A checked-in generated reference file.** Review needs a stable diff, but
+its authority must remain visibly separate.
+
+✔ **Generated reference file confirmed.**
+`docs/design/generated/source-capabilities.json` records the source extractor,
+source digests, current modules, binaries, tools, assets, and inferred
+capabilities. It is visibly noncanonical and never promoted without human
+approval.
+
+### Q248 — how capability packets are stored
+
+Should all packet bodies live in the graph, in Markdown, in issues, or in one
+validated file per capability?
+
+➡️ **One JSON packet per capability.** Each packet is independently reviewable
+and schema-valid while the graph owns relationships between packet IDs.
+
+✔ **One JSON per capability confirmed.** Each of the twelve capability packets
+lives at `docs/design/capabilities/<capability-id>.json`. The capability graph
+references packet IDs, and packet completeness is checked independently.
+
+### Q249 — where the design gate runs
+
+Is validation a local habit, a test detail, CI-only concern, or a named gate?
+
+➡️ **A named local gate that CI/release also run.** The package is design truth,
+so stale or invalid design data must fail visibly before product work.
+
+✔ **Local plus CI gate confirmed.** `design-verify` validates schemas,
+references, canonical IDs, packet completeness, inherited-decision coverage,
+source digests, generated-view freshness, and graph approval. It runs locally
+now and is reused by CI and release gates when those exist.
+
 **Generated visual projection (draft):**
 `docs/design/diagrams/capability-system.excalidraw` and its rendered PNG show
 the approved twelve-family taxonomy, the foundational evidence projection, the
