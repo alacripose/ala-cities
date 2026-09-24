@@ -17,6 +17,7 @@
 //! the same modules, which is what a115/a128 bought: one layer, two surfaces.
 
 pub mod design;
+pub mod founding_day;
 pub mod agentledger;
 pub mod audio;
 pub mod buildinfo;

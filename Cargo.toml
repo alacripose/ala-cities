@@ -15,6 +15,10 @@ path = "src/main.rs"
 name = "verify"
 path = "src/bin/verify.rs"
 
+[[bin]]
+name = "founding-day-probe"
+path = "src/bin/founding-day-probe.rs"
+
 # The agent's ledger tool: the only process that writes the work ledger the
 # debugger pane reads (C7, C6 Q127). Separate by process so "only the agent's
 # ledger may set in_progress" is enforceable, not a convention.

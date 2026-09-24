@@ -1,0 +1,13 @@
+﻿initial: phase=ready tick=0 digest=a0f812a051966218
+accepted: land(4,4,0)
+accepted: forage(2,2,0)
+unloaded: chunk=0,0,0 digest=f97f6367d331e29b
+rederived: forage_mass=1500g digest=f97f6367d331e29b
+accepted: forage(2,2,0)
+accepted: forage(2,2,0)
+accepted: forage(2,2,0)
+accepted: wood(6,2,0)
+accepted: wood(6,2,0)
+accepted: fire(4,4,0)
+accepted: shelter(4,4,0)
+final: phase=dawn tick=43200 day=28800 night=14400 food=1500g wood=2500g balanced=true digest=c19fa5b15e29a807
