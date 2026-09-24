@@ -80,10 +80,10 @@ impl ChunkCoord {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WorldSeed(pub u64);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GeneratorRevision(pub u64);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -137,7 +137,9 @@ impl Chunk {
                         chunk.y * CHUNK_SIZE + y,
                         chunk.z * CHUNK_SIZE + z,
                     );
-                    let kind = derive_kind(seed, revision, coord, local);
+                    let Some(kind) = derive_kind(seed, revision, coord) else {
+                        continue;
+                    };
                     let mass = match kind {
                         VoxelKind::Soil => 1_000,
                         VoxelKind::Forage => FORAGE_PATCH_GRAMS,
@@ -186,31 +188,30 @@ fn hash_coord(seed: WorldSeed, revision: GeneratorRevision, coord: Coord) -> u64
     value ^ (value >> 31)
 }
 
-fn derive_kind(
-    seed: WorldSeed,
-    revision: GeneratorRevision,
-    coord: Coord,
-    local: Coord,
-) -> VoxelKind {
+fn derive_kind(seed: WorldSeed, revision: GeneratorRevision, coord: Coord) -> Option<VoxelKind> {
     // The first slice has visible starter resources so the actual material path
-    // can be exercised without inventing a second inventory system.
+    // can be exercised without inventing a second inventory system. Air remains
+    // absent from the sparse chunk map rather than occupying 32³ dense cells.
     if coord == Coord::new(4, 4, 0) {
-        return VoxelKind::Soil;
+        return Some(VoxelKind::Soil);
     }
     if coord == Coord::new(2, 2, 0) {
-        return VoxelKind::Forage;
+        return Some(VoxelKind::Forage);
     }
     if coord == Coord::new(6, 2, 0) || coord == Coord::new(2, 6, 0) {
-        return VoxelKind::Wood;
+        return Some(VoxelKind::Wood);
     }
-    if local.z != 0 {
-        return VoxelKind::Soil;
+    if coord.z < 0 {
+        return Some(VoxelKind::Soil);
     }
-    match hash_coord(seed, revision, coord) % 23 {
+    if coord.z > 0 {
+        return None;
+    }
+    Some(match hash_coord(seed, revision, coord) % 23 {
         0 | 1 => VoxelKind::Forage,
         2 | 3 => VoxelKind::Wood,
         _ => VoxelKind::Soil,
-    }
+    })
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -482,6 +483,10 @@ impl FoundingWorld {
 
     pub fn unload_chunk(&mut self, chunk_coord: ChunkCoord) -> bool {
         self.chunks.remove(&chunk_coord).is_some()
+    }
+
+    pub fn chunk(&self, chunk_coord: ChunkCoord) -> Option<&Chunk> {
+        self.chunks.get(&chunk_coord)
     }
 
     pub fn voxel_at(&self, coord: Coord) -> Option<Voxel> {

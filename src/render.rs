@@ -539,18 +539,18 @@ impl Camera {
     /// the screen axes, so a drag moves the city with the cursor rather than
     /// with the world's own axes.
     pub fn pan(&mut self, dx_screen: f32, dy_screen: f32) {
-        let u = self.up();
-        let r = self.right();
-        // Only the ground-plane component moves the focus; otherwise panning
-        // would lift or sink the camera.
-        let rx = Vec2::new(r.x, r.y);
-        let ux = Vec2::new(u.x, u.y);
-        let lift = Vec2::new(u.z, u.z);
-        // Screen-up on the ground is shorter than screen-up in the plane by the
-        // tilt, and dividing by it keeps the drag tracking the cursor.
-        let ground_up = if lift.x.abs() < 1e-3 { 1.0 } else { 1.0 - lift.x.abs() };
-        self.focus.x -= (dx_screen * rx.x + dy_screen * ux.x / ground_up) / self.zoom;
-        self.focus.y -= (dx_screen * rx.y + dy_screen * ux.y / ground_up) / self.zoom;
+        let up = Vec2::new(self.up().x, self.up().y);
+        let up_length = up.length();
+        if up_length <= 1e-6 {
+            return;
+        }
+        let up = up / up_length;
+        let right = self.right();
+        let right = Vec2::new(right.x, right.y).normalize();
+        let horizontal = dx_screen / self.zoom;
+        let vertical = dy_screen / (self.zoom * up_length);
+        self.focus.x += -right.x * horizontal + up.x * vertical;
+        self.focus.y += -right.y * horizontal + up.y * vertical;
     }
 
     /// Orbit: free rotation and free tilt, both driven by a drag.
@@ -560,9 +560,25 @@ impl Camera {
     }
 
     pub fn zoom_by(&mut self, factor: f32, at_screen: (f32, f32)) {
+        self.zoom_by_with_limits(factor, at_screen, 0.15, 8.0);
+    }
+
+    /// Zoom toward the cursor with an explicit scale range. The target world
+    /// uses 1 m voxels and therefore needs a different range from the legacy
+    /// 12 m tile camera.
+    pub fn zoom_by_with_limits(
+        &mut self,
+        factor: f32,
+        at_screen: (f32, f32),
+        min_zoom: f32,
+        max_zoom: f32,
+    ) {
+        if !factor.is_finite() || factor <= 0.0 || min_zoom <= 0.0 || max_zoom < min_zoom {
+            return;
+        }
         // Zoom toward the cursor: the ground point under it stays under it.
         let before = self.pick_ground(at_screen.0, at_screen.1);
-        self.zoom = (self.zoom * factor).clamp(0.15, 8.0);
+        self.zoom = (self.zoom * factor).clamp(min_zoom, max_zoom);
         if let (Some(before), Some(after)) = (before, self.pick_ground(at_screen.0, at_screen.1)) {
             self.focus.x += before.x - after.x;
             self.focus.y += before.y - after.y;
@@ -1956,6 +1972,40 @@ mod tests {
             right - left <= 256 && bottom - top <= 256,
             "the visible set escaped the map: {left},{top},{right},{bottom}"
         );
+    }
+
+    #[test]
+    fn panning_tracks_the_cursor_after_rotation_and_tilt() {
+        let mut camera = camera(0.7, 0.9);
+        let point = camera.focus;
+        let before = camera.world_to_screen(point);
+        camera.pan(37.0, -29.0);
+        let after = camera.world_to_screen(point);
+
+        let horizontal = after.0 - before.0;
+        let vertical = after.1 - before.1;
+        assert!(
+            (horizontal - 37.0).abs() < 0.05,
+            "horizontal pan moved {horizontal}, expected 37"
+        );
+        assert!(
+            (vertical + 29.0).abs() < 0.05,
+            "vertical pan moved {vertical}, expected -29"
+        );
+    }
+
+    #[test]
+    fn target_zoom_uses_target_limits_and_keeps_the_cursor_anchor() {
+        let mut camera = camera(0.7, 0.9);
+        camera.zoom = 24.0;
+        let cursor = (900.0, 300.0);
+        let before = camera.pick_ground(cursor.0, cursor.1).expect("ground");
+        camera.zoom_by_with_limits(1.25, cursor, 4.0, 96.0);
+        let after = camera.pick_ground(cursor.0, cursor.1).expect("ground");
+
+        assert!((camera.zoom - 30.0).abs() < f32::EPSILON);
+        assert!((before.x - after.x).abs() < 0.5, "x drifted");
+        assert!((before.y - after.y).abs() < 0.5, "y drifted");
     }
 
     #[test]
