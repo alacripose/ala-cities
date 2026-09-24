@@ -11,7 +11,7 @@ use std::fmt;
 
 use glam::Vec3;
 
-use crate::founding_day::{ChunkCoord, Coord, GeneratorRevision, VoxelKind, WorldSeed};
+use crate::founding_day::{Chunk, ChunkCoord, Coord, GeneratorRevision, VoxelKind, WorldSeed};
 use crate::octree::SparseVoxelOctree;
 use crate::raycast::VoxelHit;
 
@@ -453,29 +453,10 @@ impl DynamicAssetGenerator {
             .ok_or(AssetBuildError::ChunkNotLoaded(chunk_coord))?;
 
         let mut octree = SparseVoxelOctree::default();
-        let mut quads = Vec::new();
         for (local, voxel) in &chunk.voxels {
             octree.insert(*local, voxel.kind);
-            let coord = chunk_world_coord(chunk_coord, *local);
-            for normal in [
-                Coord::new(1, 0, 0),
-                Coord::new(-1, 0, 0),
-                Coord::new(0, 1, 0),
-                Coord::new(0, -1, 0),
-                Coord::new(0, 0, 1),
-                Coord::new(0, 0, -1),
-            ] {
-                let neighbour =
-                    Coord::new(coord.x + normal.x, coord.y + normal.y, coord.z + normal.z);
-                if world.voxel_at(neighbour).is_some() {
-                    continue;
-                }
-                quads.push(MeshQuad {
-                    vertices: face_vertices(coord, normal),
-                    material: voxel.kind,
-                });
-            }
         }
+        let quads = greedy_visible_quads(world, chunk_coord, chunk);
 
         let mut asset = ChunkAsset {
             key,
@@ -546,61 +527,144 @@ fn chunk_world_coord(chunk: ChunkCoord, local: Coord) -> Coord {
     )
 }
 
-fn face_vertices(coord: Coord, normal: Coord) -> [MeshVertex; 4] {
-    let center = Vec3::new(
-        coord.x as f32 + 0.5,
-        coord.y as f32 + 0.5,
-        coord.z as f32 + 0.5,
-    );
-    let (hx, hy, hz) = (0.5, 0.5, 0.5);
-    let offsets = if normal.x > 0 {
-        [
-            Vec3::new(hx, -hy, -hz),
-            Vec3::new(hx, hy, -hz),
-            Vec3::new(hx, hy, hz),
-            Vec3::new(hx, -hy, hz),
-        ]
-    } else if normal.x < 0 {
-        [
-            Vec3::new(-hx, hy, -hz),
-            Vec3::new(-hx, -hy, -hz),
-            Vec3::new(-hx, -hy, hz),
-            Vec3::new(-hx, hy, hz),
-        ]
-    } else if normal.y > 0 {
-        [
-            Vec3::new(-hx, hy, hz),
-            Vec3::new(hx, hy, hz),
-            Vec3::new(hx, hy, -hz),
-            Vec3::new(-hx, hy, -hz),
-        ]
-    } else if normal.y < 0 {
-        [
-            Vec3::new(-hx, -hy, -hz),
-            Vec3::new(hx, -hy, -hz),
-            Vec3::new(hx, -hy, hz),
-            Vec3::new(-hx, -hy, hz),
-        ]
-    } else if normal.z > 0 {
-        [
-            Vec3::new(-hx, -hy, hz),
-            Vec3::new(hx, -hy, hz),
-            Vec3::new(hx, hy, hz),
-            Vec3::new(-hx, hy, hz),
-        ]
-    } else {
-        [
-            Vec3::new(-hx, -hy, -hz),
-            Vec3::new(hx, -hy, -hz),
-            Vec3::new(hx, hy, -hz),
-            Vec3::new(-hx, hy, -hz),
-        ]
-    };
-    let normal = Vec3::new(normal.x as f32, normal.y as f32, normal.z as f32);
-    offsets.map(|offset| MeshVertex {
-        position: center + offset,
-        normal,
-    })
+fn greedy_visible_quads(
+    world: &crate::founding_day::FoundingWorld,
+    chunk_coord: ChunkCoord,
+    chunk: &Chunk,
+) -> Vec<MeshQuad> {
+    const N: usize = crate::founding_day::CHUNK_SIZE as usize;
+    let mut quads = Vec::new();
+
+    for normal_axis in 0..3 {
+        let u_axis = (normal_axis + 1) % 3;
+        let v_axis = (normal_axis + 2) % 3;
+        for sign in [-1, 1] {
+            let normal = normal_coord(normal_axis, sign);
+            for slice in 0..N {
+                let mut mask = vec![None::<VoxelKind>; N * N];
+                for v in 0..N {
+                    for u in 0..N {
+                        let local = local_coord(normal_axis, slice, u_axis, u, v_axis, v);
+                        let Some(voxel) = chunk.voxels.get(&local) else {
+                            continue;
+                        };
+                        let coord = chunk_world_coord(chunk_coord, local);
+                        let neighbour =
+                            Coord::new(coord.x + normal.x, coord.y + normal.y, coord.z + normal.z);
+                        if world.voxel_at(neighbour).is_none() {
+                            mask[mask_index(u, v)] = Some(voxel.kind);
+                        }
+                    }
+                }
+
+                let mut v = 0;
+                while v < N {
+                    let mut u = 0;
+                    while u < N {
+                        let Some(material) = mask[mask_index(u, v)] else {
+                            u += 1;
+                            continue;
+                        };
+                        let mut width = 1;
+                        while u + width < N && mask[mask_index(u + width, v)] == Some(material) {
+                            width += 1;
+                        }
+                        let mut height = 1;
+                        while v + height < N
+                            && (0..width).all(|column| {
+                                mask[mask_index(u + column, v + height)] == Some(material)
+                            })
+                        {
+                            height += 1;
+                        }
+
+                        quads.push(merged_face_quad(
+                            chunk_coord,
+                            [normal_axis, u_axis, v_axis],
+                            slice,
+                            sign,
+                            [u, v],
+                            [width, height],
+                            material,
+                        ));
+                        for row in v..v + height {
+                            for column in u..u + width {
+                                mask[mask_index(column, row)] = None;
+                            }
+                        }
+                        u += width;
+                    }
+                    v += 1;
+                }
+            }
+        }
+    }
+    quads
+}
+
+fn mask_index(u: usize, v: usize) -> usize {
+    u + v * crate::founding_day::CHUNK_SIZE as usize
+}
+
+fn local_coord(
+    normal_axis: usize,
+    slice: usize,
+    u_axis: usize,
+    u: usize,
+    v_axis: usize,
+    v: usize,
+) -> Coord {
+    let mut values = [0; 3];
+    values[normal_axis] = slice as i32;
+    values[u_axis] = u as i32;
+    values[v_axis] = v as i32;
+    Coord::new(values[0], values[1], values[2])
+}
+
+fn normal_coord(axis: usize, sign: i32) -> Coord {
+    match axis {
+        0 => Coord::new(sign, 0, 0),
+        1 => Coord::new(0, sign, 0),
+        _ => Coord::new(0, 0, sign),
+    }
+}
+
+fn merged_face_quad(
+    chunk: ChunkCoord,
+    axes: [usize; 3],
+    slice: usize,
+    sign: i32,
+    face_origin: [usize; 2],
+    face_size: [usize; 2],
+    material: VoxelKind,
+) -> MeshQuad {
+    let [normal_axis, u_axis, v_axis] = axes;
+    let [u, v] = face_origin;
+    let [width, height] = face_size;
+    let mut origin = [0.0_f32; 3];
+    origin[0] = (chunk.x * crate::founding_day::CHUNK_SIZE) as f32;
+    origin[1] = (chunk.y * crate::founding_day::CHUNK_SIZE) as f32;
+    origin[2] = (chunk.z * crate::founding_day::CHUNK_SIZE) as f32;
+    origin[normal_axis] += slice as f32 + if sign > 0 { 1.0 } else { 0.0 };
+    origin[u_axis] += u as f32;
+    origin[v_axis] += v as f32;
+    let origin = Vec3::new(origin[0], origin[1], origin[2]);
+    let across = axis_vector(u_axis) * width as f32;
+    let up = axis_vector(v_axis) * height as f32;
+    let normal = axis_vector(normal_axis) * sign as f32;
+    let positions = [origin, origin + across, origin + across + up, origin + up];
+    MeshQuad {
+        vertices: positions.map(|position| MeshVertex { position, normal }),
+        material,
+    }
+}
+
+fn axis_vector(axis: usize) -> Vec3 {
+    match axis {
+        0 => Vec3::X,
+        1 => Vec3::Y,
+        _ => Vec3::Z,
+    }
 }
 
 fn gear_radius(angle: f32, teeth: f32, root: f32, tip: f32) -> f32 {
