@@ -26,6 +26,8 @@ This checkpoint corrects the earlier X/Y/Z voxel-scaling prototype. The Dynamic 
 - Replaced anonymous X/Y/Z recipe fields and independent voxel-face scaling.
 - Added deterministic one-mesh gear generation with a real center opening, continuous tooth-profile morph, and a continuous accent construction form.
 - Added separate shape and chunk cache paths; semantic shape edits do not clear or change chunk geometry.
+- Added a versioned `ChunkInputDigest` to chunk cache identity. It hashes the resident chunk plus the residency and inward-facing boundary voxels of its six cardinal neighbours, using the existing textual `VoxelKind` identity rather than a duplicate numeric enum encoding.
+- Added cache regressions proving a partial typed mass delta invalidates presentation identity even when geometry is unchanged, and neighbour load/unload invalidates then restores the correct boundary cache entry.
 - Replaced 3D world-axis orb projection with three 48 px screen-space slider rows, pointer mapping, visible orb handles, and control-specific keyboard increments.
 - Kept sparse signed-coordinate chunks and exact Amanatides–Woo DDA ray traversal intact.
 - Kept the corrected rotated screen-space pan and target-specific zoom range.
@@ -37,10 +39,11 @@ Environment: Windows, Rust/Cargo serial build (`CARGO_BUILD_JOBS=1`) against `ta
 Passed:
 
 ```text
-cargo test --test shape_builder --test asset_builder_controls --test voxel_raycast
+cargo test --test shape_builder --test asset_builder_controls --test voxel_raycast --test chunk_cache
   asset_builder_controls: 4 passed
   shape_builder:          5 passed
   voxel_raycast:          3 passed
+  chunk_cache:            2 passed
 
 cargo test --lib founding_day
   5 passed
@@ -80,7 +83,7 @@ The typed design verifier remains intentionally red on the broader package: unre
 - OpenPBR authoring and validation.
 - Hash-aware local reference browser.
 - Greedy meshing, broader culling/LOD, and measured performance budgets.
-- Full generator/source/table and mutable-world digest cache invalidation.
+- Full generator/source/table digests and a canonical world/projection identity beyond the current seven-chunk presentation input.
 - Mechanical plus human promotion and runtime asset manifests.
 - Integration into the eventual replacement client rather than the bounded target binaries.
 - Bronze release gates and human playtest evidence.

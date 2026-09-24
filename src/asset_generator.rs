@@ -135,12 +135,26 @@ impl fmt::Display for BuilderHash {
     }
 }
 
+/// Digest of the authoritative chunk facts that can affect one chunk asset.
+/// It includes the chunk itself, the residency and boundary voxels of its six
+/// cardinal neighbours, and enough voxel state to invalidate future material
+/// presentation without depending on presentation write-back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ChunkInputDigest(pub u64);
+
+impl fmt::Display for ChunkInputDigest {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{:016x}", self.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChunkAssetKey {
     pub seed: WorldSeed,
     pub generator_revision: GeneratorRevision,
     pub chunk: ChunkCoord,
     pub builder_hash: BuilderHash,
+    pub input_digest: ChunkInputDigest,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -429,6 +443,7 @@ impl DynamicAssetGenerator {
             generator_revision: world.revision,
             chunk: chunk_coord,
             builder_hash: chunk_builder_hash(),
+            input_digest: chunk_input_digest(world, chunk_coord),
         };
         if let Some(cached) = self.chunk_cache.get(&key) {
             return Ok(cached.clone());
@@ -472,6 +487,55 @@ impl DynamicAssetGenerator {
         self.chunk_cache.insert(key, asset.clone());
         Ok(asset)
     }
+}
+
+pub fn chunk_input_digest(
+    world: &crate::founding_day::FoundingWorld,
+    center: ChunkCoord,
+) -> ChunkInputDigest {
+    const NEIGHBOUR_OFFSETS: [(i32, i32, i32); 7] = [
+        (0, 0, 0),
+        (1, 0, 0),
+        (-1, 0, 0),
+        (0, 1, 0),
+        (0, -1, 0),
+        (0, 0, 1),
+        (0, 0, -1),
+    ];
+
+    let mut hash = fnv1a_seed();
+    feed(&mut hash, b"ala-cities/chunk-input/v1\0");
+    for (dx, dy, dz) in NEIGHBOUR_OFFSETS {
+        let neighbour = ChunkCoord::new(center.x + dx, center.y + dy, center.z + dz);
+        feed(&mut hash, &neighbour.x.to_le_bytes());
+        feed(&mut hash, &neighbour.y.to_le_bytes());
+        feed(&mut hash, &neighbour.z.to_le_bytes());
+        let Some(chunk) = world.chunk(neighbour) else {
+            feed(&mut hash, &[0]);
+            continue;
+        };
+        feed(&mut hash, &[1]);
+
+        let selected = chunk.voxels.iter().filter(|(local, _)| {
+            (dx, dy, dz) == (0, 0, 0)
+                || (dx == 1 && local.x == 0)
+                || (dx == -1 && local.x == crate::founding_day::CHUNK_SIZE - 1)
+                || (dy == 1 && local.y == 0)
+                || (dy == -1 && local.y == crate::founding_day::CHUNK_SIZE - 1)
+                || (dz == 1 && local.z == 0)
+                || (dz == -1 && local.z == crate::founding_day::CHUNK_SIZE - 1)
+        });
+        let selected_count = selected.clone().count() as u64;
+        feed(&mut hash, &selected_count.to_le_bytes());
+        for (local, voxel) in selected {
+            feed(&mut hash, &local.x.to_le_bytes());
+            feed(&mut hash, &local.y.to_le_bytes());
+            feed(&mut hash, &local.z.to_le_bytes());
+            feed(&mut hash, voxel.kind.as_str().as_bytes());
+            feed(&mut hash, &voxel.mass_grams.to_le_bytes());
+        }
+    }
+    ChunkInputDigest(hash)
 }
 
 fn chunk_world_coord(chunk: ChunkCoord, local: Coord) -> Coord {
@@ -725,6 +789,7 @@ fn asset_digest(asset: &ChunkAsset) -> u64 {
     feed(&mut hash, &asset.key.chunk.y.to_le_bytes());
     feed(&mut hash, &asset.key.chunk.z.to_le_bytes());
     feed(&mut hash, &asset.key.builder_hash.0.to_le_bytes());
+    feed(&mut hash, &asset.key.input_digest.0.to_le_bytes());
     feed(&mut hash, &asset.octree.digest().to_le_bytes());
     for quad in &asset.quads {
         for vertex in &quad.vertices {

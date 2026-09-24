@@ -12,6 +12,8 @@ The red vertical line is an explicit authority boundary. CAP-001 world truth is 
 
 The generator is required target infrastructure. It owns the runtime chunk presentation path, including sparse acceleration, materials, and manifests. The renderer is the game surface, not a builder or authoring surface. Its separate exact voxel ray-picking path is read-only game observation and returns hit evidence; it is not a world mutation or an authoring control.
 
+**Current-code grounding.** `src/asset_generator.rs` keys the runtime chunk cache by seed/revision (the implemented generator identity), chunk coordinates, the chunk-builder recipe, and a versioned `ChunkInputDigest`. The digest covers the resident chunk plus the residency and inward-facing boundary voxels of its six cardinal neighbours. This bounds the presentation input to seven chunks; it is not full generator/source/table identity or a canonical whole-world projection digest.
+
 ### Path B — external semantic authoring
 
 `external asset-builder tool → three separate sliders with floating orb handles → derived candidate BuilderHash → one coherent gear mesh → mechanical/human review → promoted presentation asset`
