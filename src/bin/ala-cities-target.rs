@@ -14,7 +14,7 @@ use ala_cities::founding_day::{ChunkCoord, FoundingWorld, GeneratorRevision, Wor
 use ala_cities::hud::{self, Token};
 use ala_cities::raycast::VoxelHit;
 use ala_cities::render::{
-    Batcher, Camera, Gpu, ImageBatcher, Layer, Screen, Text, WorldBatch, LIGHT,
+    Batcher, Camera, Gpu, ImageBatcher, Screen, Text, WorldBatch, WorldVertexData, LIGHT,
 };
 use ala_cities::ui::LINE_ADVANCE_FACTOR;
 
@@ -38,6 +38,7 @@ struct TargetApp {
     asset: Option<ChunkAsset>,
     asset_error: Option<String>,
     world_digest: u64,
+    visible_triangles: usize,
     cursor: (f32, f32),
     last_cursor: (f32, f32),
     orbiting: bool,
@@ -48,8 +49,7 @@ struct TargetApp {
 
 impl TargetApp {
     fn new() -> io::Result<Self> {
-        let mut world = FoundingWorld::new(WorldSeed(7), GeneratorRevision(1));
-        world.load_chunk(CHUNK);
+        let world = FoundingWorld::cubic_preview(WorldSeed(7), GeneratorRevision(1), CHUNK);
         let world_digest = world.state_digest();
         let mut generator = DynamicAssetGenerator::default();
         let (asset, asset_error) = match generator.build_chunk(&world, CHUNK) {
@@ -61,8 +61,8 @@ impl TargetApp {
             h: 800.0,
         };
         let mut camera = Camera::new(screen, 32, 32);
-        camera.focus = Vec3::new(16.0, 16.0, 1.5);
-        camera.zoom = 24.0;
+        camera.focus = Vec3::new(16.0, 16.0, 16.0);
+        camera.zoom = 14.0;
         let cursor = (screen.w / 2.0, screen.h / 2.0);
         let hover_hit = self_raycast(&camera, &asset, cursor);
         Ok(Self {
@@ -77,6 +77,7 @@ impl TargetApp {
             asset,
             asset_error,
             world_digest,
+            visible_triangles: 0,
             cursor,
             last_cursor: cursor,
             orbiting: false,
@@ -102,34 +103,33 @@ impl TargetApp {
     }
 
     fn draw_asset(&mut self) {
+        self.visible_triangles = 0;
+        let culler = self.camera.triangle_culler();
         let Some(asset) = &self.asset else {
             return;
         };
-        for quad in &asset.quads {
-            let center = quad
-                .vertices
-                .map(|vertex| vertex.position)
-                .into_iter()
-                .sum::<Vec3>()
-                / 4.0;
-            let right = (quad.vertices[1].position - quad.vertices[0].position) * 0.5;
-            let up = (quad.vertices[3].position - quad.vertices[0].position) * 0.5;
-            let base = asset
-                .material_manifest
-                .get(MaterialKey::from(quad.material))
-                .and_then(|material| material.opaque_rgba())
-                .expect("generated chunk materials are renderable opaque materials");
-            let lambert = quad.vertices[0].normal.dot(LIGHT.normalize()).max(0.0);
-            let shade = 0.58 + 0.42 * lambert;
-            self.world_batch.push(
-                Layer::Opaque,
-                center,
-                right,
-                up,
-                [base[0] * shade, base[1] * shade, base[2] * shade, base[3]],
-                Text::solid_uv(),
-            );
-        }
+        let indices = asset.visible_triangle_indices(culler);
+        self.visible_triangles = indices.len() / 3;
+        let vertices = asset
+            .mesh
+            .vertices
+            .iter()
+            .map(|vertex| {
+                let base = asset
+                    .material_manifest
+                    .get(MaterialKey::from(vertex.material))
+                    .and_then(|material| material.opaque_rgba())
+                    .expect("generated chunk materials are renderable opaque materials");
+                let lambert = vertex.normal.dot(LIGHT.normalize()).max(0.0);
+                let shade = 0.58 + 0.42 * lambert;
+                WorldVertexData {
+                    position: vertex.position.to_array(),
+                    normal: vertex.normal.to_array(),
+                    color: [base[0] * shade, base[1] * shade, base[2] * shade, base[3]],
+                }
+            })
+            .collect::<Vec<_>>();
+        self.world_batch.push_indexed_triangles(&vertices, &indices);
     }
 
     fn draw_panel(&mut self) {
@@ -138,7 +138,7 @@ impl TargetApp {
         let x = hud::space(Space::Md, ui);
         let y = hud::space(Space::Md, ui);
         let w = 430.0_f32.max(screen.w * 0.32);
-        let h = 304.0_f32;
+        let h = 340.0_f32;
         hud::panel(&mut self.hud_batch, &screen, x, y, w, h, Token::PanelRaised);
 
         let content_x = x + hud::space(Space::Md, ui);
@@ -162,7 +162,7 @@ impl TargetApp {
             cursor_y,
             Step::Small,
             Token::TextMuted,
-            "dynamic asset generator · runtime chunk output",
+            "cubic preview · 32³ runtime chunk output",
         );
         cursor_y += line_height(Step::Small) + hud::space(Space::Sm, ui);
         hud::rule(
@@ -203,7 +203,7 @@ impl TargetApp {
                     "mixed"
                 };
                 format!(
-                    "{} materials · {classification} · alpha {:.3} · transmission {:.3}",
+                    "{classification} x{} · alpha {:.3} · transmission {:.3}",
                     materials.len(),
                     first.alpha,
                     first.transmission_weight
@@ -228,15 +228,15 @@ impl TargetApp {
             .as_ref()
             .map(|asset| {
                 format!(
-                    "{} visible quads · {} cached chunks · source {} · digest {:016x}",
-                    asset.quads.len(),
+                    "triangles {}/{} · cache {} · source {}",
+                    self.visible_triangles,
+                    asset.mesh.triangle_count(),
                     self.generator.cache_len(),
                     if source_resident {
                         "resident"
                     } else {
                         "missing"
-                    },
-                    asset.digest
+                    }
                 )
             })
             .or_else(|| self.asset_error.clone())
@@ -250,6 +250,22 @@ impl TargetApp {
             Step::Small,
             Token::TextBody,
             &status,
+        );
+        cursor_y += line_height(Step::Small) + hud::space(Space::Xs, ui);
+        let digest = self
+            .asset
+            .as_ref()
+            .map(|asset| format!("asset digest {:016x}", asset.digest))
+            .unwrap_or_else(|| "asset digest unavailable".to_string());
+        hud::label_mono(
+            &mut self.text,
+            &mut self.hud_batch,
+            &screen,
+            content_x,
+            cursor_y,
+            Step::Small,
+            Token::TextMuted,
+            &digest,
         );
         cursor_y += line_height(Step::Small) + hud::space(Space::Sm, ui);
 
@@ -273,9 +289,13 @@ impl TargetApp {
         let hit = self
             .hover_hit
             .map(|hit| {
+                let entry = hit
+                    .normal
+                    .map(|face| format!("{face:?}"))
+                    .unwrap_or_else(|| "initial".to_string());
                 format!(
-                    "ray hit ({},{},{}) face {:?} · {:.3}m",
-                    hit.coord.x, hit.coord.y, hit.coord.z, hit.normal, hit.distance
+                    "ray ({},{},{}) entry {entry} · t {:.3}m",
+                    hit.coord.x, hit.coord.y, hit.coord.z, hit.distance
                 )
             })
             .unwrap_or_else(|| "ray hit: none".to_string());

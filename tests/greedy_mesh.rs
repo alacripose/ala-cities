@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
-use ala_cities::asset_generator::{DynamicAssetGenerator, MeshQuad};
+use ala_cities::asset_generator::{DynamicAssetGenerator, MeshTriangle};
 use ala_cities::founding_day::{
     ChunkCoord, Coord, FoundingWorld, GeneratorRevision, VoxelKind, WorldSeed, CHUNK_SIZE,
 };
@@ -19,8 +19,8 @@ fn world() -> FoundingWorld {
     FoundingWorld::new(WorldSeed(7), GeneratorRevision(1))
 }
 
-fn expected_faces(world: &FoundingWorld, chunk: ChunkCoord) -> BTreeMap<(Coord, Coord), VoxelKind> {
-    let mut expected = BTreeMap::new();
+fn expected_faces(world: &FoundingWorld, chunk: ChunkCoord) -> BTreeSet<(Coord, Coord, VoxelKind)> {
+    let mut expected = BTreeSet::new();
     let resident = world.chunk(chunk).expect("test chunk is resident");
     for (local, voxel) in &resident.voxels {
         let coord = world_coord(chunk, *local);
@@ -31,7 +31,7 @@ fn expected_faces(world: &FoundingWorld, chunk: ChunkCoord) -> BTreeMap<(Coord, 
                 coord.z + direction.z,
             );
             if world.voxel_at(neighbour).is_none() {
-                expected.insert((coord, direction), voxel.kind);
+                expected.insert((coord, direction, voxel.kind));
             }
         }
     }
@@ -46,8 +46,16 @@ fn world_coord(chunk: ChunkCoord, local: Coord) -> Coord {
     )
 }
 
-fn quad_faces(quad: &MeshQuad) -> Vec<(Coord, Coord)> {
-    let normal = quad.vertices[0].normal;
+fn axis_value(value: Vec3, axis: usize) -> f32 {
+    match axis {
+        0 => value.x,
+        1 => value.y,
+        _ => value.z,
+    }
+}
+
+fn triangle_plane(triangle: &MeshTriangle) -> (usize, i32, Coord, [usize; 2]) {
+    let normal = triangle.vertices[0].normal;
     let axis = if normal.x.abs() > normal.y.abs() && normal.x.abs() > normal.z.abs() {
         0
     } else if normal.y.abs() > normal.z.abs() {
@@ -60,64 +68,124 @@ fn quad_faces(quad: &MeshQuad) -> Vec<(Coord, Coord)> {
     } else {
         -1
     };
-    let plane = axis_value(quad.vertices[0].position, axis).floor() as i32;
+    let plane = axis_value(triangle.vertices[0].position, axis).floor() as i32;
     let normal_coord = if sign > 0 { plane - 1 } else { plane };
     let tangents = match axis {
         0 => [1, 2],
         1 => [0, 2],
         _ => [0, 1],
     };
-    let mut minimum = [i32::MAX; 2];
-    let mut maximum = [i32::MIN; 2];
-    for vertex in &quad.vertices {
-        for (slot, axis) in tangents.into_iter().enumerate() {
-            let value = axis_value(vertex.position, axis) as i32;
-            minimum[slot] = minimum[slot].min(value);
-            maximum[slot] = maximum[slot].max(value);
-        }
-    }
+    (axis, sign, normal_coord_value(axis, normal_coord), tangents)
+}
 
-    let mut faces = Vec::new();
+fn normal_coord_value(axis: usize, value: i32) -> Coord {
+    match axis {
+        0 => Coord::new(value, 0, 0),
+        1 => Coord::new(0, value, 0),
+        _ => Coord::new(0, 0, value),
+    }
+}
+
+type ProjectedTriangle = ([f32; 2], [f32; 2], [f32; 2], [i32; 2], [i32; 2]);
+
+fn project_triangle(triangle: &MeshTriangle) -> ProjectedTriangle {
+    let (_, _, _, tangents) = triangle_plane(triangle);
+    let projected: Vec<[f32; 2]> = triangle
+        .vertices
+        .iter()
+        .map(|vertex| {
+            [
+                axis_value(vertex.position, tangents[0]),
+                axis_value(vertex.position, tangents[1]),
+            ]
+        })
+        .collect();
+    let minimum = [
+        projected
+            .iter()
+            .map(|point| point[0])
+            .fold(f32::INFINITY, f32::min)
+            .floor() as i32,
+        projected
+            .iter()
+            .map(|point| point[1])
+            .fold(f32::INFINITY, f32::min)
+            .floor() as i32,
+    ];
+    let maximum = [
+        projected
+            .iter()
+            .map(|point| point[0])
+            .fold(f32::NEG_INFINITY, f32::max)
+            .ceil() as i32,
+        projected
+            .iter()
+            .map(|point| point[1])
+            .fold(f32::NEG_INFINITY, f32::max)
+            .ceil() as i32,
+    ];
+    (
+        [projected[0][0], projected[0][1]],
+        [projected[1][0], projected[1][1]],
+        [projected[2][0], projected[2][1]],
+        minimum,
+        maximum,
+    )
+}
+
+fn barycentric_contains(triangle: [[f32; 2]; 3], point: [f32; 2]) -> bool {
+    let [a, b, c] = triangle;
+    let denominator = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+    if denominator.abs() <= f32::EPSILON {
+        return false;
+    }
+    let first =
+        ((b[1] - c[1]) * (point[0] - c[0]) + (c[0] - b[0]) * (point[1] - c[1])) / denominator;
+    let second =
+        ((c[1] - a[1]) * (point[0] - c[0]) + (a[0] - c[0]) * (point[1] - c[1])) / denominator;
+    let third = 1.0 - first - second;
+    first >= -1e-5 && second >= -1e-5 && third >= -1e-5
+}
+
+fn triangle_faces(triangle: &MeshTriangle) -> BTreeSet<(Coord, Coord, VoxelKind)> {
+    let (axis, sign, normal_coord, _) = triangle_plane(triangle);
+    let (a, b, c, minimum, maximum) = project_triangle(triangle);
+    let direction = match axis {
+        0 => Coord::new(sign, 0, 0),
+        1 => Coord::new(0, sign, 0),
+        _ => Coord::new(0, 0, sign),
+    };
+    let mut faces = BTreeSet::new();
     for first in minimum[0]..maximum[0] {
         for second in minimum[1]..maximum[1] {
-            let coord = match axis {
-                0 => Coord::new(normal_coord, first, second),
-                1 => Coord::new(first, normal_coord, second),
-                _ => Coord::new(first, second, normal_coord),
-            };
-            let direction = match axis {
-                0 => Coord::new(sign, 0, 0),
-                1 => Coord::new(0, sign, 0),
-                _ => Coord::new(0, 0, sign),
-            };
-            faces.push((coord, direction));
+            let center = [first as f32 + 0.5, second as f32 + 0.5];
+            if barycentric_contains([a, b, c], center) {
+                let coord = match axis {
+                    0 => Coord::new(normal_coord.x, first, second),
+                    1 => Coord::new(first, normal_coord.y, second),
+                    _ => Coord::new(first, second, normal_coord.z),
+                };
+                faces.insert((coord, direction, triangle.material));
+            }
         }
     }
     faces
 }
 
-fn assert_outward_winding(quad: &MeshQuad) {
-    let edge_across = quad.vertices[1].position - quad.vertices[0].position;
-    let edge_up = quad.vertices[3].position - quad.vertices[0].position;
-    let winding = edge_across.cross(edge_up).normalize();
+fn assert_outward_winding(triangle: &MeshTriangle) {
+    let edge_a = triangle.vertices[1].position - triangle.vertices[0].position;
+    let edge_b = triangle.vertices[2].position - triangle.vertices[0].position;
+    let winding = edge_a.cross(edge_b).normalize();
     assert!(
-        winding.dot(quad.vertices[0].normal) > 0.999,
+        winding.dot(triangle.vertices[0].normal) > 0.999,
         "triangle winding {:?} disagrees with declared normal {:?}",
         winding,
-        quad.vertices[0].normal
+        triangle.vertices[0].normal
     );
 }
 
-fn axis_value(value: Vec3, axis: usize) -> f32 {
-    match axis {
-        0 => value.x,
-        1 => value.y,
-        _ => value.z,
-    }
-}
-
 #[test]
-fn greedy_quads_cover_exactly_the_same_visible_faces_and_materials() {
+fn greedy_indexed_triangles_cover_exactly_the_visible_faces_and_materials() {
     for chunk in [ChunkCoord::new(0, 0, 0), ChunkCoord::new(-1, 0, 0)] {
         let mut world = world();
         world.load_chunk(chunk);
@@ -125,16 +193,17 @@ fn greedy_quads_cover_exactly_the_same_visible_faces_and_materials() {
             .build_chunk(&world, chunk)
             .expect("chunk builds");
         let expected = expected_faces(&world, chunk);
-        let mut actual = BTreeMap::new();
+        let mut actual = BTreeSet::new();
 
-        for quad in &asset.quads {
-            assert_outward_winding(quad);
-            for face in quad_faces(quad) {
-                assert!(
-                    actual.insert(face, quad.material).is_none(),
-                    "greedy quads overlap at {face:?}"
-                );
-            }
+        assert_eq!(asset.mesh.indices.len() % 3, 0);
+        assert!(asset
+            .mesh
+            .indices
+            .iter()
+            .all(|index| (*index as usize) < asset.mesh.vertices.len()));
+        for triangle in asset.mesh.triangles() {
+            assert_outward_winding(&triangle);
+            actual.extend(triangle_faces(&triangle));
         }
 
         assert_eq!(actual, expected);
@@ -142,7 +211,7 @@ fn greedy_quads_cover_exactly_the_same_visible_faces_and_materials() {
 }
 
 #[test]
-fn coplanar_faces_merge_without_changing_the_surface() {
+fn greedy_triangles_reduce_the_naive_triangle_count() {
     let world = world();
     let chunk = ChunkCoord::new(0, 0, 0);
     let expected_count = expected_faces(&world, chunk).len();
@@ -151,8 +220,8 @@ fn coplanar_faces_merge_without_changing_the_surface() {
         .expect("chunk builds");
 
     assert!(
-        asset.quads.len() * 2 < expected_count,
-        "expected greedy reduction, got {} quads for {expected_count} visible faces",
-        asset.quads.len()
+        asset.mesh.triangle_count() * 4 < expected_count * 3,
+        "expected triangle reduction, got {} triangles for {expected_count} visible faces",
+        asset.mesh.triangle_count()
     );
 }

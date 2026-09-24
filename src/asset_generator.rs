@@ -15,6 +15,7 @@ use serde::Serialize;
 use crate::founding_day::{Chunk, ChunkCoord, Coord, GeneratorRevision, VoxelKind, WorldSeed};
 use crate::octree::SparseVoxelOctree;
 use crate::raycast::VoxelHit;
+use crate::render::WorldTriangleCuller;
 
 pub const TEETH_MIN: f32 = 6.0;
 pub const TEETH_MAX: f32 = 12.0;
@@ -174,12 +175,35 @@ pub struct ShapeAssetKey {
 pub struct MeshVertex {
     pub position: Vec3,
     pub normal: Vec3,
+    pub material: VoxelKind,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MeshQuad {
-    pub vertices: [MeshVertex; 4],
+pub struct MeshTriangle {
+    pub vertices: [MeshVertex; 3],
     pub material: VoxelKind,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ChunkMesh {
+    pub vertices: Vec<MeshVertex>,
+    pub indices: Vec<u32>,
+}
+
+impl ChunkMesh {
+    pub fn triangle_count(&self) -> usize {
+        self.indices.len() / 3
+    }
+
+    pub fn triangles(&self) -> impl Iterator<Item = MeshTriangle> + '_ {
+        self.indices.as_chunks::<3>().0.iter().map(|indices| {
+            let vertices = indices.map(|index| self.vertices[index as usize]);
+            MeshTriangle {
+                vertices,
+                material: vertices[0].material,
+            }
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -553,17 +577,14 @@ pub struct ShapeVertex {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ShapeFace {
-    pub positions: [Vec3; 4],
-    pub normal: Vec3,
-    pub material: ShapeMaterial,
+pub struct ShapeTriangle {
+    pub vertices: [ShapeVertex; 3],
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ShapeMesh {
     pub vertices: Vec<ShapeVertex>,
     pub indices: Vec<u32>,
-    pub faces: Vec<ShapeFace>,
     inner_radius: Option<f32>,
     outer_radius: Option<f32>,
 }
@@ -575,6 +596,16 @@ impl ShapeMesh {
 
     pub fn triangle_count(&self) -> usize {
         self.indices.len() / 3
+    }
+
+    pub fn triangles(&self) -> impl Iterator<Item = ShapeTriangle> + '_ {
+        self.indices
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|indices| ShapeTriangle {
+                vertices: indices.map(|index| self.vertices[index as usize]),
+            })
     }
 
     /// Shape recipes always produce one addressable mesh, even when the mesh
@@ -618,7 +649,7 @@ impl ShapeMesh {
             let front = Vec3::Z * HALF_DEPTH;
             let back = Vec3::NEG_Z * HALF_DEPTH;
 
-            push_quad(
+            push_surface(
                 &mut mesh,
                 outer0 + front,
                 outer1 + front,
@@ -627,7 +658,7 @@ impl ShapeMesh {
                 Vec3::Z,
                 ShapeMaterial::Body,
             );
-            push_quad(
+            push_surface(
                 &mut mesh,
                 outer1 + back,
                 outer0 + back,
@@ -638,7 +669,7 @@ impl ShapeMesh {
             );
 
             let wall_normal = (direction0 + direction1).normalize();
-            push_quad(
+            push_surface(
                 &mut mesh,
                 outer0 + front,
                 outer0 + back,
@@ -647,7 +678,7 @@ impl ShapeMesh {
                 wall_normal,
                 ShapeMaterial::Body,
             );
-            push_quad(
+            push_surface(
                 &mut mesh,
                 inner0 + front,
                 inner1 + front,
@@ -676,7 +707,7 @@ pub struct ShapeAsset {
 pub struct ChunkAsset {
     pub key: ChunkAssetKey,
     pub octree: SparseVoxelOctree,
-    pub quads: Vec<MeshQuad>,
+    pub mesh: ChunkMesh,
     pub material_manifest: MaterialManifest,
     pub digest: u64,
 }
@@ -705,6 +736,38 @@ impl ChunkAsset {
             ));
         }
         Some(hit)
+    }
+
+    /// Triangles retained by conservative backface and camera-volume culling.
+    pub fn visible_triangles(
+        &self,
+        culler: WorldTriangleCuller,
+    ) -> impl Iterator<Item = MeshTriangle> + '_ {
+        self.mesh.triangles().filter(move |triangle| {
+            culler.accepts_triangle(
+                triangle.vertices.map(|vertex| vertex.position),
+                triangle.vertices[0].normal,
+            )
+        })
+    }
+
+    /// Retained indices into the original indexed mesh, preserving shared edges.
+    pub fn visible_triangle_indices(&self, culler: WorldTriangleCuller) -> Vec<u32> {
+        let mut indices = Vec::new();
+        for triangle in self.mesh.indices.as_chunks::<3>().0 {
+            let vertices = triangle.map(|index| self.mesh.vertices[index as usize]);
+            let mesh_triangle = MeshTriangle {
+                vertices,
+                material: vertices[0].material,
+            };
+            if culler.accepts_triangle(
+                mesh_triangle.vertices.map(|vertex| vertex.position),
+                mesh_triangle.vertices[0].normal,
+            ) {
+                indices.extend_from_slice(triangle);
+            }
+        }
+        indices
     }
 }
 
@@ -818,12 +881,12 @@ impl DynamicAssetGenerator {
         for (local, voxel) in &chunk.voxels {
             octree.insert(*local, voxel.kind);
         }
-        let quads = greedy_visible_quads(world, chunk_coord, chunk);
+        let mesh = greedy_visible_mesh(world, chunk_coord, chunk);
 
         let mut asset = ChunkAsset {
             key,
             octree,
-            quads,
+            mesh,
             material_manifest: chunk_material_manifest(),
             digest: 0,
         };
@@ -890,13 +953,13 @@ fn chunk_world_coord(chunk: ChunkCoord, local: Coord) -> Coord {
     )
 }
 
-fn greedy_visible_quads(
+fn greedy_visible_mesh(
     world: &crate::founding_day::FoundingWorld,
     chunk_coord: ChunkCoord,
     chunk: &Chunk,
-) -> Vec<MeshQuad> {
+) -> ChunkMesh {
     const N: usize = crate::founding_day::CHUNK_SIZE as usize;
-    let mut quads = Vec::new();
+    let mut mesh = ChunkMesh::default();
 
     for normal_axis in 0..3 {
         let u_axis = (normal_axis + 1) % 3;
@@ -941,15 +1004,18 @@ fn greedy_visible_quads(
                             height += 1;
                         }
 
-                        quads.push(merged_face_quad(
-                            chunk_coord,
-                            [normal_axis, u_axis, v_axis],
-                            slice,
-                            sign,
-                            [u, v],
-                            [width, height],
-                            material,
-                        ));
+                        append_face_rectangle(
+                            &mut mesh,
+                            FaceRectangle {
+                                chunk: chunk_coord,
+                                axes: [normal_axis, u_axis, v_axis],
+                                slice,
+                                sign,
+                                origin: [u, v],
+                                size: [width, height],
+                                material,
+                            },
+                        );
                         for row in v..v + height {
                             for column in u..u + width {
                                 mask[mask_index(column, row)] = None;
@@ -962,7 +1028,7 @@ fn greedy_visible_quads(
             }
         }
     }
-    quads
+    mesh
 }
 
 fn mask_index(u: usize, v: usize) -> usize {
@@ -992,15 +1058,26 @@ fn normal_coord(axis: usize, sign: i32) -> Coord {
     }
 }
 
-fn merged_face_quad(
+struct FaceRectangle {
     chunk: ChunkCoord,
     axes: [usize; 3],
     slice: usize,
     sign: i32,
-    face_origin: [usize; 2],
-    face_size: [usize; 2],
+    origin: [usize; 2],
+    size: [usize; 2],
     material: VoxelKind,
-) -> MeshQuad {
+}
+
+fn append_face_rectangle(mesh: &mut ChunkMesh, rectangle: FaceRectangle) {
+    let FaceRectangle {
+        chunk,
+        axes,
+        slice,
+        sign,
+        origin: face_origin,
+        size: face_size,
+        material,
+    } = rectangle;
     let [normal_axis, u_axis, v_axis] = axes;
     let [u, v] = face_origin;
     let [width, height] = face_size;
@@ -1020,10 +1097,15 @@ fn merged_face_quad(
     } else {
         [origin, origin + up, origin + across + up, origin + across]
     };
-    MeshQuad {
-        vertices: positions.map(|position| MeshVertex { position, normal }),
-        material,
-    }
+    let base = mesh.vertices.len() as u32;
+    mesh.vertices
+        .extend(positions.into_iter().map(|position| MeshVertex {
+            position,
+            normal,
+            material,
+        }));
+    mesh.indices
+        .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
 }
 
 fn axis_vector(axis: usize) -> Vec3 {
@@ -1109,7 +1191,7 @@ fn push_accent_prism(mesh: &mut ShapeMesh, value: f32, body_half_depth: f32) {
         point(frame.length * 0.5, frame.width * 0.5, top),
         point(-frame.length * 0.5, frame.width * 0.5, top),
     ];
-    push_quad(
+    push_surface(
         mesh,
         points[0],
         points[3],
@@ -1118,7 +1200,7 @@ fn push_accent_prism(mesh: &mut ShapeMesh, value: f32, body_half_depth: f32) {
         Vec3::NEG_Z,
         ShapeMaterial::Accent,
     );
-    push_quad(
+    push_surface(
         mesh,
         points[4],
         points[5],
@@ -1129,7 +1211,7 @@ fn push_accent_prism(mesh: &mut ShapeMesh, value: f32, body_half_depth: f32) {
     );
     for (a, b, c, d) in [(0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)] {
         let normal = triangle_normal(points[a], points[b], points[c]);
-        push_quad(
+        push_surface(
             mesh,
             points[a],
             points[b],
@@ -1141,7 +1223,7 @@ fn push_accent_prism(mesh: &mut ShapeMesh, value: f32, body_half_depth: f32) {
     }
 }
 
-fn push_quad(
+fn push_surface(
     mesh: &mut ShapeMesh,
     a: Vec3,
     b: Vec3,
@@ -1150,11 +1232,6 @@ fn push_quad(
     normal: Vec3,
     material: ShapeMaterial,
 ) {
-    mesh.faces.push(ShapeFace {
-        positions: [a, b, c, d],
-        normal,
-        material,
-    });
     push_triangle(mesh, a, b, c, Some(normal), material);
     push_triangle(mesh, a, c, d, Some(normal), material);
 }
@@ -1224,15 +1301,17 @@ fn asset_digest(asset: &ChunkAsset) -> u64 {
     feed(&mut hash, &asset.key.input_digest.0.to_le_bytes());
     feed(&mut hash, &asset.material_manifest.digest().to_le_bytes());
     feed(&mut hash, &asset.octree.digest().to_le_bytes());
-    for quad in &asset.quads {
-        for vertex in &quad.vertices {
-            feed_f32(&mut hash, vertex.position.x);
-            feed_f32(&mut hash, vertex.position.y);
-            feed_f32(&mut hash, vertex.position.z);
-            feed_f32(&mut hash, vertex.normal.x);
-            feed_f32(&mut hash, vertex.normal.y);
-            feed_f32(&mut hash, vertex.normal.z);
-        }
+    for vertex in &asset.mesh.vertices {
+        feed_f32(&mut hash, vertex.position.x);
+        feed_f32(&mut hash, vertex.position.y);
+        feed_f32(&mut hash, vertex.position.z);
+        feed_f32(&mut hash, vertex.normal.x);
+        feed_f32(&mut hash, vertex.normal.y);
+        feed_f32(&mut hash, vertex.normal.z);
+        feed(&mut hash, &[vertex.material as u8]);
+    }
+    for index in &asset.mesh.indices {
+        feed(&mut hash, &index.to_le_bytes());
     }
     hash
 }

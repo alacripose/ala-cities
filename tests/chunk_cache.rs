@@ -25,7 +25,7 @@ fn a_typed_mass_delta_invalidates_the_chunk_cache_even_when_geometry_is_unchange
         .expect("chunk remains resident");
 
     assert_ne!(before.key, after.key);
-    assert_eq!(before.quads, after.quads);
+    assert_eq!(before.mesh, after.mesh);
     assert_eq!(generator.cache_len(), 2);
 }
 

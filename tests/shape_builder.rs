@@ -90,7 +90,7 @@ fn shape_recipe_never_divides_or_rescales_the_world_chunk_mesh() {
         .build_chunk(&world, chunk)
         .expect("starter chunk is resident");
 
-    assert_eq!(before.quads, after.quads);
+    assert_eq!(before.mesh, after.mesh);
     assert_eq!(before.octree.digest(), after.octree.digest());
     assert_eq!(generator.cache_len(), 1);
 }
@@ -113,7 +113,7 @@ fn chunk_build_remains_sparse_cached_and_octree_ray_queryable() {
     assert_eq!(generator.cache_len(), 1);
     assert!(first.octree.occupied_count() < first.octree.capacity());
     assert!(first.octree.node_count() < first.octree.max_nodes());
-    assert!(!first.quads.is_empty());
+    assert!(!first.mesh.indices.is_empty());
     assert_eq!(world.state_digest(), before);
 
     let hit = first

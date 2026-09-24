@@ -158,6 +158,26 @@ impl Chunk {
         Self { voxels }
     }
 
+    /// A deliberately named, non-canonical 32³ solid fixture for renderer and
+    /// occupancy previews. It is not a world-generation stage.
+    pub fn cubic_preview() -> Self {
+        let mut voxels = BTreeMap::new();
+        for z in 0..CHUNK_SIZE {
+            for y in 0..CHUNK_SIZE {
+                for x in 0..CHUNK_SIZE {
+                    voxels.insert(
+                        Coord::new(x, y, z),
+                        Voxel {
+                            kind: VoxelKind::Soil,
+                            mass_grams: 1_000,
+                        },
+                    );
+                }
+            }
+        }
+        Self { voxels }
+    }
+
     fn apply_delta(&mut self, chunk_coord: ChunkCoord, delta: ChunkDelta) {
         let ChunkDelta::RemoveVoxelMass { coord, grams } = delta;
         debug_assert_eq!(coord.chunk(), chunk_coord);
@@ -434,6 +454,27 @@ impl FoundingWorld {
             evidence: Vec::new(),
         };
         world.ensure_chunk(ChunkCoord::new(0, 0, 0));
+        world
+    }
+
+    /// A separate preview snapshot containing one complete 32³ solid section.
+    /// This is intentionally not used by gameplay generation or save authority.
+    pub fn cubic_preview(
+        seed: WorldSeed,
+        revision: GeneratorRevision,
+        chunk_coord: ChunkCoord,
+    ) -> Self {
+        let mut world = Self::new(seed, revision);
+        world.chunks.clear();
+        world.deltas.clear();
+        world.accounted_chunks.clear();
+        world.ledger = MaterialLedger::default();
+        let chunk = Chunk::cubic_preview();
+        for voxel in chunk.voxels.values() {
+            world.ledger.add_source(voxel.kind, voxel.mass_grams);
+            world.ledger.add_world(voxel.kind, voxel.mass_grams);
+        }
+        world.chunks.insert(chunk_coord, chunk);
         world
     }
 

@@ -42,6 +42,37 @@ fn raycasting_works_across_negative_chunk_coordinates() {
 }
 
 #[test]
+fn the_native_target_camera_ray_matches_authoritative_world_raycasting() {
+    let world = world();
+    let mut generator = ala_cities::asset_generator::DynamicAssetGenerator::default();
+    let asset = generator
+        .build_chunk(&world, ChunkCoord::new(0, 0, 0))
+        .expect("origin chunk builds");
+    let mut camera = Camera::new(
+        Screen {
+            w: 1280.0,
+            h: 800.0,
+        },
+        32,
+        32,
+    );
+    camera.focus = Vec3::new(16.0, 16.0, 1.5);
+    camera.zoom = 24.0;
+    let (near, far) = camera.ray(640.0, 400.0);
+    let direction = far - near;
+    let expected = cast(&world, near, direction, direction.length() + 1.0)
+        .expect("authoritative world ray hits terrain");
+    let actual = asset
+        .raycast(near, direction, direction.length() + 1.0)
+        .expect("runtime chunk ray hits terrain");
+
+    assert_eq!(actual, expected);
+    assert!((0..32).contains(&actual.coord.x));
+    assert!((0..32).contains(&actual.coord.y));
+    assert!((0..32).contains(&actual.coord.z));
+}
+
+#[test]
 fn an_exact_camera_ray_round_trips_to_the_visible_voxel() {
     let world = world();
     let mut camera = Camera::new(Screen { w: 800.0, h: 600.0 }, 64, 64);

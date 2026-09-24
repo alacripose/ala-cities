@@ -9,7 +9,7 @@ This checkpoint corrects the earlier X/Y/Z voxel-scaling prototype. The Dynamic 
 ## Corrected boundary
 
 - `src/asset_generator.rs` builds two explicit products:
-  - runtime chunk assets from `FoundingWorld` truth, sparse occupancy, greedy visible quads, an OpenPBR-ready material manifest, and a chunk-builder cache identity;
+  - runtime chunk assets from `FoundingWorld` truth, sparse occupancy, greedy-masked indexed triangle meshes, an OpenPBR-ready material manifest, and a chunk-builder cache identity;
   - one coherent settings-gear candidate mesh from named semantic recipe values plus its own material manifest.
 - The semantic recipe contains:
   - `Teeth` — continuous profile morph;
@@ -28,8 +28,11 @@ This checkpoint corrects the earlier X/Y/Z voxel-scaling prototype. The Dynamic 
 - Added separate shape and chunk cache paths; semantic shape edits do not clear or change chunk geometry.
 - Added a versioned `ChunkInputDigest` to chunk cache identity. It hashes the resident chunk plus the residency and inward-facing boundary voxels of its six cardinal neighbours, using the existing textual `VoxelKind` identity rather than a duplicate numeric enum encoding.
 - Added cache regressions proving a partial typed mass delta invalidates presentation identity even when geometry is unchanged, and neighbour load/unload invalidates then restores the correct boundary cache entry.
-- Replaced per-voxel visible-face output with deterministic axis-aligned greedy quads. Same-material coplanar faces merge, while different-material faces and chunk boundaries remain distinct. Integration coverage compares every emitted unit face and material against the authoritative world for positive and negative chunks, and checks that triangle winding agrees with every declared outward normal on all six signed directions.
+- Replaced per-voxel visible-face output with deterministic axis-aligned greedy masks emitted as indexed triangles. Same-material coplanar faces merge, while different-material faces and chunk boundaries remain distinct. Integration coverage compares every emitted unit face and material against the authoritative world for positive and negative chunks, and checks that triangle winding agrees with every declared outward normal on all six signed directions.
 - Added versioned OpenPBR-ready manifests to chunk and shape assets. Every current Soil/Forage/Wood, gear-body, and gear-accent material is explicitly `opaque`, with base weight and alpha exactly `1.0`, transmission exactly `0.0`, and opaque blending. Manifest construction fails closed on contradictory optical data; renderer colours now come from the validated manifest rather than duplicate UI constants.
+- Added conservative per-frame world-triangle culling. The camera matrix is captured once per frame; backfaces, triangles wholly outside the orthographic clip volume, and off-camera chunks are skipped, while a triangle crossing a viewport edge is retained. The target panel reports submitted/total triangles without mutating the asset or world.
+- Fixed a native-camera ray false positive at the sparse-octree boundary. `SparseVoxelOctree::get` now rejects coordinates outside its local `0..32` domain instead of allowing fixed-bit traversal paths to alias far-away coordinates into valid branches. A target-camera regression now requires `ChunkAsset::raycast` to equal authoritative `FoundingWorld` raycasting exactly.
+- Added a named `FoundingWorld::cubic_preview` fixture containing one full 32³ section. It proves cubic occupancy, indexed meshing, and culling without claiming that the canonical field-coupled generator is a solid cube. The next target preview uses that fixture and the licensed architectural reference record.
 - Replaced 3D world-axis orb projection with three 48 px screen-space slider rows, pointer mapping, visible orb handles, and control-specific keyboard increments.
 - Kept sparse signed-coordinate chunks and exact Amanatides–Woo DDA ray traversal intact.
 - Kept the corrected rotated screen-space pan and target-specific zoom range.
@@ -41,11 +44,13 @@ Environment: Windows, Rust/Cargo serial build (`CARGO_BUILD_JOBS=1`) against the
 Passed:
 
 ```text
-cargo test --test material_manifest --test chunk_cache --test greedy_mesh --test shape_builder --test asset_builder_controls --test voxel_raycast
+cargo test --test cubic_chunk_preview --test view_culling --test voxel_raycast --test greedy_mesh --test material_manifest --test chunk_cache --test shape_builder --test asset_builder_controls
+  cubic_chunk_preview:    1 passed
+  view_culling:           2 passed
+  voxel_raycast:          4 passed
   material_manifest:      3 passed
   asset_builder_controls: 4 passed
   shape_builder:          5 passed
-  voxel_raycast:          3 passed
   chunk_cache:            2 passed
   greedy_mesh:            2 passed
 
@@ -79,15 +84,18 @@ The typed design verifier remains intentionally red on the broader package: unre
 ## Visual and diagram evidence
 
 - `docs/design/audits/asset-builder/asset-builder.png` — real external builder window; three semantic sliders, one combined gear mesh, candidate hash, and promotion state are visible.
-- Final rebuilt `ala-cities-target` and `asset-builder` binaries were each shown for 15 seconds. Their panels read material count, opaque classification, alpha, and transmission from the generated manifest; the runtime also reports greedy quads rather than unit faces.
-- `docs/design/diagrams/rendered/dynamic-asset-generator.png` — accepted 4120×2944 official Excalidraw render of the corrected runtime/authoring, manifest, and winding boundary.
+- `docs/design/audits/target-cubic-chunk-preview.png` — accepted native cubic preview: complete visible 32³ hull, `6/12` submitted triangles, and valid camera ray `(25,12,31)`.
+- `docs/design/audits/asset-builder-indexed-triangles.png` — accepted final builder frame: one mesh, `1932` triangles, `5796` vertices, three semantic controls, and the real indexed-triangle path.
+- `docs/design/audits/target-indexed-triangle-default.png` — accepted indexed runtime capture with a valid native ray read-back and no visible interior pinholes.
+- Final rebuilt `ala-cities-target` and `asset-builder` binaries were each shown for at least 15 seconds. Their panels read material classification and optical values from the generated manifest; the runtime reports camera-culled triangles rather than unit faces.
+- `docs/design/diagrams/rendered/dynamic-asset-generator.png` — accepted 4120×2944 official Excalidraw render of the corrected runtime/authoring, triangle, manifest, and culling boundary.
 - `docs/design/diagrams/rendered/world-generation-grilling-structure.png` — official Excalidraw render with the corrected Q856–Q858 amendment.
 
 ## Still open
 
 - Full OpenPBR texture/material authoring and review. The runtime manifest and optical invariants are implemented, but promoted texture assets and human material review are not.
 - Hash-aware local reference browser.
-- Broader culling/LOD and measured performance budgets.
+- Chunk streaming/LOD policy and measured build/frame performance budgets beyond the now-correct conservative camera culler.
 - Full generator/source/table digests and a canonical world/projection identity beyond the current seven-chunk presentation input.
 - Mechanical plus human promotion and a promoted asset registry.
 - Integration into the eventual replacement client rather than the bounded target binaries.

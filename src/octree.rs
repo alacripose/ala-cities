@@ -118,6 +118,10 @@ impl SparseVoxelOctree {
     }
 
     pub fn get(&self, coord: Coord) -> Option<VoxelKind> {
+        if !(0..32).contains(&coord.x) || !(0..32).contains(&coord.y) || !(0..32).contains(&coord.z)
+        {
+            return None;
+        }
         Self::get_at(&self.root, coord, 0)
     }
 

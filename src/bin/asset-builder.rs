@@ -19,7 +19,7 @@ use ala_cities::asset_generator::{
 use ala_cities::design::{target, Space, Step, UiScale};
 use ala_cities::hud::{self, Token};
 use ala_cities::render::{
-    Batcher, Camera, Gpu, ImageBatcher, Layer, Screen, Text, WorldBatch, LIGHT,
+    Batcher, Camera, Gpu, ImageBatcher, Screen, Text, WorldBatch, WorldVertexData, LIGHT,
 };
 use ala_cities::ui::LINE_ADVANCE_FACTOR;
 
@@ -162,26 +162,28 @@ impl BuilderApp {
         let Some(asset) = &self.asset else {
             return;
         };
-        for face in &asset.mesh.faces {
-            let center = face.positions.into_iter().sum::<Vec3>() / 4.0;
-            let right = (face.positions[1] - face.positions[0]) * 0.5;
-            let up = (face.positions[3] - face.positions[0]) * 0.5;
-            let base = asset
-                .material_manifest
-                .get(MaterialKey::from(face.material))
-                .and_then(|material| material.opaque_rgba())
-                .expect("generated shape materials are renderable opaque materials");
-            let lambert = face.normal.dot(LIGHT.normalize()).abs().max(0.0);
-            let shade = 0.48 + 0.52 * lambert;
-            self.world_batch.push(
-                Layer::Opaque,
-                center,
-                right,
-                up,
-                [base[0] * shade, base[1] * shade, base[2] * shade, base[3]],
-                Text::solid_uv(),
-            );
-        }
+        let vertices = asset
+            .mesh
+            .vertices
+            .iter()
+            .map(|vertex| {
+                let material = vertex.material;
+                let base = asset
+                    .material_manifest
+                    .get(MaterialKey::from(material))
+                    .and_then(|material| material.opaque_rgba())
+                    .expect("generated shape materials are renderable opaque materials");
+                let lambert = vertex.normal.dot(LIGHT.normalize()).abs().max(0.0);
+                let shade = 0.48 + 0.52 * lambert;
+                WorldVertexData {
+                    position: vertex.position.to_array(),
+                    normal: vertex.normal.to_array(),
+                    color: [base[0] * shade, base[1] * shade, base[2] * shade, base[3]],
+                }
+            })
+            .collect::<Vec<_>>();
+        self.world_batch
+            .push_indexed_triangles(&vertices, &asset.mesh.indices);
     }
 
     fn draw_panel(&mut self) {
@@ -361,8 +363,8 @@ impl BuilderApp {
         if let Some(asset) = &self.asset {
             let mesh = &asset.mesh;
             let status = format!(
-                "one mesh · {} faces · {} verts",
-                mesh.faces.len(),
+                "one mesh · {} triangles · {} verts",
+                mesh.triangle_count(),
                 mesh.vertex_count()
             );
             hud::label_mono(

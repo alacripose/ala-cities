@@ -15,11 +15,10 @@
 //! size wherever they are on screen.
 
 pub use crate::text::Text;
-use glyphon::{Cache as GlyphonCache, TextAtlas, TextRenderer, Viewport};
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use glyphon::{Cache as GlyphonCache, TextAtlas, TextRenderer, Viewport};
 use wgpu::util::DeviceExt;
-
 
 pub const TILE: f32 = 12.0;
 /// Image-atlas sizing constant used by the picker.
@@ -75,7 +74,13 @@ pub struct WorldInstance {
     pub uv: [f32; 4],
 }
 
-
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
+pub struct WorldVertexData {
+    pub position: [f32; 3],
+    pub normal: [f32; 3],
+    pub color: [f32; 4],
+}
 
 // ---------------------------------------------------------------------------
 // Batchers
@@ -93,15 +98,7 @@ impl Batcher {
         self.instances.clear();
     }
 
-    pub fn clip_rect(
-        &mut self,
-        x: f32,
-        y: f32,
-        w: f32,
-        h: f32,
-        color: [f32; 4],
-        uv: [f32; 4],
-    ) {
+    pub fn clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: [f32; 4], uv: [f32; 4]) {
         self.instances.push(Instance {
             pos: [x, y],
             size: [w, h],
@@ -153,6 +150,8 @@ impl Batcher {
 pub struct WorldBatch {
     pub opaque: Vec<WorldInstance>,
     pub overlay: Vec<WorldInstance>,
+    pub triangle_vertices: Vec<WorldVertexData>,
+    pub triangle_indices: Vec<u32>,
     /// Direction from the scene toward the camera, so a box can skip the faces
     /// pointing away from it.
     cull: Vec3,
@@ -162,11 +161,20 @@ impl WorldBatch {
     pub fn clear(&mut self, toward_camera: Vec3) {
         self.opaque.clear();
         self.overlay.clear();
+        self.triangle_vertices.clear();
+        self.triangle_indices.clear();
         self.cull = toward_camera;
     }
 
     pub fn count(&self) -> usize {
-        self.opaque.len() + self.overlay.len()
+        self.opaque.len() + self.overlay.len() + self.triangle_indices.len() / 3
+    }
+
+    pub fn push_indexed_triangles(&mut self, vertices: &[WorldVertexData], indices: &[u32]) {
+        let base = self.triangle_vertices.len() as u32;
+        self.triangle_vertices.extend_from_slice(vertices);
+        self.triangle_indices
+            .extend(indices.iter().map(|index| base + index));
     }
 
     pub fn push(
@@ -250,10 +258,30 @@ impl WorldBatch {
         let roof = shade(base, Vec3::Z, alpha);
         let walls = [
             // normal, centre offset, right extent, up extent
-            (Vec3::Y, Vec3::new(0.0, half, 0.0), Vec3::X * half, Vec3::Z * z),
-            (Vec3::NEG_Y, Vec3::new(0.0, -half, 0.0), Vec3::X * half, Vec3::Z * z),
-            (Vec3::X, Vec3::new(half, 0.0, 0.0), Vec3::Y * half, Vec3::Z * z),
-            (Vec3::NEG_X, Vec3::new(-half, 0.0, 0.0), Vec3::Y * half, Vec3::Z * z),
+            (
+                Vec3::Y,
+                Vec3::new(0.0, half, 0.0),
+                Vec3::X * half,
+                Vec3::Z * z,
+            ),
+            (
+                Vec3::NEG_Y,
+                Vec3::new(0.0, -half, 0.0),
+                Vec3::X * half,
+                Vec3::Z * z,
+            ),
+            (
+                Vec3::X,
+                Vec3::new(half, 0.0, 0.0),
+                Vec3::Y * half,
+                Vec3::Z * z,
+            ),
+            (
+                Vec3::NEG_X,
+                Vec3::new(-half, 0.0, 0.0),
+                Vec3::Y * half,
+                Vec3::Z * z,
+            ),
         ];
 
         // The roof is always visible from above, and that is the only
@@ -351,6 +379,46 @@ pub struct Camera {
     pub screen: Screen,
 }
 
+/// Per-frame camera data reused while culling world triangles.
+#[derive(Clone, Copy, Debug)]
+pub struct WorldTriangleCuller {
+    view_proj: Mat4,
+    toward_camera: Vec3,
+}
+
+impl WorldTriangleCuller {
+    /// Conservative backface and clip-volume rejection. A triangle is retained
+    /// when its projected bounds could contribute, so a viewport-crossing
+    /// triangle is never dropped merely because all of its corners are outside.
+    pub fn accepts_triangle(&self, vertices: [Vec3; 3], normal: Vec3) -> bool {
+        if normal.dot(self.toward_camera) <= 0.0 {
+            return false;
+        }
+        let mut minimum = Vec3::splat(f32::INFINITY);
+        let mut maximum = Vec3::splat(f32::NEG_INFINITY);
+        for vertex in vertices {
+            let clip = self.view_proj * vertex.extend(1.0);
+            let w = if clip.w.abs() < f32::EPSILON {
+                1.0
+            } else {
+                clip.w
+            };
+            let ndc = clip.truncate() / w;
+            if !ndc.is_finite() {
+                return true;
+            }
+            minimum = minimum.min(ndc);
+            maximum = maximum.max(ndc);
+        }
+        maximum.x >= -1.0
+            && minimum.x <= 1.0
+            && maximum.y >= -1.0
+            && minimum.y <= 1.0
+            && maximum.z >= -1.0
+            && minimum.z <= 1.0
+    }
+}
+
 impl Camera {
     pub fn new(screen: Screen, map_width: u32, map_height: u32) -> Self {
         let fit = screen.h / (map_height as f32 * TILE);
@@ -371,11 +439,7 @@ impl Camera {
     pub fn forward(&self) -> Vec3 {
         let (sin_yaw, cos_yaw) = self.yaw.sin_cos();
         let (sin_pitch, cos_pitch) = self.pitch.sin_cos();
-        Vec3::new(
-            -sin_yaw * cos_pitch,
-            -cos_yaw * cos_pitch,
-            -sin_pitch,
-        )
+        Vec3::new(-sin_yaw * cos_pitch, -cos_yaw * cos_pitch, -sin_pitch)
     }
 
     /// The camera's up, in world space.
@@ -393,6 +457,14 @@ impl Camera {
     /// face culling.
     pub fn toward_camera(&self) -> Vec3 {
         -self.forward()
+    }
+
+    /// Capture the camera matrices once for a frame's world-triangle culling.
+    pub fn triangle_culler(&self) -> WorldTriangleCuller {
+        WorldTriangleCuller {
+            view_proj: self.view_proj(),
+            toward_camera: self.toward_camera(),
+        }
     }
 
     /// World → clip. Orthographic, so this is a rotation and a scale.
@@ -473,7 +545,10 @@ impl Camera {
     /// The tile a screen point is over.
     pub fn screen_to_tile(&self, sx: f32, sy: f32) -> Option<(i32, i32)> {
         let ground = self.pick_ground(sx, sy)?;
-        Some(((ground.x / TILE).floor() as i32, (ground.y / TILE).floor() as i32))
+        Some((
+            (ground.x / TILE).floor() as i32,
+            (ground.y / TILE).floor() as i32,
+        ))
     }
 
     /// Which tiles are on screen, so the client can skip the other 60,000.
@@ -648,6 +723,8 @@ pub struct Gpu {
     /// World pipelines: world-space quads, depth-tested.
     pub world_opaque: wgpu::RenderPipeline,
     pub world_overlay: wgpu::RenderPipeline,
+    /// Dynamic triangle-list pipeline for generated world meshes.
+    pub world_triangles: wgpu::RenderPipeline,
     /// Image pipeline: textured RGBA quads, screen space, depth always passes.
     pub image_pipeline: wgpu::RenderPipeline,
     pub image_bind_group: wgpu::BindGroup,
@@ -673,6 +750,10 @@ pub struct Gpu {
     world_opaque_capacity: usize,
     world_overlay_buffer: wgpu::Buffer,
     world_overlay_capacity: usize,
+    world_triangle_vertex_buffer: wgpu::Buffer,
+    world_triangle_vertex_capacity: usize,
+    world_triangle_index_buffer: wgpu::Buffer,
+    world_triangle_index_capacity: usize,
     pub present_modes: Vec<wgpu::PresentMode>,
     pub adapter_name: String,
     pub stats: FrameStats,
@@ -766,6 +847,26 @@ fn vs_world(@builtin(vertex_index) index: u32, instance: Instance) -> VertexOut 
 fn fs_world(in: VertexOut) -> @location(0) vec4<f32> {
     let coverage = textureSample(atlas_texture, atlas_sampler, in.uv).r;
     return vec4<f32>(in.color.rgb, in.color.a * coverage);
+}
+
+struct TriangleVertex {
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) color: vec4<f32>,
+};
+
+@vertex
+fn vs_triangle(input: TriangleVertex) -> VertexOut {
+    var out: VertexOut;
+    out.clip = camera.view_proj * vec4<f32>(input.position, 1.0);
+    out.uv = vec2<f32>(0.5, 0.5);
+    out.color = input.color;
+    return out;
+}
+
+@fragment
+fn fs_triangle(in: VertexOut) -> @location(0) vec4<f32> {
+    return in.color;
 }
 "#;
 
@@ -1197,57 +1298,55 @@ impl Gpu {
             cache: None,
         });
 
-        let world_pipeline = |label: &str,
-                              entry: &str,
-                              depth_write: bool,
-                              compare: wgpu::CompareFunction| {
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&world_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &world_shader,
-                    entry_point: Some(entry),
-                    buffers: &[Some(wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<WorldInstance>() as u64,
-                        step_mode: wgpu::VertexStepMode::Instance,
-                        attributes: &world_attributes(),
-                    })],
-                    compilation_options: Default::default(),
-                },
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw,
-                    // No back-face culling: a quad drawn with a basis pointing
-                    // away is skipped on the CPU, where a box already knows
-                    // which of its faces the camera can see.
-                    cull_mode: None,
-                    unclipped_depth: false,
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    conservative: false,
-                },
-                depth_stencil: Some(wgpu::DepthStencilState {
-                    format: DEPTH_FORMAT,
-                    depth_write_enabled: Some(depth_write),
-                    depth_compare: Some(compare),
-                    stencil: Default::default(),
-                    bias: Default::default(),
-                }),
-                multisample: wgpu::MultisampleState::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &world_shader,
-                    entry_point: Some("fs_world"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: config.format,
-                        blend,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: Default::default(),
-                }),
-                multiview_mask: None,
-                cache: None,
-            })
-        };
+        let world_pipeline =
+            |label: &str, entry: &str, depth_write: bool, compare: wgpu::CompareFunction| {
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&world_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &world_shader,
+                        entry_point: Some(entry),
+                        buffers: &[Some(wgpu::VertexBufferLayout {
+                            array_stride: std::mem::size_of::<WorldInstance>() as u64,
+                            step_mode: wgpu::VertexStepMode::Instance,
+                            attributes: &world_attributes(),
+                        })],
+                        compilation_options: Default::default(),
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList,
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw,
+                        // No back-face culling: a quad drawn with a basis pointing
+                        // away is skipped on the CPU, where a box already knows
+                        // which of its faces the camera can see.
+                        cull_mode: None,
+                        unclipped_depth: false,
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        conservative: false,
+                    },
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: DEPTH_FORMAT,
+                        depth_write_enabled: Some(depth_write),
+                        depth_compare: Some(compare),
+                        stencil: Default::default(),
+                        bias: Default::default(),
+                    }),
+                    multisample: wgpu::MultisampleState::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &world_shader,
+                        entry_point: Some("fs_world"),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: config.format,
+                            blend,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: Default::default(),
+                    }),
+                    multiview_mask: None,
+                    cache: None,
+                })
+            };
 
         let world_opaque = world_pipeline(
             "world opaque",
@@ -1261,6 +1360,65 @@ impl Gpu {
             false,
             wgpu::CompareFunction::LessEqual,
         );
+        let world_triangles = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("world triangle list"),
+            layout: Some(&world_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &world_shader,
+                entry_point: Some("vs_triangle"),
+                buffers: &[Some(wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<WorldVertexData>() as u64,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x3,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x3,
+                            offset: 12,
+                            shader_location: 1,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x4,
+                            offset: 24,
+                            shader_location: 2,
+                        },
+                    ],
+                })],
+                compilation_options: Default::default(),
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::LessEqual),
+                stencil: Default::default(),
+                bias: Default::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &world_shader,
+                entry_point: Some("fs_triangle"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            multiview_mask: None,
+            cache: None,
+        });
 
         // The image pipeline. One 4×4 opaque-white RGBA texture stands in until
         // a real image is bound with `bind_image`; the shader divides source
@@ -1456,6 +1614,18 @@ impl Gpu {
             contents: bytemuck::cast_slice(&vec![WorldInstance::zeroed(); world_capacity]),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
+        let world_triangle_vertex_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("world triangle vertices"),
+                contents: bytemuck::cast_slice(&vec![WorldVertexData::zeroed(); world_capacity]),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            });
+        let world_triangle_index_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("world triangle indices"),
+                contents: bytemuck::cast_slice(&vec![0u32; world_capacity * 3]),
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+            });
 
         let info = adapter.get_info();
         tracing::info!(
@@ -1476,6 +1646,7 @@ impl Gpu {
             pipeline,
             world_opaque,
             world_overlay,
+            world_triangles,
             image_pipeline,
             image_bind_group,
             image_texture,
@@ -1498,6 +1669,10 @@ impl Gpu {
             world_opaque_capacity: world_capacity,
             world_overlay_buffer,
             world_overlay_capacity: world_capacity,
+            world_triangle_vertex_buffer,
+            world_triangle_vertex_capacity: world_capacity,
+            world_triangle_index_buffer,
+            world_triangle_index_capacity: world_capacity * 3,
             present_modes,
             adapter_name: info.name,
             stats: FrameStats::default(),
@@ -1575,37 +1750,38 @@ impl Gpu {
     /// The image bind group layout, rebuilt on demand by `bind_image`. It is
     /// deterministic, so a field would only be a second place to keep it.
     fn image_bind_group_layout(&self) -> wgpu::BindGroupLayout {
-        self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("image layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+        self.device
+            .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("image layout"),
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        })
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
+            })
     }
 
     fn ensure_image_capacity(&mut self, needed: usize) {
@@ -1667,7 +1843,13 @@ impl Gpu {
         self.instance_capacity = capacity;
     }
 
-    fn ensure_world_capacity(&mut self, opaque: usize, overlay: usize) {
+    fn ensure_world_capacity(
+        &mut self,
+        opaque: usize,
+        overlay: usize,
+        triangle_vertices: usize,
+        triangle_indices: usize,
+    ) {
         if opaque > self.world_opaque_capacity {
             let capacity = opaque.next_power_of_two();
             self.world_opaque_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
@@ -1687,6 +1869,27 @@ impl Gpu {
                 mapped_at_creation: false,
             });
             self.world_overlay_capacity = capacity;
+        }
+        if triangle_vertices > self.world_triangle_vertex_capacity {
+            let capacity = triangle_vertices.next_power_of_two();
+            self.world_triangle_vertex_buffer =
+                self.device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some("world triangle vertices"),
+                    size: (capacity * std::mem::size_of::<WorldVertexData>()) as u64,
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+            self.world_triangle_vertex_capacity = capacity;
+        }
+        if triangle_indices > self.world_triangle_index_capacity {
+            let capacity = triangle_indices.next_power_of_two();
+            self.world_triangle_index_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("world triangle indices"),
+                size: (capacity * std::mem::size_of::<u32>()) as u64,
+                usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.world_triangle_index_capacity = capacity;
         }
     }
 
@@ -1726,7 +1929,12 @@ impl Gpu {
 
         self.ensure_instance_capacity(hud.instances.len());
         self.ensure_image_capacity(images.instances.len());
-        self.ensure_world_capacity(world.opaque.len(), world.overlay.len());
+        self.ensure_world_capacity(
+            world.opaque.len(),
+            world.overlay.len(),
+            world.triangle_vertices.len(),
+            world.triangle_indices.len(),
+        );
         if !images.instances.is_empty() {
             self.queue
                 .write_buffer(&self.images, 0, bytemuck::cast_slice(&images.instances));
@@ -1747,6 +1955,18 @@ impl Gpu {
                 &self.world_overlay_buffer,
                 0,
                 bytemuck::cast_slice(&world.overlay),
+            );
+        }
+        if !world.triangle_indices.is_empty() {
+            self.queue.write_buffer(
+                &self.world_triangle_vertex_buffer,
+                0,
+                bytemuck::cast_slice(&world.triangle_vertices),
+            );
+            self.queue.write_buffer(
+                &self.world_triangle_index_buffer,
+                0,
+                bytemuck::cast_slice(&world.triangle_indices),
             );
         }
 
@@ -1789,6 +2009,18 @@ impl Gpu {
                 multiview_mask: None,
             });
 
+            // Dynamic world meshes are real triangle lists, not quad instances.
+            if !world.triangle_indices.is_empty() {
+                pass.set_pipeline(&self.world_triangles);
+                pass.set_bind_group(0, &self.world_bind_group, &[]);
+                pass.set_vertex_buffer(0, self.world_triangle_vertex_buffer.slice(..));
+                pass.set_index_buffer(
+                    self.world_triangle_index_buffer.slice(..),
+                    wgpu::IndexFormat::Uint32,
+                );
+                pass.draw_indexed(0..world.triangle_indices.len() as u32, 0, 0..1);
+            }
+
             // The city, with depth written.
             if !world.opaque.is_empty() {
                 pass.set_pipeline(&self.world_opaque);
@@ -1825,11 +2057,10 @@ impl Gpu {
 
             // Glyphon renders shaped screen-space text after solid and image UI
             // geometry, using its dynamic etagere-packed atlas.
-            if let Err(error) = self.text_renderer.render(
-                &self.text_atlas,
-                &self.text_viewport,
-                &mut pass,
-            ) {
+            if let Err(error) =
+                self.text_renderer
+                    .render(&self.text_atlas, &self.text_viewport, &mut pass)
+            {
                 tracing::error!(%error, "Glyphon text rendering failed");
             }
         }
@@ -1838,10 +2069,7 @@ impl Gpu {
         self.queue.present(frame);
         self.text_atlas.trim();
         text.clear();
-        let refresh = if self
-            .present_modes
-            .contains(&wgpu::PresentMode::AutoNoVsync)
-        {
+        let refresh = if self.present_modes.contains(&wgpu::PresentMode::AutoNoVsync) {
             240.0
         } else {
             60.0
@@ -1899,8 +2127,7 @@ mod tests {
         for yaw_step in 0..12 {
             for pitch_step in 0..7 {
                 let yaw = yaw_step as f32 * 30.0_f32.to_radians();
-                let pitch = MIN_PITCH
-                    + (MAX_PITCH - MIN_PITCH) * (pitch_step as f32 / 6.0);
+                let pitch = MIN_PITCH + (MAX_PITCH - MIN_PITCH) * (pitch_step as f32 / 6.0);
                 let camera = camera(yaw, pitch);
                 let world = Vec3::new(560.0, 372.0, 0.0);
                 let (sx, sy) = camera.world_to_screen(world);
@@ -1928,8 +2155,7 @@ mod tests {
         for yaw_step in 0..8 {
             for pitch_step in 0..4 {
                 let yaw = yaw_step as f32 * 45.0_f32.to_radians();
-                let pitch =
-                    MIN_PITCH + (MAX_PITCH - MIN_PITCH) * (pitch_step as f32 / 3.0);
+                let pitch = MIN_PITCH + (MAX_PITCH - MIN_PITCH) * (pitch_step as f32 / 3.0);
                 let camera = camera(yaw, pitch);
                 let (tx, ty) = (7i32, 9i32);
                 let centre = Vec3::new(
@@ -2111,5 +2337,4 @@ mod tests {
         assert!(stats.average_ms < 6.0, "the mean stays low");
         assert!(stats.worst_ms >= 49.0, "the worst frame is still visible");
     }
-
 }
