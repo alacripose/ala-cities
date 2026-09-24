@@ -1,0 +1,111 @@
+﻿{
+  "schema": "ala-cities/asset-generator-benchmark/v1",
+  "build": {
+    "commit": "65cb983",
+    "branch": "design-package-cli",
+    "dirty": true,
+    "profile": "release"
+  },
+  "samples": 20,
+  "raycasts_per_sample": 1000,
+  "scenarios": [
+    {
+      "name": "cold_positive_chunk",
+      "unit": "microseconds_per_sample",
+      "operations_per_sample": 1,
+      "samples": 20,
+      "min_us": 4376.4,
+      "p50_us": 4819.4,
+      "p95_us": 5654.5,
+      "max_us": 6330.900000000001
+    },
+    {
+      "name": "warm_cached_chunk",
+      "unit": "microseconds_per_sample",
+      "operations_per_sample": 1,
+      "samples": 20,
+      "min_us": 136.9,
+      "p50_us": 153.5,
+      "p95_us": 243.1,
+      "max_us": 248.20000000000002
+    },
+    {
+      "name": "cold_negative_chunk",
+      "unit": "microseconds_per_sample",
+      "operations_per_sample": 1,
+      "samples": 20,
+      "min_us": 4294.1,
+      "p50_us": 4601.400000000001,
+      "p95_us": 5947.3,
+      "max_us": 7893.6
+    },
+    {
+      "name": "cold_cubic_preview",
+      "unit": "microseconds_per_sample",
+      "operations_per_sample": 1,
+      "samples": 20,
+      "min_us": 25134.199999999997,
+      "p50_us": 26862.1,
+      "p95_us": 32841.700000000004,
+      "max_us": 32859.899999999994
+    },
+    {
+      "name": "cubic_visible_triangle_filter",
+      "unit": "microseconds_per_sample",
+      "operations_per_sample": 1,
+      "samples": 20,
+      "min_us": 0.39999999999999997,
+      "p50_us": 0.5,
+      "p95_us": 1.0,
+      "max_us": 1.5999999999999999
+    },
+    {
+      "name": "exact_raycast_batch",
+      "unit": "microseconds_per_sample",
+      "operations_per_sample": 1000,
+      "samples": 20,
+      "min_us": 38503.1,
+      "p50_us": 39232.700000000004,
+      "p95_us": 40072.799999999996,
+      "max_us": 40179.2
+    }
+  ],
+  "resources": [
+    {
+      "scenario": "positive_starter",
+      "world_voxel_entries": 1024,
+      "octree_occupied_voxels": 1024,
+      "mesh_vertices": 2588,
+      "mesh_indices": 3882,
+      "logical_mesh_bytes": 87992,
+      "octree_nodes": 1365,
+      "octree_max_nodes": 37449,
+      "voxel_capacity": 32768,
+      "visible_triangles": 0
+    },
+    {
+      "scenario": "negative_starter",
+      "world_voxel_entries": 1024,
+      "octree_occupied_voxels": 1024,
+      "mesh_vertices": 2440,
+      "mesh_indices": 3660,
+      "logical_mesh_bytes": 82960,
+      "octree_nodes": 1365,
+      "octree_max_nodes": 37449,
+      "voxel_capacity": 32768,
+      "visible_triangles": 0
+    },
+    {
+      "scenario": "cubic_preview",
+      "world_voxel_entries": 32768,
+      "octree_occupied_voxels": 32768,
+      "mesh_vertices": 24,
+      "mesh_indices": 36,
+      "logical_mesh_bytes": 816,
+      "octree_nodes": 37449,
+      "octree_max_nodes": 37449,
+      "voxel_capacity": 32768,
+      "visible_triangles": 4
+    }
+  ]
+}

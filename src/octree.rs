@@ -63,13 +63,14 @@ impl SparseVoxelOctree {
         kind: VoxelKind,
     ) -> (Option<VoxelKind>, usize) {
         if depth == OCTREE_DEPTH {
-            if matches!(node, Node::Empty) {
+            let was_empty = matches!(node, Node::Empty);
+            if was_empty {
                 *node = Node::Leaf(None);
             }
             let Node::Leaf(slot) = node else {
                 unreachable!("depth-five nodes are leaves");
             };
-            return (slot.replace(kind), 0);
+            return (slot.replace(kind), usize::from(was_empty));
         }
 
         if matches!(node, Node::Empty) {
@@ -79,14 +80,15 @@ impl SparseVoxelOctree {
             unreachable!("nodes above depth five are branches");
         };
         let index = Self::branch_index(coord, depth);
-        if children[index].is_none() {
+        let created_child = children[index].is_none();
+        if created_child {
             children[index] = Some(Box::new(Node::empty_for_depth(depth + 1)));
         }
         let child = children[index]
             .as_mut()
-            .expect("the selected child was just allocated");
-        let (previous, created) = Self::insert_at(child, coord, depth + 1, kind);
-        (previous, created + 1)
+            .expect("the selected child exists after allocation");
+        let (previous, created_below) = Self::insert_at(child, coord, depth + 1, kind);
+        (previous, created_below + usize::from(created_child))
     }
 
     fn get_at(node: &Node, coord: Coord, depth: u8) -> Option<VoxelKind> {
@@ -190,5 +192,57 @@ impl SparseVoxelOctree {
         let mut hash = 0xcbf2_9ce4_8422_2325_u64;
         visit(&mut hash, &self.root);
         hash
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SparseVoxelOctree, OCTREE_DEPTH, OCTREE_MAX_NODES};
+    use crate::founding_day::{Coord, VoxelKind};
+
+    #[test]
+    fn node_count_counts_each_allocated_node_once() {
+        let mut octree = SparseVoxelOctree::default();
+        assert_eq!(octree.node_count(), 1, "the root exists before insertion");
+        assert_eq!(octree.occupied_count(), 0);
+
+        assert!(octree
+            .insert(Coord::new(0, 0, 0), VoxelKind::Soil)
+            .is_none());
+        assert_eq!(octree.node_count(), 1 + OCTREE_DEPTH as usize);
+        assert_eq!(octree.occupied_count(), 1);
+
+        let before_replacement = octree.node_count();
+        assert_eq!(
+            octree.insert(Coord::new(0, 0, 0), VoxelKind::Wood),
+            Some(VoxelKind::Soil)
+        );
+        assert_eq!(octree.node_count(), before_replacement);
+        assert_eq!(octree.occupied_count(), 1);
+
+        assert!(octree
+            .insert(Coord::new(16, 16, 16), VoxelKind::Soil)
+            .is_none());
+        assert_eq!(
+            octree.node_count(),
+            before_replacement + OCTREE_DEPTH as usize,
+            "a distinct top-level octant adds one five-node path"
+        );
+        assert_eq!(octree.occupied_count(), 2);
+    }
+
+    #[test]
+    fn a_full_chunk_has_exactly_the_maximum_node_count() {
+        let mut octree = SparseVoxelOctree::default();
+        for z in 0..32 {
+            for y in 0..32 {
+                for x in 0..32 {
+                    octree.insert(Coord::new(x, y, z), VoxelKind::Soil);
+                }
+            }
+        }
+        assert_eq!(octree.occupied_count(), octree.capacity());
+        assert_eq!(octree.node_count(), OCTREE_MAX_NODES);
+        assert!(!octree.is_sparse());
     }
 }
