@@ -52,4 +52,10 @@ fn neighbor_residency_invalidates_boundary_faces_and_unload_restores_the_old_cac
         .expect("chunk remains resident");
     assert_eq!(restored, before);
     assert_eq!(generator.cache_len(), 2);
+    assert_eq!(
+        generator.cached_chunks(),
+        std::collections::BTreeSet::from([chunk])
+    );
+    assert_eq!(generator.evict_chunk(chunk), 2);
+    assert_eq!(generator.cache_len(), 0);
 }

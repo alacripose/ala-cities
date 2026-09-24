@@ -15,8 +15,8 @@ cargo run --release --bin asset-generator-bench -- 20
 Raw JSON:
 
 - `docs/design/audits/2026-09-24-asset-generator-benchmark.json`
-- schema: `ala-cities/asset-generator-benchmark/v1`
-- base commit: `65cb983`
+- schema: `ala-cities/asset-generator-benchmark/v2`
+- base commit: `70b50de`
 - profile: release
 - samples: 20
 - raycasts per raycast sample: 1,000
@@ -33,14 +33,15 @@ Host used for this reading:
 
 | Scenario | Operations/sample | p50 | p95 | Max |
 |---|---:|---:|---:|---:|
-| Cold positive starter chunk | 1 | 4.819 ms | 5.655 ms | 6.331 ms |
-| Warm cached chunk | 1 | 0.154 ms | 0.243 ms | 0.248 ms |
-| Cold negative starter chunk | 1 | 4.601 ms | 5.947 ms | 7.894 ms |
-| Cold cubic preview | 1 | 26.862 ms | 32.842 ms | 32.860 ms |
-| Cubic visible-triangle filter | 1 | 0.0005 ms | 0.0010 ms | 0.0016 ms |
-| Exact raycast batch | 1,000 | 39.233 ms | 40.073 ms | 40.179 ms |
+| Cold positive starter chunk | 1 | 5.806 ms | 8.068 ms | 10.887 ms |
+| Warm cached chunk | 1 | 0.182 ms | 0.304 ms | 0.375 ms |
+| Cold negative starter chunk | 1 | 5.916 ms | 7.680 ms | 17.139 ms |
+| Cold cubic preview | 1 | 35.734 ms | 40.288 ms | 40.355 ms |
+| Cubic visible-triangle filter | 1 | 0.0006 ms | 0.0011 ms | 0.0095 ms |
+| Exact raycast batch | 1,000 | 40.288 ms | 41.272 ms | 41.524 ms |
+| Nine-chunk stream, one build/tick | 9 | 394.683 ms | 422.785 ms | 469.009 ms |
 
-The raycast row is a timed batch, not a per-ray value. Dividing the p50 batch by 1,000 gives approximately `39.2 µs` per exact cubic ray on this host.
+The raycast row is a timed batch, not a per-ray value. Dividing the p50 batch by 1,000 gives approximately `40.3 µs` per exact cubic ray on this host.
 
 Positive and negative starter chunks showed no distinct performance penalty in this ordered sample. This is an observation, not a statistical equivalence claim.
 
@@ -55,6 +56,23 @@ Positive and negative starter chunks showed no distinct performance penalty in t
 The complete octree structural maximum is 37,449 nodes for 32,768 voxel leaves. The JSON records both limits separately as `octree_max_nodes` and `voxel_capacity`.
 
 `logical_mesh_bytes` counts `MeshVertex` and `u32` index storage only. It is not process RSS and excludes octree boxes, manifests, allocator overhead, GPU buffers, and world truth.
+
+## Bounded streaming evidence
+
+`ChunkAssetStreamer` now provides a deterministic, synchronous staging boundary over already-resident world truth:
+
+- request chunks in explicit signed-coordinate order;
+- build no more than the configured number per tick;
+- reject duplicate pending requests;
+- retain a bounded number of distinct chunks;
+- evict the least-recently-built chunk deterministically under cache pressure;
+- remove every stale cache version when evicting one chunk;
+- preserve the authoritative world digest;
+- replay identical request sequences to identical asset digests.
+
+The benchmark submits a `3×3` signed-coordinate neighborhood with a one-build-per-tick budget and three retained chunks. It completes in nine ticks, builds all nine requested chunks, evicts six under pressure, retains exactly three chunks/cache entries, and leaves the world digest unchanged.
+
+This is bounded streaming, not concurrent streaming. It deliberately schedules work already resident in `FoundingWorld`; world generation and residency loading remain separate responsibilities.
 
 The cubic preview retains four camera-facing triangles under the benchmark camera. It exposes all 12 outer-shell triangles before culling.
 
@@ -75,13 +93,14 @@ The reported resource table is from the corrected implementation.
 This is one host and one process, not a bronze gate. It does not yet measure:
 
 - concurrent generation or bounded worker queues;
-- chunk I/O, scheduling, eviction, or cache pressure;
+- chunk I/O or world-residency loading;
 - replay determinism across process restarts;
 - world tick impact or end-to-end frame time;
 - GPU draw/upload timing;
 - resident-set or GPU-memory high-water marks;
+- runtime-client integration of `ChunkAssetStreamer`;
 - LOD policy, which is not implemented;
 - a multi-hardware percentile envelope;
 - human visual/playtest acceptance.
 
-The next pass should measure a deterministic multi-chunk schedule with bounded work per tick and record cache/eviction behavior before deriving any budget. Failed budgets must block completion rather than being relabelled as acceptable.
+The next pass should integrate the bounded stream into the runtime target, measure tick/frame impact and cache transitions across camera movement, and compare at least two cold process runs before deriving any budget. Failed budgets must block completion rather than being relabelled as acceptable.

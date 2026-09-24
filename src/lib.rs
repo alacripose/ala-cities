@@ -22,6 +22,7 @@
 pub mod agentledger;
 pub mod asset_controls;
 pub mod asset_generator;
+pub mod asset_streaming;
 pub mod audio;
 pub mod buildinfo;
 pub mod design;

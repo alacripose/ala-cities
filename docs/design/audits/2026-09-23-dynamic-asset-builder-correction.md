@@ -33,6 +33,8 @@ This checkpoint corrects the earlier X/Y/Z voxel-scaling prototype. The Dynamic 
 - Added conservative per-frame world-triangle culling. The camera matrix is captured once per frame; backfaces, triangles wholly outside the orthographic clip volume, and off-camera chunks are skipped, while a triangle crossing a viewport edge is retained. The target panel reports submitted/total triangles without mutating the asset or world.
 - Fixed a native-camera ray false positive at the sparse-octree boundary. `SparseVoxelOctree::get` now rejects coordinates outside its local `0..32` domain instead of allowing fixed-bit traversal paths to alias far-away coordinates into valid branches. A target-camera regression now requires `ChunkAsset::raycast` to equal authoritative `FoundingWorld` raycasting exactly.
 - Added a named `FoundingWorld::cubic_preview` fixture containing one full 32³ section. It proves cubic occupancy, indexed meshing, and culling without claiming that the canonical field-coupled generator is a solid cube. The next target preview uses that fixture and the licensed architectural reference record.
+- Added deterministic `ChunkAssetStreamer` staging over already-resident signed world chunks. It enforces a per-tick build budget, rejects duplicate pending requests, preserves world truth, and evicts least-recently-built chunks under an explicit distinct-chunk capacity. Cache eviction removes every stale version for the selected chunk.
+- Added a release benchmark covering cold/warm generation, negative coordinates, cubic resources, culling, exact raycast, and a nine-chunk/one-build-per-tick stream. Raw v2 JSON and interpretation live in the 2026-09-24 measurement audit.
 - Replaced 3D world-axis orb projection with three 48 px screen-space slider rows, pointer mapping, visible orb handles, and control-specific keyboard increments.
 - Kept sparse signed-coordinate chunks and exact Amanatides–Woo DDA ray traversal intact.
 - Kept the corrected rotated screen-space pan and target-specific zoom range.
@@ -87,6 +89,8 @@ The typed design verifier remains intentionally red on the broader package: unre
 - `docs/design/audits/target-cubic-chunk-preview.png` — accepted native cubic preview: complete visible 32³ hull, `6/12` submitted triangles, and valid camera ray `(25,12,31)`.
 - `docs/design/audits/asset-builder-indexed-triangles.png` — accepted final builder frame: one mesh, `1932` triangles, `5796` vertices, three semantic controls, and the real indexed-triangle path.
 - `docs/design/audits/target-indexed-triangle-default.png` — accepted indexed runtime capture with a valid native ray read-back and no visible interior pinholes.
+- `docs/design/audits/2026-09-24-asset-generator-benchmark.json` — raw release benchmark schema v2, including bounded nine-chunk streaming and cache-eviction readings.
+- `docs/design/audits/2026-09-24-asset-generator-first-measurements.md` — measured interpretation, corrected octree structural evidence, and explicit remaining benchmark limits.
 - Final rebuilt `ala-cities-target` and `asset-builder` binaries were each shown for at least 15 seconds. Their panels read material classification and optical values from the generated manifest; the runtime reports camera-culled triangles rather than unit faces.
 - `docs/design/diagrams/rendered/dynamic-asset-generator.png` — accepted 4120×2944 official Excalidraw render of the corrected runtime/authoring, triangle, manifest, and culling boundary.
 - `docs/design/diagrams/rendered/world-generation-grilling-structure.png` — official Excalidraw render with the corrected Q856–Q858 amendment.
@@ -95,7 +99,7 @@ The typed design verifier remains intentionally red on the broader package: unre
 
 - Full OpenPBR texture/material authoring and review. The runtime manifest and optical invariants are implemented, but promoted texture assets and human material review are not.
 - Hash-aware local reference browser.
-- Chunk streaming/LOD policy and measured build/frame performance budgets beyond the now-correct conservative camera culler.
+- Runtime integration and concurrent I/O/generation workers for the bounded synchronous streamer; LOD policy; and derived build/frame budgets.
 - Full generator/source/table digests and a canonical world/projection identity beyond the current seven-chunk presentation input.
 - Mechanical plus human promotion and a promoted asset registry.
 - Integration into the eventual replacement client rather than the bounded target binaries.

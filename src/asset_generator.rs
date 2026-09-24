@@ -830,6 +830,39 @@ impl DynamicAssetGenerator {
         self.chunk_cache.len()
     }
 
+    /// Distinct chunk coordinates currently represented in the chunk cache.
+    pub fn cached_chunks(&self) -> BTreeSet<ChunkCoord> {
+        self.chunk_cache.keys().map(|key| key.chunk).collect()
+    }
+
+    /// Remove every cached version for one chunk, returning the number removed.
+    pub fn evict_chunk(&mut self, chunk: ChunkCoord) -> usize {
+        let keys = self
+            .chunk_cache
+            .keys()
+            .filter(|key| key.chunk == chunk)
+            .copied()
+            .collect::<Vec<_>>();
+        for key in &keys {
+            self.chunk_cache.remove(key);
+        }
+        keys.len()
+    }
+
+    /// Remove stale versions of one chunk while retaining an exact successful key.
+    pub fn evict_other_chunk_versions(&mut self, chunk: ChunkCoord, keep: ChunkAssetKey) -> usize {
+        let keys = self
+            .chunk_cache
+            .keys()
+            .filter(|key| key.chunk == chunk && **key != keep)
+            .copied()
+            .collect::<Vec<_>>();
+        for key in &keys {
+            self.chunk_cache.remove(key);
+        }
+        keys.len()
+    }
+
     pub fn shape_cache_len(&self) -> usize {
         self.shape_cache.len()
     }
