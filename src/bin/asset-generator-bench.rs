@@ -190,7 +190,11 @@ fn main() -> Result<(), String> {
             scenario("cold_cubic_preview", 1, cubic_build),
             scenario("cubic_visible_triangle_filter", 1, culling),
             scenario("exact_raycast_batch", RAYCASTS_PER_SAMPLE, raycast),
-            scenario("nine_chunk_stream_budget_one", 9, streaming_schedule),
+            scenario(
+                "twentyseven_chunk_stream_budget_one",
+                27,
+                streaming_schedule,
+            ),
         ],
         resources,
         streaming: streaming_reading.expect("at least one benchmark sample is required"),
@@ -244,26 +248,25 @@ fn camera() -> Camera {
 }
 
 fn measure_streaming() -> (Duration, StreamingReading) {
-    let chunks = [
-        ChunkCoord::new(-1, -1, -1),
-        ChunkCoord::new(0, -1, -1),
-        ChunkCoord::new(1, -1, -1),
-        ChunkCoord::new(-1, 0, -1),
-        ChunkCoord::new(0, 0, -1),
-        ChunkCoord::new(1, 0, -1),
-        ChunkCoord::new(-1, 1, -1),
-        ChunkCoord::new(0, 1, -1),
-        ChunkCoord::new(1, 1, -1),
-    ];
+    let chunks = (-1..=1)
+        .flat_map(|z| {
+            (-1..=1).flat_map(move |y| {
+                (-1..=1)
+                    .map(move |x| ChunkCoord::new(x, y, z))
+                    .collect::<Vec<_>>()
+            })
+        })
+        .collect::<Vec<_>>();
     let mut world = FoundingWorld::new(WorldSeed(7), GeneratorRevision(1));
     for chunk in &chunks {
         world.load_chunk(*chunk);
     }
     let before = world.state_digest();
     let mut streamer = ChunkAssetStreamer::new(ChunkStreamPolicy::new(1, 3));
-    for chunk in chunks {
-        assert!(streamer.request(chunk), "benchmark requests must be unique");
-    }
+    assert_eq!(
+        streamer.request_neighborhood(ChunkCoord::new(0, 0, 0), 1),
+        chunks.len()
+    );
 
     let started = Instant::now();
     let mut completed_ticks = 0;

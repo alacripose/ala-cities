@@ -1,7 +1,7 @@
 ﻿{
   "schema": "ala-cities/asset-generator-benchmark/v2",
   "build": {
-    "commit": "70b50de",
+    "commit": "0214ccc",
     "branch": "design-package-cli",
     "dirty": true,
     "profile": "release"
@@ -14,40 +14,40 @@
       "unit": "microseconds_per_sample_total",
       "operations_per_sample": 1,
       "samples": 20,
-      "min_us": 4492.2,
-      "p50_us": 5805.7,
-      "p95_us": 8068.4,
-      "max_us": 10886.5
+      "min_us": 4429.7,
+      "p50_us": 5139.3,
+      "p95_us": 6768.9,
+      "max_us": 6775.0
     },
     {
       "name": "warm_cached_chunk",
       "unit": "microseconds_per_sample_total",
       "operations_per_sample": 1,
       "samples": 20,
-      "min_us": 132.0,
-      "p50_us": 182.3,
-      "p95_us": 303.6,
-      "max_us": 374.8
+      "min_us": 183.0,
+      "p50_us": 219.4,
+      "p95_us": 329.8,
+      "max_us": 333.9
     },
     {
       "name": "cold_negative_chunk",
       "unit": "microseconds_per_sample_total",
       "operations_per_sample": 1,
       "samples": 20,
-      "min_us": 4456.8,
-      "p50_us": 5916.2,
-      "p95_us": 7680.2,
-      "max_us": 17139.2
+      "min_us": 4487.2,
+      "p50_us": 5138.0,
+      "p95_us": 6080.099999999999,
+      "max_us": 8050.099999999999
     },
     {
       "name": "cold_cubic_preview",
       "unit": "microseconds_per_sample_total",
       "operations_per_sample": 1,
       "samples": 20,
-      "min_us": 28429.0,
-      "p50_us": 35734.0,
-      "p95_us": 40287.6,
-      "max_us": 40354.6
+      "min_us": 30885.4,
+      "p50_us": 33153.799999999996,
+      "p95_us": 38173.2,
+      "max_us": 39078.4
     },
     {
       "name": "cubic_visible_triangle_filter",
@@ -55,29 +55,29 @@
       "operations_per_sample": 1,
       "samples": 20,
       "min_us": 0.39999999999999997,
-      "p50_us": 0.6,
+      "p50_us": 0.5,
       "p95_us": 1.1,
-      "max_us": 9.5
+      "max_us": 1.2
     },
     {
       "name": "exact_raycast_batch",
       "unit": "microseconds_per_sample_total",
       "operations_per_sample": 1000,
       "samples": 20,
-      "min_us": 39010.5,
-      "p50_us": 40288.0,
-      "p95_us": 41271.6,
-      "max_us": 41523.5
+      "min_us": 39111.100000000006,
+      "p50_us": 39606.299999999996,
+      "p95_us": 43089.700000000004,
+      "max_us": 49330.3
     },
     {
-      "name": "nine_chunk_stream_budget_one",
+      "name": "twentyseven_chunk_stream_budget_one",
       "unit": "microseconds_per_sample_total",
-      "operations_per_sample": 9,
+      "operations_per_sample": 27,
       "samples": 20,
-      "min_us": 329344.0,
-      "p50_us": 394682.7,
-      "p95_us": 422784.9,
-      "max_us": 469008.5
+      "min_us": 399614.19999999995,
+      "p50_us": 440144.7,
+      "p95_us": 478795.19999999995,
+      "max_us": 518652.1
     }
   ],
   "resources": [
@@ -119,10 +119,10 @@
     }
   ],
   "streaming": {
-    "requested_chunks": 9,
-    "completed_ticks": 9,
-    "built_chunks": 9,
-    "evicted_chunks": 6,
+    "requested_chunks": 27,
+    "completed_ticks": 27,
+    "built_chunks": 27,
+    "evicted_chunks": 24,
     "retained_chunks": 3,
     "cache_entries": 3,
     "world_digest_unchanged": true

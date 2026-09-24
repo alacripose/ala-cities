@@ -33,15 +33,15 @@ Host used for this reading:
 
 | Scenario | Operations/sample | p50 | p95 | Max |
 |---|---:|---:|---:|---:|
-| Cold positive starter chunk | 1 | 5.806 ms | 8.068 ms | 10.887 ms |
-| Warm cached chunk | 1 | 0.182 ms | 0.304 ms | 0.375 ms |
-| Cold negative starter chunk | 1 | 5.916 ms | 7.680 ms | 17.139 ms |
-| Cold cubic preview | 1 | 35.734 ms | 40.288 ms | 40.355 ms |
-| Cubic visible-triangle filter | 1 | 0.0006 ms | 0.0011 ms | 0.0095 ms |
-| Exact raycast batch | 1,000 | 40.288 ms | 41.272 ms | 41.524 ms |
-| Nine-chunk stream, one build/tick | 9 | 394.683 ms | 422.785 ms | 469.009 ms |
+| Cold positive starter chunk | 1 | 5.139 ms | 6.769 ms | 6.775 ms |
+| Warm cached chunk | 1 | 0.219 ms | 0.330 ms | 0.334 ms |
+| Cold negative starter chunk | 1 | 5.138 ms | 6.080 ms | 8.050 ms |
+| Cold cubic preview | 1 | 33.154 ms | 38.173 ms | 39.078 ms |
+| Cubic visible-triangle filter | 1 | 0.0005 ms | 0.0011 ms | 0.0012 ms |
+| Exact raycast batch | 1,000 | 39.606 ms | 43.090 ms | 49.330 ms |
+| 27-chunk stream, one build/tick | 27 | 440.145 ms | 478.795 ms | 518.652 ms |
 
-The raycast row is a timed batch, not a per-ray value. Dividing the p50 batch by 1,000 gives approximately `40.3 µs` per exact cubic ray on this host.
+The raycast row is a timed batch, not a per-ray value. Dividing the p50 batch by 1,000 gives approximately `39.6 µs` per exact cubic ray on this host.
 
 Positive and negative starter chunks showed no distinct performance penalty in this ordered sample. This is an observation, not a statistical equivalence claim.
 
@@ -70,7 +70,7 @@ The complete octree structural maximum is 37,449 nodes for 32,768 voxel leaves. 
 - preserve the authoritative world digest;
 - replay identical request sequences to identical asset digests.
 
-The benchmark submits a `3×3` signed-coordinate neighborhood with a one-build-per-tick budget and three retained chunks. It completes in nine ticks, builds all nine requested chunks, evicts six under pressure, retains exactly three chunks/cache entries, and leaves the world digest unchanged.
+The benchmark submits a `3×3×3` signed-coordinate neighborhood with a one-build-per-tick budget and three retained chunks. It completes in 27 ticks, builds all 27 requested chunks, evicts 24 under pressure, retains exactly three chunks/cache entries, and leaves the world digest unchanged.
 
 This is bounded streaming, not concurrent streaming. It deliberately schedules work already resident in `FoundingWorld`; world generation and residency loading remain separate responsibilities.
 

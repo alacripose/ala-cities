@@ -69,6 +69,48 @@ impl ChunkAssetStreamer {
         true
     }
 
+    /// Queue a signed-coordinate neighborhood in deterministic near-to-far order.
+    /// Returns the number of newly queued coordinates.
+    pub fn request_neighborhood(&mut self, center: ChunkCoord, radius: i32) -> usize {
+        const MAX_REQUEST_CELLS: i64 = 1_000_000;
+        if radius < 0 {
+            return 0;
+        }
+        let diameter = i64::from(radius) * 2 + 1;
+        let Some(cell_count) = diameter
+            .checked_mul(diameter)
+            .and_then(|value| value.checked_mul(diameter))
+        else {
+            return 0;
+        };
+        if cell_count > MAX_REQUEST_CELLS {
+            return 0;
+        }
+        let mut candidates = Vec::with_capacity(cell_count as usize);
+        for z in -radius..=radius {
+            for y in -radius..=radius {
+                for x in -radius..=radius {
+                    let (Some(chunk_x), Some(chunk_y), Some(chunk_z)) = (
+                        center.x.checked_add(x),
+                        center.y.checked_add(y),
+                        center.z.checked_add(z),
+                    ) else {
+                        continue;
+                    };
+                    candidates.push((
+                        i64::from(x).abs() + i64::from(y).abs() + i64::from(z).abs(),
+                        ChunkCoord::new(chunk_x, chunk_y, chunk_z),
+                    ));
+                }
+            }
+        }
+        candidates.sort_by_key(|(distance, chunk)| (*distance, *chunk));
+        candidates
+            .into_iter()
+            .filter(|(_, chunk)| self.request(*chunk))
+            .count()
+    }
+
     pub fn pending_len(&self) -> usize {
         self.pending.len()
     }
@@ -143,6 +185,27 @@ mod tests {
             world.load_chunk(*chunk);
         }
         world
+    }
+
+    #[test]
+    fn neighborhood_requests_are_signed_centered_and_near_to_far() {
+        let mut streamer = ChunkAssetStreamer::new(ChunkStreamPolicy::new(2, 4));
+        assert_eq!(
+            streamer.request_neighborhood(ChunkCoord::new(0, 0, 0), 1),
+            27
+        );
+        let queued = streamer.pending.iter().copied().collect::<Vec<_>>();
+        assert_eq!(queued[0], ChunkCoord::new(0, 0, 0));
+        assert_eq!(queued[1], ChunkCoord::new(-1, 0, 0));
+        assert_eq!(queued[2], ChunkCoord::new(0, -1, 0));
+        assert_eq!(queued[3], ChunkCoord::new(0, 0, -1));
+        assert_eq!(queued[4], ChunkCoord::new(0, 0, 1));
+        assert_eq!(queued[5], ChunkCoord::new(0, 1, 0));
+        assert_eq!(queued[6], ChunkCoord::new(1, 0, 0));
+        assert_eq!(
+            streamer.request_neighborhood(ChunkCoord::new(0, 0, 0), -1),
+            0
+        );
     }
 
     #[test]
