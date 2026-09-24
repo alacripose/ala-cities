@@ -6,11 +6,11 @@ use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 
-use ala_cities::asset_generator::{chunk_builder_hash, ChunkAsset, DynamicAssetGenerator};
-use ala_cities::design::{Space, Step, UiScale};
-use ala_cities::founding_day::{
-    ChunkCoord, FoundingWorld, GeneratorRevision, VoxelKind, WorldSeed,
+use ala_cities::asset_generator::{
+    chunk_builder_hash, ChunkAsset, DynamicAssetGenerator, MaterialKey,
 };
+use ala_cities::design::{Space, Step, UiScale};
+use ala_cities::founding_day::{ChunkCoord, FoundingWorld, GeneratorRevision, WorldSeed};
 use ala_cities::hud::{self, Token};
 use ala_cities::raycast::VoxelHit;
 use ala_cities::render::{
@@ -114,7 +114,11 @@ impl TargetApp {
                 / 4.0;
             let right = (quad.vertices[1].position - quad.vertices[0].position) * 0.5;
             let up = (quad.vertices[3].position - quad.vertices[0].position) * 0.5;
-            let base = material_color(quad.material);
+            let base = asset
+                .material_manifest
+                .get(MaterialKey::from(quad.material))
+                .and_then(|material| material.opaque_rgba())
+                .expect("generated chunk materials are renderable opaque materials");
             let lambert = quad.vertices[0].normal.dot(LIGHT.normalize()).max(0.0);
             let shade = 0.58 + 0.42 * lambert;
             self.world_batch.push(
@@ -122,7 +126,7 @@ impl TargetApp {
                 center,
                 right,
                 up,
-                [base[0] * shade, base[1] * shade, base[2] * shade, 1.0],
+                [base[0] * shade, base[1] * shade, base[2] * shade, base[3]],
                 Text::solid_uv(),
             );
         }
@@ -134,7 +138,7 @@ impl TargetApp {
         let x = hud::space(Space::Md, ui);
         let y = hud::space(Space::Md, ui);
         let w = 430.0_f32.max(screen.w * 0.32);
-        let h = 264.0_f32;
+        let h = 304.0_f32;
         hud::panel(&mut self.hud_batch, &screen, x, y, w, h, Token::PanelRaised);
 
         let content_x = x + hud::space(Space::Md, ui);
@@ -184,13 +188,47 @@ impl TargetApp {
         );
         cursor_y += line_height(Step::Small) + hud::space(Space::Xs, ui);
 
+        let material_status = self
+            .asset
+            .as_ref()
+            .map(|asset| {
+                let materials = asset.material_manifest.materials();
+                let first = materials.first().expect("chunk manifest is non-empty");
+                let classification = if materials
+                    .iter()
+                    .all(|material| material.opaque_rgba().is_some())
+                {
+                    "opaque"
+                } else {
+                    "mixed"
+                };
+                format!(
+                    "{} materials · {classification} · alpha {:.3} · transmission {:.3}",
+                    materials.len(),
+                    first.alpha,
+                    first.transmission_weight
+                )
+            })
+            .unwrap_or_else(|| "materials unavailable".to_string());
+        hud::label_mono(
+            &mut self.text,
+            &mut self.hud_batch,
+            &screen,
+            content_x,
+            cursor_y,
+            Step::Small,
+            Token::TextMuted,
+            &material_status,
+        );
+        cursor_y += line_height(Step::Small) + hud::space(Space::Sm, ui);
+
         let source_resident = self.world.chunk(CHUNK).is_some();
         let status = self
             .asset
             .as_ref()
             .map(|asset| {
                 format!(
-                    "{} visible faces · {} cached chunks · source {} · digest {:016x}",
+                    "{} visible quads · {} cached chunks · source {} · digest {:016x}",
                     asset.quads.len(),
                     self.generator.cache_len(),
                     if source_resident {
@@ -299,14 +337,6 @@ fn self_raycast(
     asset
         .as_ref()
         .and_then(|asset| asset.raycast(near, ray, ray.length() + 1.0))
-}
-
-fn material_color(kind: VoxelKind) -> [f32; 4] {
-    match kind {
-        VoxelKind::Soil => [0.40, 0.31, 0.22, 1.0],
-        VoxelKind::Forage => [0.34, 0.72, 0.31, 1.0],
-        VoxelKind::Wood => [0.55, 0.31, 0.16, 1.0],
-    }
 }
 
 fn line_height(step: Step) -> f32 {

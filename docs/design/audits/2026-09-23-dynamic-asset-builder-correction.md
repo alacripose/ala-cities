@@ -9,8 +9,8 @@ This checkpoint corrects the earlier X/Y/Z voxel-scaling prototype. The Dynamic 
 ## Corrected boundary
 
 - `src/asset_generator.rs` builds two explicit products:
-  - runtime chunk assets from `FoundingWorld` truth, sparse occupancy, visible unit-voxel faces, and a chunk-builder cache identity;
-  - one coherent settings-gear candidate mesh from named semantic recipe values.
+  - runtime chunk assets from `FoundingWorld` truth, sparse occupancy, greedy visible quads, an OpenPBR-ready material manifest, and a chunk-builder cache identity;
+  - one coherent settings-gear candidate mesh from named semantic recipe values plus its own material manifest.
 - The semantic recipe contains:
   - `Teeth` — continuous profile morph;
   - `Opening` — center-opening ratio to gear root radius;
@@ -28,19 +28,21 @@ This checkpoint corrects the earlier X/Y/Z voxel-scaling prototype. The Dynamic 
 - Added separate shape and chunk cache paths; semantic shape edits do not clear or change chunk geometry.
 - Added a versioned `ChunkInputDigest` to chunk cache identity. It hashes the resident chunk plus the residency and inward-facing boundary voxels of its six cardinal neighbours, using the existing textual `VoxelKind` identity rather than a duplicate numeric enum encoding.
 - Added cache regressions proving a partial typed mass delta invalidates presentation identity even when geometry is unchanged, and neighbour load/unload invalidates then restores the correct boundary cache entry.
-- Replaced per-voxel visible-face output with deterministic axis-aligned greedy quads. Same-material coplanar faces merge, while different-material faces and chunk boundaries remain distinct. Integration coverage compares every emitted unit face and material against the authoritative world for positive and negative chunks.
+- Replaced per-voxel visible-face output with deterministic axis-aligned greedy quads. Same-material coplanar faces merge, while different-material faces and chunk boundaries remain distinct. Integration coverage compares every emitted unit face and material against the authoritative world for positive and negative chunks, and checks that triangle winding agrees with every declared outward normal on all six signed directions.
+- Added versioned OpenPBR-ready manifests to chunk and shape assets. Every current Soil/Forage/Wood, gear-body, and gear-accent material is explicitly `opaque`, with base weight and alpha exactly `1.0`, transmission exactly `0.0`, and opaque blending. Manifest construction fails closed on contradictory optical data; renderer colours now come from the validated manifest rather than duplicate UI constants.
 - Replaced 3D world-axis orb projection with three 48 px screen-space slider rows, pointer mapping, visible orb handles, and control-specific keyboard increments.
 - Kept sparse signed-coordinate chunks and exact Amanatides–Woo DDA ray traversal intact.
 - Kept the corrected rotated screen-space pan and target-specific zoom range.
 
 ## Verification
 
-Environment: Windows, Rust/Cargo serial build (`CARGO_BUILD_JOBS=1`) against `target-review` to avoid unrelated PDB contention.
+Environment: Windows, Rust/Cargo serial build (`CARGO_BUILD_JOBS=1`) against the normal ignored `target` directory to avoid unrelated PDB contention.
 
 Passed:
 
 ```text
-cargo test --test shape_builder --test asset_builder_controls --test voxel_raycast --test chunk_cache
+cargo test --test material_manifest --test chunk_cache --test greedy_mesh --test shape_builder --test asset_builder_controls --test voxel_raycast
+  material_manifest:      3 passed
   asset_builder_controls: 4 passed
   shape_builder:          5 passed
   voxel_raycast:          3 passed
@@ -77,16 +79,16 @@ The typed design verifier remains intentionally red on the broader package: unre
 ## Visual and diagram evidence
 
 - `docs/design/audits/asset-builder/asset-builder.png` — real external builder window; three semantic sliders, one combined gear mesh, candidate hash, and promotion state are visible.
-- `docs/design/diagrams/rendered/dynamic-asset-generator.png` — official Excalidraw render of the corrected runtime/authoring boundary.
+- Final rebuilt `ala-cities-target` and `asset-builder` binaries were each shown for 15 seconds. Their panels read material count, opaque classification, alpha, and transmission from the generated manifest; the runtime also reports greedy quads rather than unit faces.
+- `docs/design/diagrams/rendered/dynamic-asset-generator.png` — accepted 4120×2944 official Excalidraw render of the corrected runtime/authoring, manifest, and winding boundary.
 - `docs/design/diagrams/rendered/world-generation-grilling-structure.png` — official Excalidraw render with the corrected Q856–Q858 amendment.
 
 ## Still open
 
-- OpenPBR authoring and validation. The next material pass must classify optical behavior explicitly: every non-translucent material has alpha `1.0`, transmission `0.0`, and opaque blending; viewport/UI tinting must never become material opacity.
-- Hash-aware local reference browser.
+- Full OpenPBR texture/material authoring and review. The runtime manifest and optical invariants are implemented, but promoted texture assets and human material review are not.
 - Hash-aware local reference browser.
 - Broader culling/LOD and measured performance budgets.
 - Full generator/source/table digests and a canonical world/projection identity beyond the current seven-chunk presentation input.
-- Mechanical plus human promotion and runtime asset manifests.
+- Mechanical plus human promotion and a promoted asset registry.
 - Integration into the eventual replacement client rather than the bounded target binaries.
 - Bronze release gates and human playtest evidence.

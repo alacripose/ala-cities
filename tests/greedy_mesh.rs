@@ -96,6 +96,18 @@ fn quad_faces(quad: &MeshQuad) -> Vec<(Coord, Coord)> {
     faces
 }
 
+fn assert_outward_winding(quad: &MeshQuad) {
+    let edge_across = quad.vertices[1].position - quad.vertices[0].position;
+    let edge_up = quad.vertices[3].position - quad.vertices[0].position;
+    let winding = edge_across.cross(edge_up).normalize();
+    assert!(
+        winding.dot(quad.vertices[0].normal) > 0.999,
+        "triangle winding {:?} disagrees with declared normal {:?}",
+        winding,
+        quad.vertices[0].normal
+    );
+}
+
 fn axis_value(value: Vec3, axis: usize) -> f32 {
     match axis {
         0 => value.x,
@@ -116,6 +128,7 @@ fn greedy_quads_cover_exactly_the_same_visible_faces_and_materials() {
         let mut actual = BTreeMap::new();
 
         for quad in &asset.quads {
+            assert_outward_winding(quad);
             for face in quad_faces(quad) {
                 assert!(
                     actual.insert(face, quad.material).is_none(),

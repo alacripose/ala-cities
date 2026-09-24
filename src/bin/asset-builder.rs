@@ -13,8 +13,8 @@ use ala_cities::asset_controls::{
     ORB_RADIUS_PX,
 };
 use ala_cities::asset_generator::{
-    control_bounds, AssetKind, AssetRecipe, DynamicAssetGenerator, ShapeAsset, ShapeControl,
-    ShapeMaterial,
+    control_bounds, AssetKind, AssetRecipe, DynamicAssetGenerator, MaterialKey, ShapeAsset,
+    ShapeControl,
 };
 use ala_cities::design::{target, Space, Step, UiScale};
 use ala_cities::hud::{self, Token};
@@ -166,10 +166,11 @@ impl BuilderApp {
             let center = face.positions.into_iter().sum::<Vec3>() / 4.0;
             let right = (face.positions[1] - face.positions[0]) * 0.5;
             let up = (face.positions[3] - face.positions[0]) * 0.5;
-            let base = match face.material {
-                ShapeMaterial::Body => [0.66, 0.72, 0.76, 1.0],
-                ShapeMaterial::Accent => [0.95, 0.46, 0.16, 1.0],
-            };
+            let base = asset
+                .material_manifest
+                .get(MaterialKey::from(face.material))
+                .and_then(|material| material.opaque_rgba())
+                .expect("generated shape materials are renderable opaque materials");
             let lambert = face.normal.dot(LIGHT.normalize()).abs().max(0.0);
             let shade = 0.48 + 0.52 * lambert;
             self.world_batch.push(
@@ -177,7 +178,7 @@ impl BuilderApp {
                 center,
                 right,
                 up,
-                [base[0] * shade, base[1] * shade, base[2] * shade, 1.0],
+                [base[0] * shade, base[1] * shade, base[2] * shade, base[3]],
                 Text::solid_uv(),
             );
         }
@@ -237,6 +238,39 @@ impl BuilderApp {
             Step::Small,
             Token::Procedural,
             &format!("candidate  {}", self.generator.builder_hash()),
+        );
+        cursor_y += line_height(Step::Small) + hud::space(Space::Xs, ui);
+        let material_status = self
+            .asset
+            .as_ref()
+            .map(|asset| {
+                let materials = asset.material_manifest.materials();
+                let first = materials.first().expect("shape manifest is non-empty");
+                let classification = if materials
+                    .iter()
+                    .all(|material| material.opaque_rgba().is_some())
+                {
+                    "opaque"
+                } else {
+                    "mixed"
+                };
+                format!(
+                    "{} {classification} · alpha {:.3} · transmission {:.3}",
+                    materials.len(),
+                    first.alpha,
+                    first.transmission_weight
+                )
+            })
+            .unwrap_or_else(|| "materials unavailable".to_string());
+        hud::label_mono(
+            &mut self.text,
+            &mut self.hud_batch,
+            &screen,
+            content_x,
+            cursor_y,
+            Step::Small,
+            Token::TextMuted,
+            &material_status,
         );
         cursor_y += line_height(Step::Small) + hud::space(Space::Xs, ui);
         hud::label(

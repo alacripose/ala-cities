@@ -6,10 +6,11 @@
 //! derived from named presentation recipes. Shape controls never mutate or
 //! independently rescale chunk voxels.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use glam::Vec3;
+use serde::Serialize;
 
 use crate::founding_day::{Chunk, ChunkCoord, Coord, GeneratorRevision, VoxelKind, WorldSeed};
 use crate::octree::SparseVoxelOctree;
@@ -24,7 +25,8 @@ pub const ACCENT_MAX: f32 = 1.0;
 pub const RECIPE_QUANTUM: f32 = 1.0 / 1024.0;
 
 const SHAPE_RECIPE_SCHEMA: &[u8] = b"ala-cities/semantic-shape-recipe/v2\0";
-const CHUNK_RECIPE_SCHEMA: &[u8] = b"ala-cities/chunk-mesh-recipe/v2\0";
+const CHUNK_RECIPE_SCHEMA: &[u8] = b"ala-cities/chunk-mesh-recipe/v3\0";
+const MATERIAL_MANIFEST_SCHEMA: &str = "ala-cities/material-manifest/v1";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ShapeControl {
@@ -186,6 +188,363 @@ pub enum ShapeMaterial {
     Accent,
 }
 
+/// Stable presentation identity used by generated manifests and renderers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MaterialKey {
+    Soil,
+    Forage,
+    Wood,
+    SettingsGearBody,
+    SettingsGearAccent,
+}
+
+impl MaterialKey {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Soil => "soil",
+            Self::Forage => "forage",
+            Self::Wood => "wood",
+            Self::SettingsGearBody => "settings-gear:body",
+            Self::SettingsGearAccent => "settings-gear:accent",
+        }
+    }
+}
+
+impl From<VoxelKind> for MaterialKey {
+    fn from(kind: VoxelKind) -> Self {
+        match kind {
+            VoxelKind::Soil => Self::Soil,
+            VoxelKind::Forage => Self::Forage,
+            VoxelKind::Wood => Self::Wood,
+        }
+    }
+}
+
+impl From<ShapeMaterial> for MaterialKey {
+    fn from(material: ShapeMaterial) -> Self {
+        match material {
+            ShapeMaterial::Body => Self::SettingsGearBody,
+            ShapeMaterial::Accent => Self::SettingsGearAccent,
+        }
+    }
+}
+
+/// Optical behaviour is explicit. A viewport tint may change colour, but it never
+/// changes this classification or any of the alpha/transmission invariants.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OpticalClass {
+    Opaque,
+    Translucent,
+    Transmissive,
+}
+
+impl OpticalClass {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Opaque => "opaque",
+            Self::Translucent => "translucent",
+            Self::Transmissive => "transmissive",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BlendMode {
+    Opaque,
+    AlphaBlend,
+    Transmission,
+}
+
+impl BlendMode {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Opaque => "opaque",
+            Self::AlphaBlend => "alpha_blend",
+            Self::Transmission => "transmission",
+        }
+    }
+}
+
+/// OpenPBR-ready material data plus the runtime optical classification needed to
+/// keep opacity and transmission from contradicting one another.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenPbrMaterial {
+    pub key: MaterialKey,
+    pub base_color: [f32; 3],
+    pub base_weight: f32,
+    pub base_metalness: f32,
+    pub specular_roughness: f32,
+    pub specular_ior: f32,
+    pub geometry_coat_weight: f32,
+    pub transmission_weight: f32,
+    pub optical_class: OpticalClass,
+    pub blend_mode: BlendMode,
+    pub alpha: f32,
+}
+
+impl OpenPbrMaterial {
+    pub fn opaque_rgba(self) -> Option<[f32; 4]> {
+        (self.optical_class == OpticalClass::Opaque && self.blend_mode == BlendMode::Opaque)
+            .then_some([
+                self.base_color[0],
+                self.base_color[1],
+                self.base_color[2],
+                self.alpha,
+            ])
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MaterialManifestError {
+    DuplicateKey(MaterialKey),
+    InvalidField {
+        key: MaterialKey,
+        field: &'static str,
+        problem: &'static str,
+    },
+    OpticalClassMismatch(MaterialKey),
+}
+
+impl fmt::Display for MaterialManifestError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DuplicateKey(key) => {
+                write!(formatter, "duplicate material key `{}`", key.as_str())
+            }
+            Self::InvalidField {
+                key,
+                field,
+                problem,
+            } => write!(
+                formatter,
+                "material `{}` has invalid {field}: {problem}",
+                key.as_str()
+            ),
+            Self::OpticalClassMismatch(key) => write!(
+                formatter,
+                "material `{}` contradicts its optical class, alpha, transmission, or blend mode",
+                key.as_str()
+            ),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialManifest {
+    schema: &'static str,
+    materials: Vec<OpenPbrMaterial>,
+}
+
+impl MaterialManifest {
+    pub fn new(materials: Vec<OpenPbrMaterial>) -> Result<Self, MaterialManifestError> {
+        let mut keys = BTreeSet::new();
+        for material in &materials {
+            validate_material(material)?;
+            if !keys.insert(material.key) {
+                return Err(MaterialManifestError::DuplicateKey(material.key));
+            }
+        }
+        Ok(Self {
+            schema: MATERIAL_MANIFEST_SCHEMA,
+            materials,
+        })
+    }
+
+    pub fn schema(&self) -> &'static str {
+        self.schema
+    }
+
+    pub fn materials(&self) -> &[OpenPbrMaterial] {
+        &self.materials
+    }
+
+    pub fn get(&self, key: MaterialKey) -> Option<&OpenPbrMaterial> {
+        self.materials.iter().find(|material| material.key == key)
+    }
+
+    pub fn digest(&self) -> u64 {
+        let mut hash = fnv1a_seed();
+        feed(&mut hash, self.schema.as_bytes());
+        for material in &self.materials {
+            feed(&mut hash, material.key.as_str().as_bytes());
+            for channel in material.base_color {
+                feed_f32(&mut hash, channel);
+            }
+            for value in [
+                material.base_weight,
+                material.base_metalness,
+                material.specular_roughness,
+                material.specular_ior,
+                material.geometry_coat_weight,
+                material.transmission_weight,
+                material.alpha,
+            ] {
+                feed_f32(&mut hash, value);
+            }
+            feed(&mut hash, material.optical_class.as_str().as_bytes());
+            feed(&mut hash, material.blend_mode.as_str().as_bytes());
+        }
+        hash
+    }
+}
+
+fn validate_material(material: &OpenPbrMaterial) -> Result<(), MaterialManifestError> {
+    let invalid = |field, problem| MaterialManifestError::InvalidField {
+        key: material.key,
+        field,
+        problem,
+    };
+    for (field, value) in [
+        ("baseWeight", material.base_weight),
+        ("baseMetalness", material.base_metalness),
+        ("specularRoughness", material.specular_roughness),
+        ("specularIor", material.specular_ior),
+        ("geometryCoatWeight", material.geometry_coat_weight),
+        ("transmissionWeight", material.transmission_weight),
+        ("alpha", material.alpha),
+    ] {
+        if !value.is_finite() {
+            return Err(invalid(field, "value must be finite"));
+        }
+    }
+    for (index, channel) in material.base_color.into_iter().enumerate() {
+        if !channel.is_finite() || !(0.0..=1.0).contains(&channel) {
+            return Err(invalid(
+                match index {
+                    0 => "baseColorR",
+                    1 => "baseColorG",
+                    _ => "baseColorB",
+                },
+                "linear RGB channel must be within 0..=1",
+            ));
+        }
+    }
+    for (field, value) in [
+        ("baseWeight", material.base_weight),
+        ("baseMetalness", material.base_metalness),
+        ("specularRoughness", material.specular_roughness),
+        ("geometryCoatWeight", material.geometry_coat_weight),
+        ("transmissionWeight", material.transmission_weight),
+        ("alpha", material.alpha),
+    ] {
+        if !(0.0..=1.0).contains(&value) {
+            return Err(invalid(field, "value must be within 0..=1"));
+        }
+    }
+    if material.specular_ior <= 0.0 {
+        return Err(invalid("specularIor", "IOR must be greater than zero"));
+    }
+
+    let matches = match material.optical_class {
+        OpticalClass::Opaque => {
+            material.alpha == 1.0
+                && material.base_weight == 1.0
+                && material.transmission_weight == 0.0
+                && material.blend_mode == BlendMode::Opaque
+        }
+        OpticalClass::Translucent => {
+            material.alpha > 0.0
+                && material.alpha < 1.0
+                && material.base_weight == material.alpha
+                && material.transmission_weight == 0.0
+                && material.blend_mode == BlendMode::AlphaBlend
+        }
+        OpticalClass::Transmissive => {
+            material.alpha == 1.0
+                && material.base_weight == 1.0
+                && material.transmission_weight > 0.0
+                && material.blend_mode == BlendMode::Transmission
+        }
+    };
+    if matches {
+        Ok(())
+    } else {
+        Err(MaterialManifestError::OpticalClassMismatch(material.key))
+    }
+}
+
+fn chunk_material_manifest() -> MaterialManifest {
+    MaterialManifest::new(vec![
+        OpenPbrMaterial {
+            key: MaterialKey::Soil,
+            base_color: [0.40, 0.31, 0.22],
+            base_weight: 1.0,
+            base_metalness: 0.0,
+            specular_roughness: 0.92,
+            specular_ior: 1.45,
+            geometry_coat_weight: 0.0,
+            transmission_weight: 0.0,
+            optical_class: OpticalClass::Opaque,
+            blend_mode: BlendMode::Opaque,
+            alpha: 1.0,
+        },
+        OpenPbrMaterial {
+            key: MaterialKey::Forage,
+            base_color: [0.34, 0.72, 0.31],
+            base_weight: 1.0,
+            base_metalness: 0.0,
+            specular_roughness: 0.88,
+            specular_ior: 1.40,
+            geometry_coat_weight: 0.0,
+            transmission_weight: 0.0,
+            optical_class: OpticalClass::Opaque,
+            blend_mode: BlendMode::Opaque,
+            alpha: 1.0,
+        },
+        OpenPbrMaterial {
+            key: MaterialKey::Wood,
+            base_color: [0.55, 0.31, 0.16],
+            base_weight: 1.0,
+            base_metalness: 0.0,
+            specular_roughness: 0.72,
+            specular_ior: 1.47,
+            geometry_coat_weight: 0.0,
+            transmission_weight: 0.0,
+            optical_class: OpticalClass::Opaque,
+            blend_mode: BlendMode::Opaque,
+            alpha: 1.0,
+        },
+    ])
+    .expect("built-in chunk material manifest is valid")
+}
+
+fn shape_material_manifest() -> MaterialManifest {
+    MaterialManifest::new(vec![
+        OpenPbrMaterial {
+            key: MaterialKey::SettingsGearBody,
+            base_color: [0.66, 0.72, 0.76],
+            base_weight: 1.0,
+            base_metalness: 0.90,
+            specular_roughness: 0.28,
+            specular_ior: 1.50,
+            geometry_coat_weight: 0.35,
+            transmission_weight: 0.0,
+            optical_class: OpticalClass::Opaque,
+            blend_mode: BlendMode::Opaque,
+            alpha: 1.0,
+        },
+        OpenPbrMaterial {
+            key: MaterialKey::SettingsGearAccent,
+            base_color: [0.95, 0.46, 0.16],
+            base_weight: 1.0,
+            base_metalness: 0.0,
+            specular_roughness: 0.24,
+            specular_ior: 1.50,
+            geometry_coat_weight: 0.45,
+            transmission_weight: 0.0,
+            optical_class: OpticalClass::Opaque,
+            blend_mode: BlendMode::Opaque,
+            alpha: 1.0,
+        },
+    ])
+    .expect("built-in shape material manifest is valid")
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShapeVertex {
     pub position: Vec3,
@@ -309,6 +668,7 @@ pub struct ShapeAsset {
     pub key: ShapeAssetKey,
     pub recipe: AssetRecipe,
     pub mesh: ShapeMesh,
+    pub material_manifest: MaterialManifest,
     pub digest: u64,
 }
 
@@ -317,6 +677,7 @@ pub struct ChunkAsset {
     pub key: ChunkAssetKey,
     pub octree: SparseVoxelOctree,
     pub quads: Vec<MeshQuad>,
+    pub material_manifest: MaterialManifest,
     pub digest: u64,
 }
 
@@ -426,6 +787,7 @@ impl DynamicAssetGenerator {
             key,
             recipe: self.recipe,
             mesh,
+            material_manifest: shape_material_manifest(),
             digest: 0,
         };
         built.digest = shape_digest(&built);
@@ -462,6 +824,7 @@ impl DynamicAssetGenerator {
             key,
             octree,
             quads,
+            material_manifest: chunk_material_manifest(),
             digest: 0,
         };
         asset.digest = asset_digest(&asset);
@@ -652,7 +1015,11 @@ fn merged_face_quad(
     let across = axis_vector(u_axis) * width as f32;
     let up = axis_vector(v_axis) * height as f32;
     let normal = axis_vector(normal_axis) * sign as f32;
-    let positions = [origin, origin + across, origin + across + up, origin + up];
+    let positions = if sign > 0 {
+        [origin, origin + across, origin + across + up, origin + up]
+    } else {
+        [origin, origin + up, origin + across + up, origin + across]
+    };
     MeshQuad {
         vertices: positions.map(|position| MeshVertex { position, normal }),
         material,
@@ -833,6 +1200,7 @@ fn shape_digest(asset: &ShapeAsset) -> u64 {
     let mut hash = fnv1a_seed();
     feed(&mut hash, &[asset.key.asset as u8]);
     feed(&mut hash, &asset.key.builder_hash.0.to_le_bytes());
+    feed(&mut hash, &asset.material_manifest.digest().to_le_bytes());
     for vertex in &asset.mesh.vertices {
         feed_f32(&mut hash, vertex.position.x);
         feed_f32(&mut hash, vertex.position.y);
@@ -854,6 +1222,7 @@ fn asset_digest(asset: &ChunkAsset) -> u64 {
     feed(&mut hash, &asset.key.chunk.z.to_le_bytes());
     feed(&mut hash, &asset.key.builder_hash.0.to_le_bytes());
     feed(&mut hash, &asset.key.input_digest.0.to_le_bytes());
+    feed(&mut hash, &asset.material_manifest.digest().to_le_bytes());
     feed(&mut hash, &asset.octree.digest().to_le_bytes());
     for quad in &asset.quads {
         for vertex in &quad.vertices {
@@ -871,6 +1240,7 @@ fn asset_digest(asset: &ChunkAsset) -> u64 {
 pub fn chunk_builder_hash() -> BuilderHash {
     let mut hash = fnv1a_seed();
     feed(&mut hash, CHUNK_RECIPE_SCHEMA);
+    feed(&mut hash, &chunk_material_manifest().digest().to_le_bytes());
     BuilderHash(hash)
 }
 
